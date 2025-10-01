@@ -279,11 +279,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
                         <div class="space-y-2">
                             <label for="codePassDisplay" class="block text-sm font-semibold text-foreground">Confirmation Code (Generated)</label>
-                            <div id="codePassDisplay" class="h-12 flex items-center bg-background rounded-xl border border-gray-300 px-3 text-sm font-mono text-foreground/80">--/--/----</div>
+                            <div id="codePassDisplay" class="h-12 flex items-center input-display-style">--/--/----</div>
                         </div>
                         <div class="space-y-2">
                             <label for="reminderDateDisplay" class="block text-sm font-semibold text-foreground">Reminder Date (5 Months)</label>
-                            <div id="reminderDateDisplay" class="h-12 flex items-center bg-background rounded-xl border border-gray-300 px-3 text-sm font-mono text-foreground/80">--/--/----</div>
+                            <div id="reminderDateDisplay" class="h-12 flex items-center input-display-style">--/--/----</div>
                         </div>
                         <!-- Campos automáticos para data (Type, Week, Month, Year) -->
                         <div class="space-y-2 hidden">
@@ -310,20 +310,20 @@
     <!-- Custom Input Style and Fixes -->
     <style>
         .input-style {
-            /* Aumentado o contraste da borda para foreground/80 para maior visibilidade */
+            /* Borda cinza escura para ser visível mesmo quando inativo */
             @apply mt-1 block w-full h-12 rounded-xl border-2 border-foreground/80 hover:border-brand-primary transition-colors bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
         }
+        .input-display-style {
+            /* Estilo da div de display baseado no input-style */
+            @apply mt-1 rounded-xl border-2 border-foreground/80 bg-muted/50 px-3 py-2 text-sm font-mono text-foreground/80;
+        }
+
         /* Forces text color for datetime-local to appear */
         input[type="datetime-local"] {
             color: hsl(var(--foreground));
         }
-        /* Apply similar border style and background to read-only divs */
-        #codePassDisplay, #reminderDateDisplay {
-            border-width: 2px; /* Mantém a largura da borda para visualmente casar com os inputs */
-            border-color: hsl(var(--foreground) / 0.8); /* Cor cinza mais escura, correspondente a foreground/80 */
-            background-color: hsl(var(--muted) / 0.5); /* Usando muted/50 */
-        }
-        /* [NOVO] Fix para preenchimento automático do navegador (auto-fill) */
+        
+        /* [FIX] Fix para preenchimento automático do navegador (auto-fill) */
         input:-webkit-autofill,
         input:-webkit-autofill:hover, 
         input:-webkit-autofill:focus, 
