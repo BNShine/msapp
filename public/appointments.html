@@ -310,17 +310,18 @@
     <!-- Custom Input Style and Fixes -->
     <style>
         .input-style {
-            /* Adicionada a borda cinza (border-gray-300) e removida a borda primária duplicada */
-            @apply mt-1 block w-full h-12 rounded-xl border-2 border-gray-300 hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+            /* Adicionado bg-muted/50 para dar destaque suave no fundo cinza claro */
+            @apply mt-1 block w-full h-12 rounded-xl border-2 border-gray-300 hover:border-brand-primary transition-colors bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
         }
         /* Forces text color for datetime-local to appear */
         input[type="datetime-local"] {
             color: hsl(var(--foreground));
         }
-        /* Apply similar border style to read-only divs */
+        /* Apply similar border style and background to read-only divs */
         #codePassDisplay, #reminderDateDisplay {
             border-width: 2px; /* Mantém a largura da borda para visualmente casar com os inputs */
             border-color: #d1d5db; /* Cor cinza, correspondente a gray-300 */
+            background-color: hsl(var(--muted) / 0.5); /* Usando muted/50 */
         }
     </style>
     
