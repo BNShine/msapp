@@ -174,8 +174,8 @@
                 <form id="scheduleForm" class="p-6">
                     
                     <!-- Row 1: Client Details (Name, Contact) -->
-                    <div class="mb-8 p-6 space-y-6">
-                        <h3 class="text-xl font-semibold text-foreground/80 flex items-center gap-2 border-b border-border pb-3 mb-6">
+                    <div class="mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
+                        <h3 class="text-xl font-semibold mb-6 text-foreground/80 flex items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-check"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 11 2 2 4-4"/></svg>
                             Client Details
                         </h3>
@@ -208,8 +208,8 @@
                     </div>
                     
                     <!-- Row 2: Service and Sales Details -->
-                    <div class="mb-8 p-6 space-y-6">
-                         <h3 class="text-xl font-semibold text-foreground/80 flex items-center gap-2 border-b border-border pb-3 mb-6">
+                    <div class="mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
+                         <h3 class="text-xl font-semibold mb-6 text-foreground/80 flex items-center gap-2">
                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-check"><path d="M8 12L12 16L20 8"/><path d="M8 12L12 16L20 8"/></svg>
                              Service and Sales Details
                          </h3>
@@ -276,17 +276,15 @@
                     </div>
                     
                     <!-- Row 3: Automatic Fields (Hidden/Read-Only) -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 p-6 border border-brand-secondary/50 rounded-xl bg-brand-secondary/30">
-                        <!-- Confirmation Code -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
                         <div class="space-y-2">
                             <label for="codePassDisplay" class="block text-sm font-semibold text-foreground">Confirmation Code (Generated)</label>
-                            <!-- Destaque visual: fundo brand-secondary/10, texto font-bold e h-full -->
+                            <!-- Adiciona as classes de flex e h-12 de volta para garantir o alinhamento e altura -->
                             <div id="codePassDisplay" class="h-12 flex items-center input-display-style">--/--/----</div>
                         </div>
-                        <!-- Reminder Date -->
                         <div class="space-y-2">
                             <label for="reminderDateDisplay" class="block text-sm font-semibold text-foreground">Reminder Date (5 Months)</label>
-                            <!-- Destaque visual: fundo brand-secondary/10, texto font-bold e h-full -->
+                            <!-- Adiciona as classes de flex e h-12 de volta para garantir o alinhamento e altura -->
                             <div id="reminderDateDisplay" class="h-12 flex items-center input-display-style">--/--/----</div>
                         </div>
                         <!-- Campos automáticos para data (Type, Week, Month, Year) -->
@@ -299,7 +297,7 @@
                             <select id="year" name="year"><option value="2025">2025</option></select>
                         </div>
                         <div class="space-y-2 md:col-span-1">
-                            <label for="submit" class="block text-sm font-semibold text-foreground opacity-0">&nbsp;</label> <!-- Remove Action text -->
+                            <label for="submit" class="block text-sm font-semibold text-foreground opacity-0">Action</label>
                             <button type="submit" form="scheduleForm" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-base font-bold bg-gradient-primary text-white hover:shadow-brand hover:-translate-y-0.5 transform transition-all duration-300 h-12 px-8">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send w-4 h-4"><path d="m22 2-11 11m0 0-3 9 9-3L22 2zM12 12 3 21"/></svg>
                                 Register Appointment
@@ -315,11 +313,11 @@
     <style>
         .input-style {
             /* Borda cinza escura para ser visível mesmo quando inativo */
-            @apply mt-1 block w-full h-12 rounded-xl border-2 border-foreground/80 hover:border-brand-primary transition-colors bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+            @apply mt-1 block w-full h-12 rounded-xl border-2 border-foreground/80 hover:border-brand-primary transition-colors bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
         }
         .input-display-style {
-            /* Estilo da div de display baseado no input-style, garantindo padding e borda. Destaque forte na borda */
-            @apply w-full rounded-xl border-2 border-brand-secondary mt-1 px-3 py-2 text-sm font-bold text-foreground/90; 
+            /* Estilo da div de display baseado no input-style, garantindo padding e borda */
+            @apply mt-1 w-full rounded-xl border-2 border-foreground/80 bg-muted/50 px-3 py-2 text-sm font-mono text-foreground/80;
         }
 
         /* Forces text color for datetime-local to appear */
@@ -332,8 +330,8 @@
         input:-webkit-autofill:hover, 
         input:-webkit-autofill:focus, 
         input:-webkit-autofill:active  {
-            /* Neutraliza o fundo azul do navegador com o fundo bg-card (branco) */
-            -webkit-box-shadow: 0 0 0px 1000px hsl(var(--card)) inset !important;
+            /* Usa uma sombra interna para forçar o background-color */
+            -webkit-box-shadow: 0 0 0px 1000px hsl(var(--muted) / 0.5) inset !important;
             /* Garante que a cor do texto seja foreground e a borda seja visível */
             -webkit-text-fill-color: hsl(var(--foreground)) !important;
             border-color: hsl(var(--foreground) / 0.8) !important;
