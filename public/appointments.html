@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Appointment Dashboard</title>
+    <title>Sales Dashboard</title>
     <!-- Inclui o CSS compilado (Tailwind) -->
     <link href="output.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19,31 +19,31 @@
             <div class="w-10 h-10 bg-gradient-subtle rounded-lg flex items-center justify-center shadow-soft">
               <img 
                 src="https://i.imgur.com/XamnfOc.png" 
-                alt="Logotipo da Empresa" 
+                alt="Company Logo" 
                 class="max-w-full max-h-full object-contain rounded"
               />
             </div>
             <h1 class="text-xl font-bold text-foreground hidden sm:block">
-              Appointment Dashboard
+              Sales Dashboard
             </h1>
           </div>
           <!-- Menu de Navegação (Desktop) -->
           <nav class="hidden md:flex items-center space-x-1">
             <a href="appointments.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 bg-gradient-primary text-white shadow-brand" aria-current="page">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar w-4 h-4"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
-                <span class="hidden lg:inline">Agendamentos</span>
+                <span class="hidden lg:inline">Sales</span>
             </a>
             <a href="customers.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-muted hover:text-foreground">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-4 h-4"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                <span class="hidden lg:inline">Clientes</span>
+                <span class="hidden lg:inline">Customers</span>
             </a>
             <a href="analytics.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-muted hover:text-foreground">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bar-chart-3 w-4 h-4"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                <span class="hidden lg:inline">Análise</span>
+                <span class="hidden lg:inline">Analytics</span>
             </a>
             <a href="quick-routes.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-muted hover:text-foreground">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-route w-4 h-4"><path d="M3 3v18h18"/><path d="m21 7-5 5h5"/><path d="m11 11-3 3h3"/><path d="m11 7-5 5h5"/></svg>
-                <span>Rotas</span>
+                <span>Routes</span>
             </a>
           </nav>
           <!-- Ações e Perfil -->
@@ -54,7 +54,7 @@
             </button>
             <a href="finance-credentials.html" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-4 h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-              <span class="hidden sm:inline">Financeiro</span>
+              <span class="hidden sm:inline">Finance</span>
             </a>
             <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 w-11 relative hover:bg-accent hover:text-accent-foreground md:hidden">
               <svg xmlns="http://www.w3.org/2003/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu w-4 h-4"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
@@ -66,19 +66,19 @@
           <nav class="flex items-center justify-around py-2">
             <a href="appointments.html" class="flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium transition-all duration-300 text-brand-primary">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar w-4 h-4"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
-                <span>Agend.</span>
+                <span>Sales</span>
             </a>
             <a href="customers.html" class="flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium transition-all duration-300 text-muted-foreground hover:text-foreground">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-4 h-4"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                <span>Clientes</span>
+                <span>Customers</span>
             </a>
             <a href="analytics.html" class="flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium transition-all duration-300 text-muted-foreground hover:text-foreground">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bar-chart-3 w-4 h-4"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                <span>Análise</span>
+                <span>Analytics</span>
             </a>
             <a href="quick-routes.html" class="flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium transition-all duration-300 text-muted-foreground hover:text-foreground">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-route w-4 h-4"><path d="M3 3v18h18"/><path d="m21 7-5 5h5"/><path d="m11 11-3 3h3"/><path d="m11 7-5 5h5"/></svg>
-                <span>Rotas</span>
+                <span>Routes</span>
             </a>
           </nav>
         </div>
@@ -92,12 +92,12 @@
                 A
               </div>
               <div>
-                <p class="text-sm font-medium text-foreground">Usuário Admin</p>
-                <p class="text-xs text-muted-foreground">Administrador do Sistema</p>
+                <p class="text-sm font-medium text-foreground">Admin User</p>
+                <p class="text-xs text-muted-foreground">System Administrator</p>
               </div>
             </div>
             <p class="text-xs text-muted-foreground hidden sm:block">
-              Gerencie seus agendamentos e leads
+              Manage your sales and leads efficiently
             </p>
           </div>
         </div>
@@ -107,11 +107,11 @@
     <main class="flex-1 p-8 overflow-y-auto">
         <div class="max-w-7xl mx-auto space-y-8">
 
-            <!-- Seção de Métricas Principais (Cards de Resumo) -->
+            <!-- Metrics Section (Summary Cards) -->
             <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-gradient-subtle p-6">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-medium text-muted-foreground">Agendamentos de Hoje</h3>
+                        <h3 class="text-sm font-medium text-muted-foreground">Today's Appointments</h3>
                         <div class="h-8 w-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
                         </div>
@@ -124,7 +124,7 @@
 
                 <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-gradient-subtle p-6">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-medium text-muted-foreground">Clientes do Mês</h3>
+                        <h3 class="text-sm font-medium text-muted-foreground">Customers This Month</h3>
                         <div class="h-8 w-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                         </div>
@@ -137,7 +137,7 @@
 
                 <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-gradient-subtle p-6">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-medium text-muted-foreground">Pets Agendados</h3>
+                        <h3 class="text-sm font-medium text-muted-foreground">Pets Scheduled</h3>
                         <div class="h-8 w-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-paw-print"><path d="M12.636 18.257l-1.414 1.414a2 2 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.828 0z"/><path d="M15.414 19.671l-1.414 1.414a2 2 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.828 0z"/><path d="M18.192 21.085l-1.414 1.414a2 2 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.828 0z"/><path d="M5.5 17.5a4 4 0 1 1-2.828 6.828"/><path d="M18.5 17.5a4 4 0 1 1-6.828 2.828"/></svg>
                         </div>
@@ -150,42 +150,42 @@
 
                 <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-gradient-subtle p-6">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-medium text-muted-foreground">Melhor Closer</h3>
+                        <h3 class="text-sm font-medium text-muted-foreground">Top Closer</h3>
                         <div class="h-8 w-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-award"><circle cx="12" cy="8" r="6"/><path d="M15.4 14.8c-.8 1.4-2.1 2.2-3.4 2.2s-2.6-.8-3.4-2.2c-.4-.7-1-1-1.6-1s-1.2.3-1.6 1c-.8 1.4-2.1 2.2-3.4 2.2s-2.6-.8-3.4-2.2"/><path d="M12 2v4"/></svg>
                         </div>
                     </div>
                     <div class="flex flex-col space-y-2">
                         <p id="bestSellerName" class="text-4xl font-bold text-foreground">--</p>
-                        <p class="text-sm font-medium text-muted-foreground">Melhor performance no mês</p>
+                        <p class="text-sm font-medium text-muted-foreground">This month's top performer</p>
                     </div>
                 </div>
             </section>
 
-            <!-- Seção Principal de Registro de Agendamento -->
+            <!-- Main Appointment Registration Section -->
             <section class="rounded-lg border bg-card text-card-foreground shadow-large">
                 <div class="flex flex-col space-y-1.5 p-6 border-b border-border">
                     <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                        Registrar Novo Agendamento (E2E Lead Track)
+                        Register New Appointment (E2E Lead Track)
                     </h2>
-                    <p class="text-sm text-muted-foreground">Preencha todos os campos obrigatórios para criar um novo Lead no Funil.</p>
+                    <p class="text-sm text-muted-foreground">Fill in all mandatory fields to create a new Lead in the Sales Pipeline.</p>
                 </div>
                 
                 <form id="scheduleForm" class="p-6">
                     
-                    <!-- Linha 1: Detalhes do Cliente (Nome, Contato) -->
+                    <!-- Row 1: Client Details (Name, Contact) -->
                     <div class="mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
                         <h3 class="text-xl font-semibold mb-6 text-foreground/80 flex items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-check"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 11 2 2 4-4"/></svg>
-                            Detalhes do Cliente
+                            Client Details
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div class="space-y-2">
-                                <label for="customers" class="block text-sm font-semibold text-foreground">Nome do Cliente</label>
+                                <label for="customers" class="block text-sm font-semibold text-foreground">Customer Name</label>
                                 <input type="text" id="customers" name="customers" required class="input-style">
                             </div>
                             <div class="space-y-2">
-                                <label for="phone" class="block text-sm font-semibold text-foreground">Telefone</label>
+                                <label for="phone" class="block text-sm font-semibold text-foreground">Phone</label>
                                 <input type="tel" id="phone" name="phone" required class="input-style">
                             </div>
                             <div class="space-y-2">
@@ -193,101 +193,101 @@
                                 <input type="email" id="email" name="email" required class="input-style">
                             </div>
                             <div class="space-y-2">
-                                <label for="zipCode" class="block text-sm font-semibold text-foreground">Zip Code (Logística)</label>
+                                <label for="zipCode" class="block text-sm font-semibold text-foreground">Zip Code (Logistics)</label>
                                 <input type="text" id="zipCode" name="zipCode" required class="input-style">
                             </div>
                             <div class="space-y-2">
-                                <label for="address" class="block text-sm font-semibold text-foreground">Endereço Completo</label>
+                                <label for="address" class="block text-sm font-semibold text-foreground">Full Address</label>
                                 <input type="text" id="address" name="address" required class="input-style">
                             </div>
                             <div class="space-y-2">
-                                <label for="city" class="block text-sm font-semibold text-foreground">Cidade</label>
+                                <label for="city" class="block text-sm font-semibold text-foreground">City</label>
                                 <input type="text" id="city" name="city" required class="input-style">
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Linha 2: Detalhes do Agendamento e Vendas -->
+                    <!-- Row 2: Service and Sales Details -->
                     <div class="mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
                          <h3 class="text-xl font-semibold mb-6 text-foreground/80 flex items-center gap-2">
                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-check"><path d="M8 12L12 16L20 8"/><path d="M8 12L12 16L20 8"/></svg>
-                             Detalhes do Serviço e Vendas
+                             Service and Sales Details
                          </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <!-- Data/Hora Agendamento -->
+                            <!-- Appointment Date/Time -->
                             <div class="space-y-2">
-                                <label for="appointmentDate" class="block text-sm font-semibold text-foreground">Data/Hora Agendamento</label>
+                                <label for="appointmentDate" class="block text-sm font-semibold text-foreground">Appointment Date/Time</label>
                                 <input type="datetime-local" id="appointmentDate" name="appointmentDate" required class="input-style">
                             </div>
-                            <!-- Valor Estimado -->
+                            <!-- Estimated Value -->
                             <div class="space-y-2">
-                                <label for="serviceValue" class="block text-sm font-semibold text-foreground">Valor Estimado</label>
+                                <label for="serviceValue" class="block text-sm font-semibold text-foreground">Estimated Value</label>
                                 <input type="text" id="serviceValue" name="serviceValue" required class="input-style" placeholder="Ex: $150.00">
                             </div>
-                            <!-- Qtd. Estimada (Pets) -->
+                            <!-- Estimated Qty (Pets) -->
                             <div class="space-y-2">
-                                <label for="pets" class="block text-sm font-semibold text-foreground">Qtd. Estimada (Pets/Serviços)</label>
+                                <label for="pets" class="block text-sm font-semibold text-foreground">Estimated Qty (Pets/Services)</label>
                                 <select id="pets" name="pets" class="input-style">
-                                    <option value="">Selecione a Qtd.</option>
-                                    <!-- Options populadas por JS -->
+                                    <option value="">Select Qty</option>
+                                    <!-- Options populated by JS -->
                                 </select>
                             </div>
-                            <!-- Franquia -->
+                            <!-- Franchise -->
                             <div class="space-y-2">
-                                <label for="franchise" class="block text-sm font-semibold text-foreground">Franquia</label>
+                                <label for="franchise" class="block text-sm font-semibold text-foreground">Franchise</label>
                                 <select id="franchise" name="franchise" required class="input-style">
-                                    <option value="">Selecione a Franquia</option>
-                                    <!-- Options populadas por JS -->
+                                    <option value="">Select Franchise</option>
+                                    <!-- Options populated by JS -->
                                 </select>
                             </div>
                             <!-- Closer (1) -->
                             <div class="space-y-2">
                                 <label for="closer1" class="block text-sm font-semibold text-foreground">Closer (1)</label>
                                 <select id="closer1" name="closer1" required class="input-style">
-                                    <option value="">Selecione o Closer</option>
-                                    <!-- Options populadas por JS -->
+                                    <option value="">Select Closer</option>
+                                    <!-- Options populated by JS -->
                                 </select>
                             </div>
                             <!-- SDR -->
                             <div class="space-y-2">
                                 <label for="closer2" class="block text-sm font-semibold text-foreground">SDR</label>
                                 <select id="closer2" name="closer2" class="input-style">
-                                    <option value="">Selecione o SDR</option>
-                                    <!-- Options populadas por JS -->
+                                    <option value="">Select SDR</option>
+                                    <!-- Options populated by JS -->
                                 </select>
                             </div>
                             <!-- Lead Source -->
                             <div class="space-y-2">
-                                <label for="source" class="block text-sm font-semibold text-foreground">Fonte do Lead</label>
+                                <label for="source" class="block text-sm font-semibold text-foreground">Lead Source</label>
                                 <select id="source" name="source" required class="input-style">
-                                    <option value="">Selecione a Fonte</option>
-                                    <!-- Options populadas por JS -->
+                                    <option value="">Select Source</option>
+                                    <!-- Options populated by JS -->
                                 </select>
                             </div>
-                            <!-- Fase (Old/New) -->
+                            <!-- Phase (Old/New) -->
                             <div class="space-y-2">
-                                <label for="oldNew" class="block text-sm font-semibold text-foreground">Fase (Novo/Antigo)</label>
+                                <label for="oldNew" class="block text-sm font-semibold text-foreground">Phase (New/Old)</label>
                                 <select id="oldNew" name="oldNew" required class="input-style">
-                                    <option value="New">Novo</option>
-                                    <option value="Old">Antigo</option>
+                                    <option value="New">New</option>
+                                    <option value="Old">Old</option>
                                 </select>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Linha 3: Campos Automáticos (Escondidos/Apenas Leitura) -->
+                    <!-- Row 3: Automatic Fields (Hidden/Read-Only) -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
                         <div class="space-y-2">
-                            <label for="codePassDisplay" class="block text-sm font-semibold text-foreground">Código de Confirmação (Gerado)</label>
-                            <div id="codePassDisplay" class="h-12 flex items-center bg-background rounded-xl border-2 border-border px-3 text-sm font-mono text-foreground/80">--/--/----</div>
+                            <label for="codePassDisplay" class="block text-sm font-semibold text-foreground">Confirmation Code (Generated)</label>
+                            <div id="codePassDisplay" class="h-12 flex items-center bg-background rounded-xl border border-gray-300 px-3 text-sm font-mono text-foreground/80">--/--/----</div>
                         </div>
                         <div class="space-y-2">
-                            <label for="reminderDateDisplay" class="block text-sm font-semibold text-foreground">Data de Lembrete (5 Meses)</label>
-                            <div id="reminderDateDisplay" class="h-12 flex items-center bg-background rounded-xl border-2 border-border px-3 text-sm font-mono text-foreground/80">--/--/----</div>
+                            <label for="reminderDateDisplay" class="block text-sm font-semibold text-foreground">Reminder Date (5 Months)</label>
+                            <div id="reminderDateDisplay" class="h-12 flex items-center bg-background rounded-xl border border-gray-300 px-3 text-sm font-mono text-foreground/80">--/--/----</div>
                         </div>
                         <!-- Campos automáticos para data (Type, Week, Month, Year) -->
                         <div class="space-y-2 hidden">
-                            <label for="data" class="block text-sm font-semibold text-foreground">Data de Criação (Auto)</label>
+                            <label for="data" class="block text-sm font-semibold text-foreground">Creation Date (Auto)</label>
                             <input type="date" id="data" name="data" class="input-style">
                             <select id="type" name="type"><option value="Central">Central</option></select>
                             <select id="week" name="week"><option value="1">1</option></select>
@@ -295,10 +295,10 @@
                             <select id="year" name="year"><option value="2025">2025</option></select>
                         </div>
                         <div class="space-y-2 md:col-span-1">
-                            <label for="submit" class="block text-sm font-semibold text-foreground opacity-0">Ação</label>
+                            <label for="submit" class="block text-sm font-semibold text-foreground opacity-0">Action</label>
                             <button type="submit" form="scheduleForm" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-base font-bold bg-gradient-primary text-white hover:shadow-brand hover:-translate-y-0.5 transform transition-all duration-300 h-12 px-8">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send w-4 h-4"><path d="m22 2-11 11m0 0-3 9 9-3L22 2zM12 12 3 21"/></svg>
-                                Registrar Agendamento
+                                Register Appointment
                             </button>
                         </div>
                     </div>
@@ -307,18 +307,24 @@
         </div>
     </main>
 
-    <!-- Estilo customizado para inputs -->
+    <!-- Custom Input Style and Fixes -->
     <style>
         .input-style {
-            @apply mt-1 block w-full h-12 rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+            /* Adicionada a borda cinza (border-gray-300) e removida a borda primária duplicada */
+            @apply mt-1 block w-full h-12 rounded-xl border-2 border-gray-300 hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
         }
-        /* Força a cor do texto para o datetime-local aparecer */
+        /* Forces text color for datetime-local to appear */
         input[type="datetime-local"] {
             color: hsl(var(--foreground));
         }
+        /* Apply similar border style to read-only divs */
+        #codePassDisplay, #reminderDateDisplay {
+            border-width: 2px; /* Mantém a largura da borda para visualmente casar com os inputs */
+            border-color: #d1d5db; /* Cor cinza, correspondente a gray-300 */
+        }
     </style>
     
-    <!-- Inclui o Script JS do Dashboard -->
+    <!-- Includes the Dashboard JS Script -->
     <script src="dashboard.js"></script>
 </body>
 </html>
