@@ -240,9 +240,9 @@
                                     <!-- Options populated by JS -->
                                 </select>
                             </div>
-                            <!-- Closer (1) -->
+                            <!-- Closer -->
                             <div class="space-y-2">
-                                <label for="closer1" class="block text-sm font-semibold text-foreground">Closer (1)</label>
+                                <label for="closer1" class="block text-sm font-semibold text-foreground">Closer</label>
                                 <select id="closer1" name="closer1" required class="input-style">
                                     <option value="">Select Closer</option>
                                     <!-- Options populated by JS -->
@@ -279,10 +279,12 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
                         <div class="space-y-2">
                             <label for="codePassDisplay" class="block text-sm font-semibold text-foreground">Confirmation Code (Generated)</label>
+                            <!-- Adiciona as classes de flex e h-12 de volta para garantir o alinhamento e altura -->
                             <div id="codePassDisplay" class="h-12 flex items-center input-display-style">--/--/----</div>
                         </div>
                         <div class="space-y-2">
                             <label for="reminderDateDisplay" class="block text-sm font-semibold text-foreground">Reminder Date (5 Months)</label>
+                            <!-- Adiciona as classes de flex e h-12 de volta para garantir o alinhamento e altura -->
                             <div id="reminderDateDisplay" class="h-12 flex items-center input-display-style">--/--/----</div>
                         </div>
                         <!-- Campos automáticos para data (Type, Week, Month, Year) -->
@@ -314,8 +316,8 @@
             @apply mt-1 block w-full h-12 rounded-xl border-2 border-foreground/80 hover:border-brand-primary transition-colors bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
         }
         .input-display-style {
-            /* Estilo da div de display baseado no input-style */
-            @apply mt-1 rounded-xl border-2 border-foreground/80 bg-muted/50 px-3 py-2 text-sm font-mono text-foreground/80;
+            /* Estilo da div de display baseado no input-style, garantindo padding e borda */
+            @apply mt-1 w-full rounded-xl border-2 border-foreground/80 bg-muted/50 px-3 py-2 text-sm font-mono text-foreground/80;
         }
 
         /* Forces text color for datetime-local to appear */
