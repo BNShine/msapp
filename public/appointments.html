@@ -310,8 +310,8 @@
     <!-- Custom Input Style and Fixes -->
     <style>
         .input-style {
-            /* Alterado border-gray-300 para border-foreground/30 para um contorno mais escuro, resolvendo a invisibilidade */
-            @apply mt-1 block w-full h-12 rounded-xl border-2 border-foreground/30 hover:border-brand-primary transition-colors bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+            /* Aumentado o contraste da borda para foreground/50 para maior visibilidade */
+            @apply mt-1 block w-full h-12 rounded-xl border-2 border-foreground/50 hover:border-brand-primary transition-colors bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
         }
         /* Forces text color for datetime-local to appear */
         input[type="datetime-local"] {
@@ -320,7 +320,7 @@
         /* Apply similar border style and background to read-only divs */
         #codePassDisplay, #reminderDateDisplay {
             border-width: 2px; /* Mantém a largura da borda para visualmente casar com os inputs */
-            border-color: hsl(var(--foreground) / 0.3); /* Cor cinza escuro, correspondente a foreground/30 */
+            border-color: hsl(var(--foreground) / 0.5); /* Cor cinza mais escura, correspondente a foreground/50 */
             background-color: hsl(var(--muted) / 0.5); /* Usando muted/50 */
         }
     </style>
