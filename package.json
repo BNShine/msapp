@@ -1,0 +1,27 @@
+{
+  "name": "vercelapp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "build:css": "tailwindcss -i ./src/index.css -o ./public/output.css",
+    "watch:css": "tailwindcss -i ./src/index.css -o ./public/output.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "google-auth-library": "^9.11.0",
+    "google-spreadsheet": "^5.0.2"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "tailwindcss-animate": "^1.0.7"
+  }
+}
