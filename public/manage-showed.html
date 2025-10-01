@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Showed</title>
+    <link href="output.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide-static@latest/dist/umd/lucide.js"></script>
+</head>
+<body class="min-h-screen bg-background flex flex-col">
+
+    <header class="bg-card shadow-large border-b border-border">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-gradient-subtle rounded-lg flex items-center justify-center shadow-soft">
+              <img 
+                src="https://i.imgur.com/XamnfOc.png" 
+                alt="Company Logo" 
+                class="max-w-full max-h-full object-contain rounded"
+              />
+            </div>
+            <h1 class="text-xl font-bold text-foreground hidden sm:block">
+              Manage Showed
+            </h1>
+          </div>
+          <nav class="hidden md:flex items-center space-x-1">
+            <a href="manage-showed.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 bg-muted text-foreground" aria-current="page">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar w-4 h-4"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+                <span class="hidden lg:inline">Manage Showed</span>
+            </a>
+            <button class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-4 h-4"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span class="hidden lg:inline">Menu 2</span>
+            </button>
+            <button class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bar-chart-3 w-4 h-4"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                <span class="hidden lg:inline">Menu 3</span>
+            </button>
+            </nav>
+          <div class="flex items-center gap-2">
+            <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 w-11 relative hover:bg-accent hover:text-accent-foreground">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell w-4 h-4"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              <span class="absolute -top-1 -right-1 w-2 h-2 bg-brand-primary rounded-full"></span>
+            </button>
+            <a href="appointments.html" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-4 h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              <span class="hidden sm:inline">Call Center</span>
+            </a>
+            <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 w-11 relative hover:bg-accent hover:text-accent-foreground md:hidden">
+              <svg xmlns="http://www.w3.org/2003/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu w-4 h-4"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="md:hidden border-t border-border">
+          <nav class="flex items-center justify-around py-2">
+            <a href="manage-showed.html" class="flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium transition-all duration-300 text-foreground" aria-current="page">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar w-4 h-4"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+                <span>Manage Showed</span>
+            </a>
+            <span class="flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium transition-all duration-300 text-muted-foreground hover:text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-4 h-4"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>Menu 2</span>
+            </span>
+            <span class="flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium transition-all duration-300 text-muted-foreground hover:text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bar-chart-3 w-4 h-4"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                <span>Menu 3</span>
+            </span>
+            <a href="appointments.html" class="flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium transition-all duration-300 text-muted-foreground hover:text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-4 h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                <span>Call Center</span>
+            </a>
+          </nav>
+        </div>
+      </div>
+      <div class="bg-muted border-t border-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex items-center justify-between py-2">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center text-white font-semibold text-xs">
+                A
+              </div>
+              <div>
+                <p class="text-sm font-medium text-foreground">Admin User</p>
+                <p class="text-xs text-muted-foreground">System Administrator</p>
+              </div>
+            </div>
+            <p class="text-xs text-muted-foreground hidden sm:block">
+              Gerencie seus clientes de forma eficiente
+            </p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 p-8 overflow-y-auto">
+        <div class="max-w-[86rem] mx-auto">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+                <div class="rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-muted-foreground">Total Pets Showed</h3>
+                        <div class="h-8 w-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-paw-print"><path d="M12.636 18.257l-1.414 1.414a2 2 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.828 0z"/><path d="M15.414 19.671l-1.414 1.414a2 2 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.828 0z"/><path d="M18.192 21.085l-1.414 1.414a2 2 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.828 0z"/><path d="M5.5 17.5a4 4 0 1 1-2.828 6.828"/><path d="M18.5 17.5a4 4 0 1 1-6.828 2.828"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex flex-col space-y-2">
+                        <p id="totalPetsShowedCount" class="text-4xl font-bold text-foreground">0</p>
+                        <p class="text-sm font-medium text-muted-foreground">Based on filtered data</p>
+                    </div>
+                </div>
+                <div class="rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-muted-foreground">Service Value</h3>
+                        <div class="h-8 w-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trending-up"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex flex-col space-y-2">
+                        <p id="totalServiceShowed" class="text-4xl font-bold text-foreground">R$0.00</p>
+                        <p class="text-sm font-medium text-muted-foreground">Based on filtered data</p>
+                    </div>
+                </div>
+                <div class="rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-muted-foreground">Total Tips</h3>
+                        <div class="h-8 w-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wallet"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h12a2 2 0 0 1 0 4H5a2 2 0 0 1 0 4h12a2 2 0 0 1 0 4H3"/><path d="M21 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h12a2 2 0 0 1 0 4H5a2 2 0 0 1 0 4h12a2 2 0 0 1 0 4H3"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex flex-col space-y-2">
+                        <p id="totalTips" class="text-4xl font-bold text-foreground">R$0.00</p>
+                        <p class="text-sm font-medium text-muted-foreground">Based on filtered data</p>
+                    </div>
+                </div>
+                <div class="rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-medium text-muted-foreground">Total Customers</h3>
+                        <div class="h-8 w-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex flex-col space-y-2">
+                        <p id="totalCustomersCount" class="text-4xl font-bold text-foreground">0</p>
+                        <p class="text-sm font-medium text-muted-foreground">Based on filtered data</p>
+                    </div>
+                </div>
+            </div>
+            <div class="rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle">
+                <div class="flex flex-col space-y-1.5 p-6 pb-8">
+                    <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                        Manage Showed Appointments
+                    </h2>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <input type="text" id="customers-filter" placeholder="Filter by customer name" class="rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <input type="text" id="code-filter" placeholder="Filter by code" class="rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <input type="date" id="start-date-filter" class="rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <input type="date" id="end-date-filter" class="rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <select id="technician-filter" class="rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                            <option value="">All Technicians</option>
+                        </select>
+                        <select id="verification-filter" class="rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                            <option value="">All Verifications</option>
+                            <option value="Showed">Showed</option>
+                            <option value="Canceled">Canceled</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="p-6 pt-0 overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-muted text-muted-foreground uppercase text-xs font-semibold">
+                            <tr>
+                                <th class="p-4 border-b border-border">Appointment Date</th>
+                                <th class="p-4 border-b border-border">Customers</th>
+                                <th class="p-4 border-b border-border">Code</th>
+                                <th class="p-4 border-b border-border">Technician</th>
+                                <th class="p-4 border-b border-border">Pet Showed</th>
+                                <th class="p-4 border-b border-border">Service Showed</th>
+                                <th class="p-4 border-b border-border">Tips</th>
+                                <th class="p-4 border-b border-border">Percentage</th>
+                                <th class="p-4 border-b border-border">Method</th>
+                                <th class="p-4 border-b border-border">Verification</th>
+                                <th class="p-4 border-b border-border">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="showed-table-body" class="text-foreground text-sm">
+                            <tr>
+                                <td colspan="11" class="p-4 text-center">Loading data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="manage-showed.js"></script>
+</body>
+</html>

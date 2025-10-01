@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Routes</title>
+    <link href="output.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide-static@latest/dist/umd/lucide.js"></script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=&callback=initMap"></script>
+</head>
+<body class="min-h-screen bg-background flex flex-col">
+
+    <header class="bg-card shadow-large border-b border-border">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-gradient-subtle rounded-lg flex items-center justify-center shadow-soft">
+              <img 
+                src="https://i.imgur.com/XamnfOc.png" 
+                alt="Company Logo" 
+                class="max-w-full max-h-full object-contain rounded"
+              />
+            </div>
+            <h1 class="text-xl font-bold text-foreground hidden sm:block">
+              Quick Routes
+            </h1>
+          </div>
+          <nav class="hidden md:flex items-center space-x-1">
+            <a href="appointments.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar w-4 h-4"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+                <span class="hidden lg:inline">Appointments</span>
+            </a>
+            <a href="customers.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-4 h-4"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span class="hidden lg:inline">Customers</span>
+            </a>
+            <a href="analytics.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bar-chart-3 w-4 h-4"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+                <span class="hidden lg:inline">Analytics</span>
+            </a>
+            <button type="button" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings w-4 h-4"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.39a2 2 0 0 0 .73 2.73l.15.08a2 2 0 0 1 1 1.73v.55a2 2 0 0 1-1 1.73l-.15.08a2 2 0 0 0-.73 2.73l.22.39a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.73v-.55a2 2 0 0 1 1-1.73l.15-.08a2 2 0 0 0 .73-2.73l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2-0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>Settings</span>
+            </button>
+          </nav>
+          <div class="flex items-center gap-2">
+            <button type="button" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 px-6 py-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground shadow-soft hover:shadow-medium">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search w-4 h-4"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <span class="hidden lg:inline">Search</span>
+            </button>
+            <button type="button" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 w-11 relative hover:bg-accent hover:text-accent-foreground">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell w-4 h-4"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              <span class="absolute -top-1 -right-1 w-2 h-2 bg-brand-primary rounded-full"></span>
+            </button>
+            <a href="manage-showed.html" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-4 h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              <span class="hidden sm:inline">Manage Showed</span>
+            </a>
+            <button type="button" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 w-11 relative hover:bg-accent hover:text-accent-foreground md:hidden">
+              <svg xmlns="http://www.w3.org/2003/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu w-4 h-4"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="bg-muted border-t border-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex items-center justify-between py-2">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center text-white font-semibold text-xs">
+                A
+              </div>
+              <div>
+                <p class="text-sm font-medium text-foreground">Admin User</p>
+                <p class="text-xs text-muted-foreground">System Administrator</p>
+              </div>
+            </div>
+            <p class="text-xs text-muted-foreground hidden sm:block">
+              Gerencie suas rotas de atendimento de forma eficiente
+            </p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 p-8 overflow-y-auto">
+        <div class="max-w-7xl mx-auto space-y-8">
+            <div id="zip-code-section" class="rounded-lg border bg-card text-card-foreground shadow-large p-6">
+                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">Verificação de Zip Codes</h2>
+                <div id="zip-code-content" class="space-y-4">
+                    <label for="zip-code-input" class="block text-sm font-semibold text-foreground">Insira um Zip Code (EUA):</label>
+                    <div class="flex gap-4">
+                        <input type="text" id="zip-code-input" placeholder="Ex: 90210" maxlength="5" class="flex-1 min-w-[150px] rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <button id="verify-zip-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand">
+                            Verificar
+                        </button>
+                    </div>
+                    <div id="zip-code-results" class="space-y-2 mt-4"></div>
+                </div>
+            </div>
+
+            <div id="tech-registration-section" class="rounded-lg border bg-card text-card-foreground shadow-large p-6">
+                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">Cadastro de Técnicos e Cidades</h2>
+                <p class="text-sm text-muted-foreground mb-4">Insira o nome do técnico, sua categoria, restrições, seu Zip Code de origem e as cidades onde ele realiza atendimentos.</p>
+                <div class="p-6 pt-0 overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-muted text-muted-foreground uppercase text-xs font-semibold whitespace-nowrap">
+                            <tr>
+                                <th class="p-4 border-b border-border">Nome</th>
+                                <th class="p-4 border-b border-border">Categoria</th>
+                                <th class="p-4 border-b border-border">Restrições</th>
+                                <th class="p-4 border-b border-border">Zip Code</th>
+                                <th class="p-4 border-b border-border">Cidades de Atendimento</th>
+                                <th class="p-4 border-b border-border"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tech-table-body" class="text-foreground text-sm">
+                            </tbody>
+                    </table>
+                </div>
+                <div class="flex gap-4 mt-4">
+                    <button id="add-tech-row-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand">
+                        Adicionar nova linha
+                    </button>
+                    <button id="save-tech-data-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
+                        Salvar
+                    </button>
+                </div>
+            </div>
+
+            <div id="itinerary-section" class="rounded-lg border bg-card text-card-foreground shadow-large p-6">
+                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">Itinerário por um Técnico</h2>
+                <div class="space-y-4">
+                    <div id="tech-selector">
+                        <label for="tech-select" class="block text-sm font-semibold text-foreground">Selecione um técnico:</label>
+                        <select id="tech-select" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <option value="">Nenhum técnico cadastrado</option>
+                        </select>
+                    </div>
+
+                    <h3 class="text-xl font-bold text-foreground mt-8">Cadastro de Clientes</h3>
+                    <div class="p-6 pt-0 overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-muted text-muted-foreground uppercase text-xs font-semibold whitespace-nowrap">
+                                <tr>
+                                    <th class="p-4 border-b border-border">Nome do Cliente</th>
+                                    <th class="p-4 border-b border-border">Zip Code</th>
+                                    <th class="p-4 border-b border-border"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="client-table-body" class="text-foreground text-sm">
+                                </tbody>
+                        </table>
+                    </div>
+                    <div class="flex gap-4 mt-4">
+                        <button id="add-client-row-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand">
+                            Adicionar novo cliente
+                        </button>
+                        <button id="optimize-itinerary-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
+                            Otimizar Itinerário
+                        </button>
+                    </div>
+
+                    <div id="itinerary-results" class="mt-8">
+                        <h3 class="text-xl font-bold text-foreground">Itinerário Otimizado</h3>
+                        <div id="itinerary-list" class="mt-4 space-y-2"></div>
+                        <div id="map" class="mt-4 h-[500px] rounded-lg border"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="quick-routes.js"></script>
+</body>
+</html>

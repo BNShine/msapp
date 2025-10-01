@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the page body */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f3f4f6; /* Gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        /* Primary color for interactive elements */
+        .bg-primary {
+            background-color: #ff5a96;
+        }
+        .hover\:bg-primary-dark:hover {
+            background-color: #e54b8a;
+        }
+        .focus\:ring-primary-light:focus {
+            --tw-ring-color: #ff5a96;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-[#fcfcfc] p-8 rounded-lg shadow-2xl w-full max-w-md">
+        <div class="flex justify-center mb-6">
+            <img src="https://i.imgur.com/XamnfOc.png" alt="Logotipo" class="w-48 h-auto">
+        </div>
+
+        <p class="text-center text-gray-500 mb-8">Please enter your credentials to continue.</p>
+
+        <form id="loginForm" class="space-y-6">
+            <div>
+                <label for="loginRole" class="block text-sm font-medium text-gray-700">Role</label>
+                <select id="loginRole" name="role" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-primary-light sm:text-sm transition duration-300 ease-in-out">
+                    <option value=""></option>
+                </select>
+            </div>
+            <div>
+                <label for="loginEmail" class="block text-sm font-medium text-gray-700">Email</label>
+                <input type="email" id="loginEmail" name="email" required
+                       class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-primary-light sm:text-sm transition duration-300 ease-in-out">
+            </div>
+            <div>
+                <label for="loginPassword" class="block text-sm font-medium text-gray-700">Password</label>
+                <input type="password" id="loginPassword" name="password" required
+                       class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-primary-light sm:text-sm transition duration-300 ease-in-out">
+            </div>
+
+            <button type="submit"
+                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-light transition duration-300 ease-in-out">
+                Sign In
+            </button>
+        </form>
+
+        <div id="messageArea" class="mt-6 text-center"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loginForm = document.getElementById('loginForm');
+            const messageArea = document.getElementById('messageArea');
+            const loginRoleSelect = document.getElementById('loginRole');
+            const loginEmailInput = document.getElementById('loginEmail');
+            const loginPasswordInput = document.getElementById('loginPassword');
+            
+            // Function to display messages on the screen
+            function showMessage(message, isSuccess) {
+                messageArea.textContent = message;
+                messageArea.className = `mt-6 text-center text-sm font-medium ${isSuccess ? 'text-green-600' : 'text-red-600'}`;
+                messageArea.style.opacity = '0';
+                messageArea.style.transition = 'opacity 0.5s ease-in-out';
+                setTimeout(() => messageArea.style.opacity = '1', 10);
+            }
+
+            // Function to populate Role dropdowns
+            async function populateRolesDropdowns() {
+                try {
+                    const response = await fetch('/api/get-roles');
+                    if (!response.ok) {
+                        throw new Error(`Failed to load roles: ${response.status} ${response.statusText}`);
+                    }
+                    const roles = await response.json();
+                    
+                    if (roles && Array.isArray(roles)) {
+                        roles.forEach(role => {
+                            if (role) {
+                                const option = document.createElement('option');
+                                option.value = role;
+                                option.textContent = role;
+                                loginRoleSelect.appendChild(option);
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error populating Roles:', error);
+                    showMessage('Error loading roles. Please try again.', false);
+                }
+            }
+            
+            // Populate dropdowns when the page loads
+            await populateRolesDropdowns();
+
+            // Function for the API request
+            async function apiCall(endpoint, data) {
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
+                    return await response.json();
+                } catch (error) {
+                    console.error("API request error:", error);
+                    return { success: false, message: "A network error occurred. Please try again." };
+                }
+            }
+
+            // Function called when the login form is submitted
+            loginForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                showMessage("Processing...", false);
+
+                const data = {
+                    role: loginRoleSelect.value,
+                    email: loginEmailInput.value,
+                    password: loginPasswordInput.value
+                };
+
+                // Loga os dados que estão sendo enviados para a API para debug
+                console.log('Sending data to API:', data);
+
+                const response = await apiCall('/api/login', data);
+
+                if (response.success) {
+                    showMessage(response.message, true);
+                    window.location.href = 'appointments.html';
+                } else {
+                    showMessage(response.message, false);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
