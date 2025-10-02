@@ -11,12 +11,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const applyFiltersBtn = document.getElementById('apply-filters-btn');
     const addVariableBtn = document.getElementById('add-variable-btn');
     const saveConfigBtn = document.getElementById('save-config-btn');
-    const downloadCsvBtn = document.getElementById('download-csv-btn');
+    const downloadPdfBtn = document.getElementById('download-pdf-btn'); // ID ATUALIZADO
 
     let allAppointmentsData = [];
     let allTechnicians = [];
-    let payrollConfig = loadPayrollConfig(); // { 'Technician Name': { commission: '20%', fixedPay: '900.00' } }
-    let customVariables = loadCustomVariables(); // [{ tech: 'Name', desc: '...', value: 0, total: 0, current: 0 }]
+    let payrollConfig = loadPayrollConfig(); 
+    let customVariables = loadCustomVariables(); 
     
     // Default translated configurations
     const COMMISSION_OPTIONS = ["20%", "25%"];
@@ -121,7 +121,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const techName = appointment.technician;
             if (!techName) return acc;
 
-            // Filter out appointments with no service or tips (assumed not 'Showed' or 0 value)
             const service = parseNumeric(appointment.serviceShowed || 0);
             const tips = parseNumeric(appointment.tips || 0);
 
@@ -474,26 +473,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderVariableTable();
     });
     
-    // Download CSV Logic
-    downloadCsvBtn.addEventListener('click', () => {
-        const dataToExport = calculatePayrollSummary(allAppointmentsData);
-        if (dataToExport.length === 0) {
-            alert("No data to export.");
-            return;
-        }
-
-        let csv = 'Technician,Pets,Appointments,Produced ($),Commission (%),Base Pay ($),Fixed Pay,Variables ($),Final Pay ($),Support ($)\n';
-
-        dataToExport.forEach(row => {
-            csv += `${row.technician},${row.totalPets},${row.totalAppointments},${row.producedValue.toFixed(2)},${row.commissionRate},${row.basePay.toFixed(2)},${row.fixedPay},${row.customVars.toFixed(2)},${row.finalPay.toFixed(2)},${row.supportValue.toFixed(2)}\n`;
-        });
-
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'payroll_summary.csv');
-        link.click();
+    // PDF Logic (Replaced CSV download)
+    downloadPdfBtn.addEventListener('click', () => {
+        alert("PDF Export is required for this report. This functionality needs a dedicated backend endpoint that utilizes a server-side PDF generation library (e.g., pdfkit or a custom solution).");
+        // NOTE TO USER: When implementing the backend, this button should call a new endpoint:
+        // fetch('/api/generate-payroll-pdf', { method: 'POST', body: JSON.stringify(calculatePayrollSummary(allAppointmentsData)) })
     });
 
     initPage();
