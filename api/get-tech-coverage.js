@@ -27,31 +27,42 @@ export default async function handler(req, res) {
         }
 
         const rows = await sheet.getRows();
+        
+        // --- LOG DE DEBUG REMOVIDO NO CÓDIGO FINAL ---
 
         const techCoverageData = rows.map(row => {
             
-            const citiesRaw = row.cities || '[]'; // Corrigido para minúsculas: row.cities
+            // ACESSO DIRETO VIA ÍNDICE DO ARRAY _rawData
+            const name = row._rawData[0]; 
+            const category = row._rawData[1]; 
+            const restrictions = row._rawData[2]; 
+            const zipCode = row._rawData[3]; 
+            const citiesRaw = row._rawData[4] || '[]'; // Cities é o 5º elemento (índice 4)
+            
             let parsedCities = [];
             
             try {
                 parsedCities = JSON.parse(citiesRaw);
+                // Garantir que é um array, mesmo que vazio
+                if (!Array.isArray(parsedCities)) {
+                    parsedCities = [];
+                }
             } catch (e) {
-                console.error(`[ERROR LOG] Falha ao converter Cities para JSON para o técnico: ${row.name || 'Sem Nome'} (Zip: ${row.originzipcode || 'N/A'}). Raw Cities: ${citiesRaw}`, e); // Logs atualizados
+                // Manter o log de erro para strings JSON inválidas
+                console.error(`[ERROR LOG] Falha ao converter Cities para JSON para o técnico: ${name || 'Sem Nome'} (Zip: ${zipCode || 'N/A'}). Raw Cities: ${citiesRaw}`, e); 
                 parsedCities = [];
             }
             
-            // ATENÇÃO: As propriedades Name, Category, Restrictions e OriginZipCode 
-            // DEVEM ser acessadas em minúsculas ou no formato camelCase (se tiver espaços)
             return {
-                nome: row.name, // CORRIGIDO: de row.Name para row.name
-                categoria: row.category, // CORRIGIDO: de row.Category para row.category
-                tipo_atendimento: row.restrictions, // CORRIGIDO: de row.Restrictions para row.restrictions
-                zip_code: row.originzipcode, // CORRIGIDO: de row.OriginZipCode para row.originzipcode
+                nome: name,
+                categoria: category,
+                tipo_atendimento: restrictions,
+                zip_code: zipCode,
                 cidades: parsedCities,
             };
-        }).filter(t => t.nome);
+        }).filter(t => t.nome); // O filtro agora usa 'name' (índice 0), que deve ser válido.
 
-        // ... Logs de debug removidos para o código final, mas o filtro agora deve funcionar: filter(t => t.nome)
+        // --- LOG DE DEBUG REMOVIDO NO CÓDIGO FINAL ---
 
         return res.status(200).json(techCoverageData);
 
