@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tableBody = document.getElementById('payroll-table-body');
     const tableFooter = document.getElementById('payroll-table-footer');
     const variablesBody = document.getElementById('variables-table-body');
+    const presetFilter = document.getElementById('preset-filter'); 
     const technicianFilter = document.getElementById('technician-filter');
     const startDateFilter = document.getElementById('start-date-filter');
     const endDateFilter = document.getElementById('end-date-filter');
@@ -38,6 +39,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         return parseFloat(value);
     }
+    
+    // Função para formatar Date para YYYY-MM-DD (formato de input HTML)
+    function formatDateToInput(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    // NOVO: Função para calcular datas predefinidas, seguindo o modelo do calendário.
+    function getPresetDates(preset) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); 
+        let startDate, endDate;
+        
+        if (preset === 'last-week') {
+            // Última Semana: Considerando a semana de Domingo a Sábado.
+            // A "última semana" é o período de 7 dias encerrado no último Sábado.
+            
+            // Calcula o último Sábado (fim do período)
+            const lastSaturday = new Date(today);
+            lastSaturday.setDate(today.getDate() - today.getDay() - 1);
+            
+            // Calcula o Domingo anterior (início do período)
+            const lastSunday = new Date(lastSaturday);
+            lastSunday.setDate(lastSaturday.getDate() - 6);
+            
+            startDate = lastSunday;
+            endDate = lastSaturday;
+
+        } else if (preset === 'last-month') {
+            // Último Mês: Primeiro dia do mês passado até o último dia do mês passado.
+            
+            // Início: Primeiro dia do mês passado (mês atual - 1)
+            startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            
+            // Fim: Último dia do mês passado (dia 0 do mês atual)
+            endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+        } else {
+            return { start: '', end: '' };
+        }
+        
+        return {
+            start: formatDateToInput(startDate),
+            end: formatDateToInput(endDate)
+        };
+    }
+
 
     // --- Local Storage Management ---
 
@@ -73,8 +122,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const techName = appointment.technician;
             if (!techName) return acc;
 
+            // OBS: Garantir que a lógica de filtro não inclua atendimentos que não foram "Showed"
+            // Embora o endpoint get-customers-data traga todos, o usuário deve filtrar
+            // pelos campos 'serviceShowed' e 'tips' que só estarão preenchidos em 'Showed'.
+            // Vamos filtrar aqui para garantir que só dados de serviço/gorjeta válidos sejam somados.
             const service = parseNumeric(appointment.serviceShowed || 0);
             const tips = parseNumeric(appointment.tips || 0);
+
+            if (service === 0 && tips === 0) return acc; // Ignora se não houver valor de serviço ou gorjeta
+
             const pets = parseNumeric(appointment.petShowed || 0);
 
             if (!acc[techName]) {
@@ -330,7 +386,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                  throw new Error(error.error || 'Falha ao carregar dados de agendamentos.');
             }
             const data = await response.json();
-            allAppointmentsData = data.customers.filter(c => c.technician); // Filtra apenas o que tem técnico atribuído
+            // Filtra apenas o que tem técnico atribuído e serviço/gorjeta para cálculo (considerando apenas atendimentos "Showed")
+            allAppointmentsData = data.customers.filter(c => c.technician && (parseNumeric(c.serviceShowed) > 0 || parseNumeric(c.tips) > 0)); 
             
         } catch (error) {
             console.error('Erro ao carregar dados de agendamentos:', error);
@@ -342,25 +399,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         await fetchTechnicians();
         await fetchAppointments();
         
-        applyFilters();
+        // Define o filtro para o último mês ao iniciar a página (melhor padrão)
+        presetFilter.value = 'last-month';
+        handlePresetChange();
     }
 
     // --- Filters and Event Listeners ---
     
     function applyFilters() {
         const selectedTechnician = technicianFilter.value;
-        const startDate = startDateFilter.value ? new Date(startDateFilter.value) : null;
-        const endDate = endDateFilter.value ? new Date(endDateFilter.value) : null;
         
-        // Define o limite superior para a data de hoje, se nenhum final for definido
-        const effectiveEndDate = endDate || new Date(); 
+        // Converte as datas dos inputs (YYYY-MM-DD) para objetos Date
+        // Adiciona T00:00:00 e T23:59:59 para garantir que os limites sejam corretos.
+        const startDate = startDateFilter.value ? new Date(startDateFilter.value + 'T00:00:00') : null;
+        const endDate = endDateFilter.value ? new Date(endDateFilter.value + 'T23:59:59') : null; 
         
+        if (!startDate || !endDate) {
+             alert("Por favor, selecione um período de data válido ou use uma predefinição.");
+             return;
+        }
+
         const filteredAppointments = allAppointmentsData.filter(app => {
-            const appDate = new Date(app.appointmentDate.replace(/(\d{4})\/(\d{2})\/(\d{2})/, '$1-$2-$3'));
+            // Converte a data do agendamento (YYYY/MM/DD) para objeto Date
+            // Usa 'T00:00:00' para garantir que a comparação seja consistente
+            const appDate = new Date(app.appointmentDate.replace(/\//g, '-') + 'T00:00:00');
             
             const matchesTech = !selectedTechnician || app.technician === selectedTechnician;
             
-            const matchesDate = (!startDate || appDate >= startDate) && (appDate <= effectiveEndDate);
+            // Verifica se a data está entre o início do dia do start e o fim do dia do end
+            const matchesDate = appDate >= startDate && appDate <= endDate;
             
             return matchesTech && matchesDate;
         });
@@ -369,9 +436,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderPayrollTable(payrollSummary);
         renderVariableTable(); 
     }
+    
+    // Lógica para o seletor de predefinições
+    function handlePresetChange() {
+        const preset = presetFilter.value;
+        const dates = getPresetDates(preset);
+        
+        startDateFilter.value = dates.start;
+        endDateFilter.value = dates.end;
+        
+        if (preset) {
+            applyFilters();
+        }
+    }
+
 
     // Event Listeners
     applyFiltersBtn.addEventListener('click', applyFilters);
+    presetFilter.addEventListener('change', handlePresetChange); 
+    
+    // Garante que o filtro de técnico dispare o filtro de data padrão também
+    technicianFilter.addEventListener('change', () => {
+         // Se um preset estiver ativo, reaplica-o. Caso contrário, usa as datas manuais.
+         if (presetFilter.value) {
+            handlePresetChange();
+         } else {
+            applyFilters();
+         }
+    });
     
     saveConfigBtn.addEventListener('click', savePayrollConfig);
     
