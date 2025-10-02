@@ -18,9 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let payrollConfig = loadPayrollConfig(); // { 'Technician Name': { commission: '20%', fixedPay: '900.00' } }
     let customVariables = loadCustomVariables(); // [{ tech: 'Name', desc: '...', value: 0, total: 0, current: 0 }]
     
-    // Configurações padrão
+    // Default translated configurations
     const COMMISSION_OPTIONS = ["20%", "25%"];
-    const FIXED_PAYMENT_OPTIONS = ["Selecionar", "750.00", "900.00"];
+    const FIXED_PAYMENT_OPTIONS = ["Select", "750.00", "900.00"];
 
     // --- Helper Functions ---
 
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             value = parseFloat(value);
         }
         if (isNaN(value)) return '$0.00';
-        // Formata para USD com separador de milhar e duas casas decimais
+        // Formats to USD with comma thousands separator and two decimal places
         return `$${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
     }
 
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return parseFloat(value);
     }
     
-    // Função para formatar Date para YYYY-MM-DD (formato de input HTML)
+    // Function to format Date to YYYY-MM-DD (HTML input format)
     function formatDateToInput(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -48,21 +48,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${year}-${month}-${day}`;
     }
     
-    // NOVO: Função para calcular datas predefinidas, seguindo o modelo do calendário.
+    // Function to calculate predefined dates (Last Week, Last Month)
     function getPresetDates(preset) {
         const today = new Date();
         today.setHours(0, 0, 0, 0); 
         let startDate, endDate;
         
         if (preset === 'last-week') {
-            // Última Semana: Considerando a semana de Domingo a Sábado.
-            // A "última semana" é o período de 7 dias encerrado no último Sábado.
+            // Last Week: Sunday to Saturday.
             
-            // Calcula o último Sábado (fim do período)
+            // Calculate last Saturday (end of period)
             const lastSaturday = new Date(today);
             lastSaturday.setDate(today.getDate() - today.getDay() - 1);
             
-            // Calcula o Domingo anterior (início do período)
+            // Calculate previous Sunday (start of period)
             const lastSunday = new Date(lastSaturday);
             lastSunday.setDate(lastSaturday.getDate() - 6);
             
@@ -70,12 +69,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             endDate = lastSaturday;
 
         } else if (preset === 'last-month') {
-            // Último Mês: Primeiro dia do mês passado até o último dia do mês passado.
+            // Last Month: First day of last month until the last day of last month.
             
-            // Início: Primeiro dia do mês passado (mês atual - 1)
+            // Start: First day of last month (month current - 1)
             startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
             
-            // Fim: Último dia do mês passado (dia 0 do mês atual)
+            // End: Last day of last month (day 0 of current month)
             endDate = new Date(today.getFullYear(), today.getMonth(), 0);
         } else {
             return { start: '', end: '' };
@@ -100,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function savePayrollConfig() {
         localStorage.setItem('payrollConfig', JSON.stringify(payrollConfig));
-        alert('Configurações de comissão e pagamento fixo salvas com sucesso!');
+        alert('Commission and fixed pay settings saved successfully!');
     }
     
     function loadCustomVariables() {
@@ -122,14 +121,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const techName = appointment.technician;
             if (!techName) return acc;
 
-            // OBS: Garantir que a lógica de filtro não inclua atendimentos que não foram "Showed"
-            // Embora o endpoint get-customers-data traga todos, o usuário deve filtrar
-            // pelos campos 'serviceShowed' e 'tips' que só estarão preenchidos em 'Showed'.
-            // Vamos filtrar aqui para garantir que só dados de serviço/gorjeta válidos sejam somados.
+            // Filter out appointments with no service or tips (assumed not 'Showed' or 0 value)
             const service = parseNumeric(appointment.serviceShowed || 0);
             const tips = parseNumeric(appointment.tips || 0);
 
-            if (service === 0 && tips === 0) return acc; // Ignora se não houver valor de serviço ou gorjeta
+            if (service === 0 && tips === 0) return acc;
 
             const pets = parseNumeric(appointment.petShowed || 0);
 
@@ -160,14 +156,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Get saved commission or default to 20%
             const commissionRate = parseNumeric(config.commission || '20%') / 100;
             
-            // 1. Calculate Pagamento Base
+            // 1. Calculate Base Pay
             const basePay = (summary.totalServices * commissionRate) + summary.totalTips;
             
             // 2. Determine Payment for Calculation (Fixed or Base)
             const fixedPayAmount = parseNumeric(config.fixedPay) || 0;
-            const paymentForCalc = (fixedPayAmount > 0 && config.fixedPay !== 'Selecionar') ? fixedPayAmount : basePay;
+            const paymentForCalc = (fixedPayAmount > 0 && config.fixedPay !== 'Select') ? fixedPayAmount : basePay;
             
-            // 3. Calculate Pagamento Final
+            // 3. Calculate Final Pay
             const finalPay = paymentForCalc + customVars;
             
             // 4. Calculate Support Value
@@ -182,7 +178,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 producedValue: producedValue,
                 commissionRate: (commissionRate * 100).toFixed(0) + '%',
                 basePay: basePay,
-                fixedPay: config.fixedPay || 'Selecionar',
+                fixedPay: config.fixedPay || 'Select',
                 customVars: customVars,
                 finalPay: finalPay,
                 supportValue: supportValue,
@@ -206,7 +202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let totalSupportValueSum = 0;
 
         if (payrollData.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="10" class="p-4 text-center">Nenhum dado encontrado para o período selecionado.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="10" class="p-4 text-center">No data found for the selected period.</td></tr>';
             tableFooter.innerHTML = '';
             return;
         }
@@ -231,7 +227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             row.classList.add('border-b', 'border-border', 'hover:bg-muted/50', 'transition-colors');
             
             const commissionIndex = COMMISSION_OPTIONS.indexOf(savedConfig.commission || '20%');
-            const fixedIndex = FIXED_PAYMENT_OPTIONS.indexOf(savedConfig.fixedPay || 'Selecionar');
+            const fixedIndex = FIXED_PAYMENT_OPTIONS.indexOf(savedConfig.fixedPay || 'Select');
 
             row.innerHTML = `
                 <td class="data-row font-semibold">${techName}</td>
@@ -246,7 +242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="data-row ${basePayClass}">${formatCurrency(data.basePay)}</td>
                 <td class="data-row">
                     <select data-tech="${techName}" data-config="fixedPay" class="w-20">
-                        ${FIXED_PAYMENT_OPTIONS.map(opt => `<option value="${opt}" ${opt === (savedConfig.fixedPay || 'Selecionar') ? 'selected' : ''}>${opt}</option>`).join('')}
+                        ${FIXED_PAYMENT_OPTIONS.map(opt => `<option value="${opt}" ${opt === (savedConfig.fixedPay || 'Select') ? 'selected' : ''}>${opt}</option>`).join('')}
                     </select>
                 </td>
                 <td class="data-row ${varsClass}">${formatCurrency(data.customVars)}</td>
@@ -256,7 +252,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             tableBody.appendChild(row);
         });
         
-        // Adiciona listeners para os selects de configuração (Comissão e Fixo)
+        // Add listeners for configuration selects (Commission and Fixed Pay)
         tableBody.querySelectorAll('select').forEach(select => {
             select.addEventListener('change', (e) => {
                 const tech = e.target.dataset.tech;
@@ -265,14 +261,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 payrollConfig[tech] = { ...payrollConfig[tech], [configKey]: value };
                 
-                // Dispara uma atualização local para recalcular e renderizar a tabela
+                // Trigger local update to recalculate and render the table
                 const currentData = calculatePayrollSummary(allAppointmentsData);
                 renderPayrollTable(currentData);
                 renderVariableTable(); 
             });
         });
 
-        // Rodapé de totalização
+        // Totalization Footer
         tableFooter.innerHTML = `
             <tr>
                 <td class="data-row font-bold">TOTAL</td>
@@ -293,7 +289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         variablesBody.innerHTML = '';
 
         if (customVariables.length === 0) {
-            variablesBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center">Nenhuma variável adicionada.</td></tr>';
+            variablesBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center">No variables added.</td></tr>';
             return;
         }
         
@@ -338,7 +334,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 customVariables[index][key] = value;
                 saveCustomVariables();
                 
-                // Recalcula e renderiza as tabelas
+                // Recalculate and render tables
                 const currentData = calculatePayrollSummary(allAppointmentsData);
                 renderPayrollTable(currentData);
                 renderVariableTable();
@@ -351,7 +347,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 customVariables.splice(index, 1);
                 saveCustomVariables();
                 
-                // Recalcula e renderiza as tabelas
+                // Recalculate and render tables
                 const currentData = calculatePayrollSummary(allAppointmentsData);
                 renderPayrollTable(currentData);
                 renderVariableTable();
@@ -363,35 +359,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function fetchTechnicians() {
         try {
-            // Reusa o endpoint que já busca a lista de técnicos
+            // Reuses the endpoint that already fetches the list of technicians
             const response = await fetch('/api/get-dashboard-data');
-            if (!response.ok) throw new Error('Falha ao carregar lista de técnicos.');
+            if (!response.ok) throw new Error('Failed to load technician list.');
             const data = await response.json();
             allTechnicians = data.technicians || [];
             
-            // Popula o filtro de técnicos
-            technicianFilter.innerHTML = '<option value="">Todos os Técnicos</option>' + allTechnicians.map(t => `<option value="${t}">${t}</option>`).join('');
+            // Populate technician filter
+            technicianFilter.innerHTML = '<option value="">All Technicians</option>' + allTechnicians.map(t => `<option value="${t}">${t}</option>`).join('');
 
         } catch (error) {
-            console.error('Erro ao carregar técnicos:', error);
+            console.error('Error loading technicians:', error);
         }
     }
     
     async function fetchAppointments() {
         try {
-            // Reusa o endpoint que já busca os dados de atendimento e serviço
+            // Reuses the endpoint that fetches appointments and service data
             const response = await fetch('/api/get-customers-data');
             if (!response.ok) {
                  const error = await response.json();
-                 throw new Error(error.error || 'Falha ao carregar dados de agendamentos.');
+                 throw new Error(error.error || 'Failed to load appointment data.');
             }
             const data = await response.json();
-            // Filtra apenas o que tem técnico atribuído e serviço/gorjeta para cálculo (considerando apenas atendimentos "Showed")
+            // Filter only what has an assigned technician AND a service/tip value (assumed 'Showed')
             allAppointmentsData = data.customers.filter(c => c.technician && (parseNumeric(c.serviceShowed) > 0 || parseNumeric(c.tips) > 0)); 
             
         } catch (error) {
-            console.error('Erro ao carregar dados de agendamentos:', error);
-            tableBody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-red-600">Erro ao carregar dados: ${error.message}</td></tr>`;
+            console.error('Error loading appointment data:', error);
+            tableBody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-red-600">Error loading data: ${error.message}</td></tr>`;
         }
     }
 
@@ -399,7 +395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await fetchTechnicians();
         await fetchAppointments();
         
-        // Define o filtro para o último mês ao iniciar a página (melhor padrão)
+        // Set filter to 'Last Month' on load (better default)
         presetFilter.value = 'last-month';
         handlePresetChange();
     }
@@ -409,24 +405,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     function applyFilters() {
         const selectedTechnician = technicianFilter.value;
         
-        // Converte as datas dos inputs (YYYY-MM-DD) para objetos Date
-        // Adiciona T00:00:00 e T23:59:59 para garantir que os limites sejam corretos.
+        // Convert input dates (YYYY-MM-DD) to Date objects
+        // Add T00:00:00 and T23:59:59 to ensure correct boundaries.
         const startDate = startDateFilter.value ? new Date(startDateFilter.value + 'T00:00:00') : null;
         const endDate = endDateFilter.value ? new Date(endDateFilter.value + 'T23:59:59') : null; 
         
         if (!startDate || !endDate) {
-             alert("Por favor, selecione um período de data válido ou use uma predefinição.");
+             alert("Please select a valid date range or use a preset.");
              return;
         }
 
         const filteredAppointments = allAppointmentsData.filter(app => {
-            // Converte a data do agendamento (YYYY/MM/DD) para objeto Date
-            // Usa 'T00:00:00' para garantir que a comparação seja consistente
+            // Convert appointment date (YYYY/MM/DD) to Date object
+            // Use 'T00:00:00' to ensure comparison is consistent
+            // Note: Replaces '/' with '-' and adds time for robust parsing
             const appDate = new Date(app.appointmentDate.replace(/\//g, '-') + 'T00:00:00');
             
             const matchesTech = !selectedTechnician || app.technician === selectedTechnician;
             
-            // Verifica se a data está entre o início do dia do start e o fim do dia do end
+            // Check if the date is between the start day (inclusive) and the end day (inclusive)
             const matchesDate = appDate >= startDate && appDate <= endDate;
             
             return matchesTech && matchesDate;
@@ -437,7 +434,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderVariableTable(); 
     }
     
-    // Lógica para o seletor de predefinições
+    // Logic for the preset selector
     function handlePresetChange() {
         const preset = presetFilter.value;
         const dates = getPresetDates(preset);
@@ -447,6 +444,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         if (preset) {
             applyFilters();
+        } else {
+             // If Custom Period is selected, clear dates and wait for manual entry/apply click
+             startDateFilter.value = '';
+             endDateFilter.value = '';
         }
     }
 
@@ -455,9 +456,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyFiltersBtn.addEventListener('click', applyFilters);
     presetFilter.addEventListener('change', handlePresetChange); 
     
-    // Garante que o filtro de técnico dispare o filtro de data padrão também
+    // Ensure technician filter still triggers date filter logic
     technicianFilter.addEventListener('change', () => {
-         // Se um preset estiver ativo, reaplica-o. Caso contrário, usa as datas manuais.
+         // If a preset is active, reapply it. Otherwise, use manual dates.
          if (presetFilter.value) {
             handlePresetChange();
          } else {
@@ -477,11 +478,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     downloadCsvBtn.addEventListener('click', () => {
         const dataToExport = calculatePayrollSummary(allAppointmentsData);
         if (dataToExport.length === 0) {
-            alert("Nenhum dado para exportar.");
+            alert("No data to export.");
             return;
         }
 
-        let csv = 'Técnico,Pets,Serviços,Produzido ($),Comissão (%),Pagto Base ($),Pagto Fixo,Variáveis ($),Pagto Final ($),Support ($)\n';
+        let csv = 'Technician,Pets,Appointments,Produced ($),Commission (%),Base Pay ($),Fixed Pay,Variables ($),Final Pay ($),Support ($)\n';
 
         dataToExport.forEach(row => {
             csv += `${row.technician},${row.totalPets},${row.totalAppointments},${row.producedValue.toFixed(2)},${row.commissionRate},${row.basePay.toFixed(2)},${row.fixedPay},${row.customVars.toFixed(2)},${row.finalPay.toFixed(2)},${row.supportValue.toFixed(2)}\n`;
