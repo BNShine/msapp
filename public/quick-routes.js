@@ -1,4 +1,4 @@
-// public/quick-routes.js (Versão Final Completa)
+// public/quick-routes.js
 
 document.addEventListener('DOMContentLoaded', async () => {
     const techTableBody = document.getElementById('tech-table-body');
@@ -13,8 +13,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const optimizeItineraryBtn = document.getElementById('optimize-itinerary-btn');
     const itineraryList = document.getElementById('itinerary-list');
     const mapContainer = document.getElementById('map');
-    
-    // Elementos do Modal de Cidades (Adicionados no HTML)
+
+    // Elementos do Modal de Cidades
     const citiesModal = document.getElementById('cities-modal');
     const modalContentArea = document.getElementById('modal-content-area');
     const modalSaveBtn = document.getElementById('modal-save-btn');
@@ -30,7 +30,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Utility Functions (Simulated/Required) ---
     
-    const showLoading = () => console.log("LOADING...");
+    // Simulação de funções utilitárias que devem ser implementadas externamente
+    const showLoading = () => {
+        // Exibe um spinner ou mensagem de carregamento, se disponível
+        console.log("LOADING...");
+    };
     const hideLoading = () => console.log("LOADED.");
     const showToast = (message, type) => alert(type.toUpperCase() + ": " + message);
     
@@ -49,10 +53,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } else {
                 console.error('Falha ao buscar a chave da API do Google Maps.');
-                showToast('Erro: Chave da Google Maps API não carregada. Funcionalidade de mapa desativada.', 'error');
+                showToast('Erro: Chave da Google Maps API não carregada.', 'error');
             }
         } catch (error) {
-            console.error('Error fetching Google Maps API key:', error);
+            console.error('Erro ao buscar a chave da API do Google Maps:', error);
         }
     }
 
@@ -61,6 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function getLatLon(zipCode) {
         if (!zipCode) return [null, null, null, null];
         try {
+            // API pública para consulta de Zip Codes dos EUA
             const response = await fetch(`https://api.zippopotam.us/us/${zipCode}`);
             if (!response.ok) return [null, null, null, null];
             const data = await response.json();
@@ -82,6 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     async function loadInitialData() {
         showLoading();
+        // 1. Tenta buscar dados frescos do Google Sheets
         try {
             const response = await fetch('/api/get-tech-coverage'); 
             if (response.ok) {
@@ -89,23 +95,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (Array.isArray(apiData)) {
                     techData = apiData.filter(t => t.nome);
                     localStorage.setItem('tech_data_cache', JSON.stringify(techData));
-                    renderTechTable();
-                    populateTechSelect();
+                } else {
+                    throw new Error('Formato de dados inesperado da API.');
                 }
             } else {
-                 throw new Error('Falha na resposta da API de leitura.');
+                 throw new Error('Falha na resposta da API de leitura. Status: ' + response.status);
             }
         } catch (error) {
+            console.error('Falha ao carregar dados de cobertura do Sheets:', error);
+            // 2. Se falhar, tenta usar o cache local
             const cachedData = localStorage.getItem('tech_data_cache');
             if (cachedData) {
                 techData = JSON.parse(cachedData);
                 showToast('Usando dados em cache devido a erro de conexão.', 'warning');
             } else {
                  showToast('Erro crítico ao carregar dados de técnicos.', 'error');
+                 techData = [];
             }
+        } finally {
             renderTechTable();
             populateTechSelect();
-        } finally {
             hideLoading();
         }
     }
