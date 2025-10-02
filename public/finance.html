@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payroll dos Técnicos</title>
+    <title>Technician Payroll</title>
     <link href="output.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/lucide-static@latest/dist/umd/lucide.js"></script>
@@ -23,7 +23,7 @@
             font-size: 0.875rem;
             white-space: nowrap;
         }
-        /* Estilos para inputs dentro da tabela */
+        /* Styles for inputs inside the table */
         .data-row input, .data-row select {
             background-color: transparent !important;
             border: 1px solid hsl(220 13% 91%);
@@ -54,7 +54,7 @@
               />
             </div>
             <h1 class="text-xl font-bold text-foreground hidden sm:block">
-              Payroll dos Técnicos
+              Technician Payroll
             </h1>
           </div>
           <nav class="hidden md:flex items-center space-x-1" id="main-nav">
@@ -100,7 +100,7 @@
               </div>
             </div>
             <p class="text-xs text-muted-foreground hidden sm:block">
-              Gestão e cálculos da folha de pagamento dos técnicos.
+              Management and calculations for technician payroll.
             </p>
           </div>
         </div>
@@ -110,20 +110,38 @@
     <main class="flex-1 p-8 overflow-y-auto">
         <div class="max-w-7xl mx-auto space-y-8">
             <div id="filter-section" class="rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle p-6">
-                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">Filtros de Período</h2>
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <select id="preset-filter" class="rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                        <option value="">Período Personalizado</option>
-                        <option value="last-week">Última Semana</option>
-                        <option value="last-month">Último Mês</option>
-                    </select>
-                    <input type="date" id="start-date-filter" class="rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                    <input type="date" id="end-date-filter" class="rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                    <select id="technician-filter" class="rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                        <option value="">Todos os Técnicos</option>
-                    </select>
-                    <button id="apply-filters-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
-                        Aplicar Filtros
+                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">Period Filters</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="space-y-2 col-span-1">
+                        <label for="preset-filter" class="block text-sm font-semibold text-foreground">Quick Select</label>
+                        <select id="preset-filter" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <option value="">Custom Period</option>
+                            <option value="last-week">Last Week</option>
+                            <option value="last-month">Last Month</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-2 col-span-1">
+                        <label for="technician-filter" class="block text-sm font-semibold text-foreground">Technician</label>
+                        <select id="technician-filter" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <option value="">All Technicians</option>
+                        </select>
+                    </div>
+                    
+                    <div class="space-y-2 col-span-1">
+                        <label for="start-date-filter" class="block text-sm font-semibold text-foreground">Start Date</label>
+                        <input type="date" id="start-date-filter" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    </div>
+
+                    <div class="space-y-2 col-span-1">
+                        <label for="end-date-filter" class="block text-sm font-semibold text-foreground">End Date</label>
+                        <input type="date" id="end-date-filter" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button id="apply-filters-btn" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
+                        Apply Filters
                     </button>
                 </div>
             </div>
@@ -131,27 +149,27 @@
             <div class="rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle">
                 <div class="flex flex-col space-y-1.5 p-6 pb-8">
                     <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                        Resumo do Payroll por Técnico
+                        Technician Payroll Summary
                     </h2>
                 </div>
                 <div class="p-6 pt-0 overflow-x-auto">
                     <table class="w-full text-left">
                         <thead class="bg-muted text-muted-foreground uppercase text-xs font-semibold whitespace-nowrap">
                             <tr>
-                                <th class="payroll-header-cell w-32">Técnico</th>
+                                <th class="payroll-header-cell w-32">Technician</th>
                                 <th class="payroll-header-cell">Pets</th>
-                                <th class="payroll-header-cell">Serviços</th>
-                                <th class="payroll-header-cell">Produzido ($)</th>
-                                <th class="payroll-header-cell w-20">Comissão (%)</th>
-                                <th class="payroll-header-cell w-24">Pagto Base ($)</th>
-                                <th class="payroll-header-cell w-20">Pagto Fixo ($)</th>
-                                <th class="payroll-header-cell">Variáveis ($)</th>
-                                <th class="payroll-header-cell">Pagto Final ($)</th>
+                                <th class="payroll-header-cell">Appointments</th>
+                                <th class="payroll-header-cell">Produced ($)</th>
+                                <th class="payroll-header-cell w-20">Commission (%)</th>
+                                <th class="payroll-header-cell w-24">Base Pay ($)</th>
+                                <th class="payroll-header-cell w-20">Fixed Pay ($)</th>
+                                <th class="payroll-header-cell">Variables ($)</th>
+                                <th class="payroll-header-cell">Final Pay ($)</th>
                                 <th class="payroll-header-cell">Support ($)</th>
                             </tr>
                         </thead>
                         <tbody id="payroll-table-body" class="text-foreground text-sm">
-                            <tr><td colspan="10" class="p-4 text-center">Carregando dados...</td></tr>
+                            <tr><td colspan="10" class="p-4 text-center">Loading data...</td></tr>
                         </tbody>
                         <tfoot id="payroll-table-footer" class="bg-muted text-foreground uppercase text-xs font-semibold whitespace-nowrap">
                         </tfoot>
@@ -159,10 +177,10 @@
                 </div>
                 <div class="p-6 pt-0 flex gap-4 justify-end border-t border-border mt-4">
                     <button id="save-config-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand">
-                        Salvar Configurações
+                        Save Settings
                     </button>
                     <button id="download-csv-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
-                        📥 Baixar Payroll CSV
+                        📥 Download Payroll CSV
                     </button>
                 </div>
             </div>
@@ -170,30 +188,30 @@
             <div id="variables-section" class="rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle">
                 <div class="flex flex-col space-y-1.5 p-6 pb-8">
                     <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                        Variáveis Adicionais (Bônus, Empréstimos, etc.)
+                        Additional Variables (Bonus, Loans, etc.)
                     </h2>
-                    <p class="text-sm text-muted-foreground">Valores positivos (bônus) serão adicionados. Valores negativos (empréstimos) serão subtraídos do Pagamento Final.</p>
+                    <p class="text-sm text-muted-foreground">Positive values (bonus) will be added. Negative values (loans) will be subtracted from the Final Pay.</p>
                 </div>
                 <div class="p-6 pt-0 overflow-x-auto">
                     <table class="w-full text-left">
                         <thead class="bg-muted text-muted-foreground uppercase text-xs font-semibold whitespace-nowrap">
                             <tr>
-                                <th class="payroll-header-cell w-2/12">Técnico</th>
-                                <th class="payroll-header-cell w-4/12">Descrição</th>
-                                <th class="payroll-header-cell w-2/12">Valor ($)</th>
-                                <th class="payroll-header-cell w-2/12">Parcelas Totais</th>
-                                <th class="payroll-header-cell w-2/12">Parcela Atual</th>
-                                <th class="payroll-header-cell w-1/12">Ações</th>
+                                <th class="payroll-header-cell w-2/12">Technician</th>
+                                <th class="payroll-header-cell w-4/12">Description</th>
+                                <th class="payroll-header-cell w-2/12">Value ($)</th>
+                                <th class="payroll-header-cell w-2/12">Total Installments</th>
+                                <th class="payroll-header-cell w-2/12">Current Installment</th>
+                                <th class="payroll-header-cell w-1/12">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="variables-table-body" class="text-foreground text-sm">
-                            <tr><td colspan="6" class="p-4 text-center">Nenhuma variável adicionada.</td></tr>
+                            <tr><td colspan="6" class="p-4 text-center">No variables added.</td></tr>
                         </tbody>
                     </table>
                 </div>
                 <div class="p-6 pt-0 border-t border-border mt-4">
                     <button id="add-variable-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand">
-                        + Adicionar Nova Variável
+                        + Add New Variable
                     </button>
                 </div>
             </div>
