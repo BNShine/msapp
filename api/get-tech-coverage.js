@@ -27,50 +27,31 @@ export default async function handler(req, res) {
         }
 
         const rows = await sheet.getRows();
-        
-        // --- LOG 1: INSPECIONA DADOS BRUTOS E CABEÇALHOS ESPERADOS ---
-        console.log(`[DEBUG LOG] Linhas brutas encontradas: ${rows.length}`);
-        if (rows.length > 0) {
-            // Este log mostrará os valores da linha de cabeçalho (se estiver na primeira linha)
-            // ou os dados brutos da primeira linha lida, útil para verificar se as colunas estão sendo lidas corretamente.
-            const headerValues = sheet.headerValues || ['N/A'];
-            console.log(`[DEBUG LOG] Cabeçalhos lidos pela biblioteca:`, headerValues);
-            console.log(`[DEBUG LOG] Dados da primeira linha lida (indice 0):`, rows[0]._rawData);
-        }
-        // -----------------------------------------------------------
 
         const techCoverageData = rows.map(row => {
             
-            const citiesRaw = row.Cities || '[]';
+            const citiesRaw = row.cities || '[]'; // Corrigido para minúsculas: row.cities
             let parsedCities = [];
             
-            // Tenta fazer o parse do JSON
             try {
                 parsedCities = JSON.parse(citiesRaw);
             } catch (e) {
-                // --- LOG 2: ERRO NO PARSE JSON (PROVAVELMENTE A CAUSA DO SEU PROBLEMA) ---
-                console.error(`[ERROR LOG] Falha ao converter Cities para JSON para o técnico: ${row.Name || 'Sem Nome'} (Zip: ${row.OriginZipCode || 'N/A'}). Raw Cities: ${citiesRaw}`, e);
-                // --------------------------------------------------------------------------
+                console.error(`[ERROR LOG] Falha ao converter Cities para JSON para o técnico: ${row.name || 'Sem Nome'} (Zip: ${row.originzipcode || 'N/A'}). Raw Cities: ${citiesRaw}`, e); // Logs atualizados
                 parsedCities = [];
             }
             
-            // Os nomes das propriedades devem bater com os cabeçalhos da planilha (em inglês)
+            // ATENÇÃO: As propriedades Name, Category, Restrictions e OriginZipCode 
+            // DEVEM ser acessadas em minúsculas ou no formato camelCase (se tiver espaços)
             return {
-                nome: row.Name,
-                categoria: row.Category,
-                tipo_atendimento: row.Restrictions,
-                zip_code: row.OriginZipCode,
-                // CONVERTE A STRING JSON DA CÉLULA DE VOLTA PARA ARRAY
+                nome: row.name, // CORRIGIDO: de row.Name para row.name
+                categoria: row.category, // CORRIGIDO: de row.Category para row.category
+                tipo_atendimento: row.restrictions, // CORRIGIDO: de row.Restrictions para row.restrictions
+                zip_code: row.originzipcode, // CORRIGIDO: de row.OriginZipCode para row.originzipcode
                 cidades: parsedCities,
             };
         }).filter(t => t.nome);
-        
-        // --- LOG 3: VERIFICA O RESULTADO FINAL ---
-        console.log(`[DEBUG LOG] Total de técnicos mapeados e filtrados: ${techCoverageData.length}`);
-        if (techCoverageData.length > 0) {
-             console.log(`[DEBUG LOG] Primeiro técnico mapeado (Resultado final):`, techCoverageData[0]);
-        }
-        // -----------------------------------------
+
+        // ... Logs de debug removidos para o código final, mas o filtro agora deve funcionar: filter(t => t.nome)
 
         return res.status(200).json(techCoverageData);
 
