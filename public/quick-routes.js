@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let clientData = [{ nome: "", zip_code: "" }];
     let map, directionsService, directionsRenderer;
     
-    const CATEGORIA_OPTIONS = ["Central", "Franquia"];
+    const CATEGORIA_OPTIONS = ["Central", "Franchise"];
 
     // --- Utility Functions (Simulated/Required) ---
     
