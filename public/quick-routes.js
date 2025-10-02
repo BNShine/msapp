@@ -16,33 +16,41 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let GOOGLE_MAPS_API_KEY = "API_KEY_PLACEHOLDER";
     let techData = [];
-    let clientData = [{ nome: "", zip_code: "" }]; // Inicia com uma linha vazia para input
+    let clientData = [{ nome: "", zip_code: "" }];
     let map, directionsService, directionsRenderer;
     
-    // Configurações e opções para o cadastro
     const CATEGORIA_OPTIONS = ["Central", "Franquia"];
 
-
-    // --- Core Helper Functions (Geocoding and Distance) ---
-
+    // --- Utility Functions (Simulated/Required) ---
+    
+    // Simulação de funções utilitárias que devem ser implementadas externamente
+    const showLoading = () => console.log("LOADING...");
+    const hideLoading = () => console.log("LOADED.");
+    const showToast = (message, type) => alert(type.toUpperCase() + ": " + message);
+    
+    // Função para carregar a chave e o script do Google Maps
     async function fetchGoogleMapsApiKey() {
         try {
             const response = await fetch('/api/get-google-maps-api-key');
             if (response.ok) {
                 const data = await response.json();
                 GOOGLE_MAPS_API_KEY = data.apiKey;
-                // Load Google Maps script dynamically after fetching the key
-                const script = document.createElement('script');
-                script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
-                document.head.appendChild(script);
+                // Carrega o script do Google Maps dinamicamente
+                if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
+                    document.head.appendChild(script);
+                }
             } else {
-                console.error('Failed to fetch Google Maps API key. Map functionality disabled.');
-                zipCodeResults.innerHTML = '<p class="text-red-600">Erro: Chave da Google Maps API não carregada. Funcionalidade de mapa desativada.</p>';
+                console.error('Falha ao buscar a chave da API do Google Maps.');
+                showToast('Erro: Chave da Google Maps API não carregada.', 'error');
             }
         } catch (error) {
-            console.error('Error fetching Google Maps API key:', error);
+            console.error('Erro ao buscar a chave da API do Google Maps:', error);
         }
     }
+
+    // --- Core Helper Functions (Geocoding and Distance) ---
 
     async function getLatLon(zipCode) {
         if (!zipCode) return [null, null, null, null];
@@ -54,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const place = data.places[0];
             return [parseFloat(place.latitude), parseFloat(place.longitude), place['place name'], place['state abbreviation']];
         } catch (error) {
-            console.error('Error fetching zip code data:', error);
+            console.error('Erro ao buscar dados de zip code:', error);
             return [null, null, null, null];
         }
     }
@@ -65,48 +73,68 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
-    // --- Local Storage and Data Management ---
-
-    function saveTechData() {
-        localStorage.setItem('tech_data', JSON.stringify(techData));
-    }
-
-    function loadTechData() {
-        // Tenta carregar dados salvos localmente
-        const savedData = localStorage.getItem('tech_data');
-        if (savedData) {
-            try {
-                return JSON.parse(savedData);
-            } catch {
-                return null;
-            }
-        }
-        return null;
-    }
-
+    // --- Data Loading and Persistence (Google Sheets Integration) ---
+    
+    // Novo: Carrega dados do Sheets via API
     async function loadInitialData() {
-        const savedData = loadTechData();
-        if (savedData && savedData.length > 0) {
-            techData = savedData;
-        } else {
-            // Se não houver dados locais, tenta carregar do tech_cidades.json via API
-            try {
-                const response = await fetch('/api/get-tech-data');
-                if (response.ok) {
-                    const apiData = await response.json();
-                    if (Array.isArray(apiData)) {
-                        // Limpa entradas vazias da API e inicializa a lista
-                        techData = apiData.filter(t => t.nome && t.zip_code);
-                        saveTechData(); 
-                    }
+        showLoading();
+        // 1. Tenta buscar dados frescos do Google Sheets
+        try {
+            const response = await fetch('/api/get-tech-coverage'); 
+            if (response.ok) {
+                const apiData = await response.json();
+                if (Array.isArray(apiData)) {
+                    techData = apiData.filter(t => t.nome);
+                    // Atualiza o cache local (cache para UX rápido)
+                    localStorage.setItem('tech_data_cache', JSON.stringify(techData));
+                    renderTechTable();
+                    populateTechSelect();
                 }
-            } catch (error) {
-                console.error('Falha ao carregar dados iniciais de técnicos:', error);
+            } else {
+                 throw new Error('Falha na resposta da API de leitura.');
             }
+        } catch (error) {
+            console.error('Falha ao carregar dados de cobertura do Sheets:', error);
+            // 2. Se falhar, tenta usar o cache local
+            const cachedData = localStorage.getItem('tech_data_cache');
+            if (cachedData) {
+                techData = JSON.parse(cachedData);
+                showToast('Usando dados em cache devido a erro de conexão.', 'warning');
+            } else {
+                 showToast('Erro crítico ao carregar dados de técnicos.', 'error');
+            }
+            renderTechTable();
+            populateTechSelect();
+        } finally {
+            hideLoading();
         }
-        renderTechTable();
-        renderClientTable();
-        populateTechSelect();
+    }
+    
+    // Novo: Salva dados no Google Sheets via API
+    async function handleSaveTechData() {
+        showLoading();
+        try {
+            const response = await fetch('/api/save-tech-coverage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(techData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast('Dados salvos no Google Sheets com sucesso!', 'success');
+                // Atualiza o cache local após o salvamento bem-sucedido
+                localStorage.setItem('tech_data_cache', JSON.stringify(techData));
+            } else {
+                showToast('Erro ao salvar dados no Sheets: ' + result.message, 'error');
+            }
+        } catch (error) {
+            showToast('Erro de conexão ao tentar salvar. Verifique a rede ou a API.', 'error');
+            console.error('Erro ao salvar dados:', error);
+        } finally {
+            hideLoading();
+        }
     }
 
 
@@ -124,6 +152,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     `<option value="${cat}" ${tech.categoria === cat ? 'selected' : ''}>${cat}</option>`
                 ).join('');
 
+                // Converte array de cidades para string separada por vírgulas para edição
+                const cidadesString = (tech.cidades || []).join(', ');
+
                 row.innerHTML = `
                     <td class="p-4"><input type="text" class="w-full bg-transparent border-none focus:outline-none" value="${tech.nome}" data-key="nome" data-index="${i}"></td>
                     <td class="p-4">
@@ -136,9 +167,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td class="p-4"><input type="text" class="w-full bg-transparent border-none focus:outline-none" value="${tech.zip_code}" data-key="zip_code" data-index="${i}" maxlength="5"></td>
                     <td class="p-4">
                         <div class="flex flex-wrap gap-1 mb-2">
-                            ${tech.cidades.map(city => `<span class="city-tag bg-brand-primary/10 text-brand-primary px-2 py-1 rounded-full text-xs" data-city="${city}">${city} <button data-index="${i}" data-city="${city}" class="remove-city-btn text-xs ml-1 font-bold">x</button></span>`).join('')}
+                            ${(tech.cidades || []).map(city => `<span class="city-tag bg-brand-primary/10 text-brand-primary px-2 py-1 rounded-full text-xs" data-city="${city}">${city} <button data-index="${i}" data-city="${city}" class="remove-city-btn text-xs ml-1 font-bold">x</button></span>`).join('')}
                         </div>
-                        <input type="text" class="mt-2 w-full bg-background border border-border focus:ring-2 focus:ring-brand-primary rounded-md px-2 py-1 text-sm" placeholder="Adicionar cidade e Enter" data-key="new_city" data-index="${i}">
+                        <textarea rows="2" class="mt-2 w-full bg-background border border-border focus:ring-2 focus:ring-brand-primary rounded-md px-2 py-1 text-sm" placeholder="Edite as cidades aqui, separando por vírgula" data-key="cidades_textarea" data-index="${i}">${cidadesString}</textarea>
                     </td>
                     <td class="p-4"><button data-index="${i}" class="text-red-600 hover:text-red-800 delete-tech-btn">🗑️</button></td>
                 `;
@@ -148,33 +179,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             techTableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-muted-foreground">Nenhum técnico cadastrado.</td></tr>';
         }
 
-        // Add event listeners for dynamic elements
-        techTableBody.querySelectorAll('input, select').forEach(element => {
+        // Add event listeners for input fields and dropdowns
+        techTableBody.querySelectorAll('input:not([data-key="new_city"]), select').forEach(element => {
             element.addEventListener('change', (e) => {
                 const index = parseInt(e.target.dataset.index, 10);
                 const key = e.target.dataset.key;
-                
-                if (key === 'new_city') {
-                    const newCity = e.target.value.trim();
-                    if (newCity && !techData[index].cidades.includes(newCity)) {
-                        techData[index].cidades.push(newCity.trim());
-                        saveTechData();
-                        renderTechTable(); // Rerender para mostrar a nova tag
-                    }
-                } else {
-                    techData[index][key] = e.target.value;
-                }
+                techData[index][key] = e.target.value;
             });
         });
         
-        // Listener para remover tag de cidade
+        // Listener para o textarea de cidades
+        techTableBody.querySelectorAll('textarea[data-key="cidades_textarea"]').forEach(textarea => {
+            textarea.addEventListener('change', (e) => {
+                const index = parseInt(e.target.dataset.index, 10);
+                const cidadesString = e.target.value;
+                // Converte a string de volta para array
+                const cidadesArray = cidadesString.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                techData[index].cidades = cidadesArray;
+                renderTechTable(); // Rerender para mostrar as tags atualizadas
+            });
+        });
+
+        // Listener para remover tag de cidade (funciona apenas com rerender da tabela)
         techTableBody.querySelectorAll('.remove-city-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const index = parseInt(e.target.dataset.index, 10);
                 const cityToRemove = e.target.dataset.city;
                 techData[index].cidades = techData[index].cidades.filter(c => c !== cityToRemove);
-                saveTechData();
-                renderTechTable();
+                renderTechTable(); // Rerender para remover a tag
             });
         });
 
@@ -183,7 +215,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.addEventListener('click', (e) => {
                 const index = parseInt(e.target.dataset.index, 10);
                 techData.splice(index, 1);
-                saveTechData();
                 renderTechTable();
                 populateTechSelect();
             });
@@ -230,7 +261,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             techData.forEach(tech => {
                 const option = document.createElement('option');
                 option.value = tech.nome;
-                option.textContent = `${tech.nome} (${tech.zip_code})`;
+                option.textContent = `${tech.nome} (${tech.zip_code || 'Sem Zip'})`;
                 techSelect.appendChild(option);
             });
         }
@@ -268,7 +299,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 1. Filtra técnicos que atendem a cidade E obtém suas coordenadas
         for (const tech of techData) {
-            if (tech.cidades.some(c => c.toLowerCase() === city.toLowerCase())) {
+            // Verifica se a cidade está na lista de cobertura (comparação case-insensitive)
+            if (tech.cidades.some(c => c.trim().toLowerCase() === city.trim().toLowerCase())) {
                 availableTechs.push(tech);
                 
                 if (tech.zip_code) {
@@ -301,6 +333,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p class="text-sm text-muted-foreground"><strong>Restrições:</strong> ${closestTech.tipo_atendimento || 'Nenhuma restrição especificada'}</p>
                 `;
             }
+        } else {
+             zipCodeResults.innerHTML += `<p class="text-red-600 mt-2">Nenhum técnico disponível com Zip Code de origem válido para cálculo de proximidade.</p>`;
         }
     }
 
@@ -360,18 +394,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             unvisitedClients = unvisitedClients.filter(c => c !== closestClient);
         }
 
-        // 3. Monta a requisição para o Google Maps Directions
+        // 3. Monta a requisição para o Google Maps Directions (com otimização nativa)
         const origin = selectedTech.zip_code;
         const destination = optimizedItinerary[optimizedItinerary.length - 1].zip_code;
         const waypoints = optimizedItinerary.slice(0, -1).map(c => ({
             location: c.zip_code,
             stopover: true
         }));
+        
+        // Se houver mais de 10 waypoints, a otimização de waypoints do Google falha.
+        // O limite é 8 waypoints + origem + destino = 10 pontos.
+        if (waypoints.length > 8) {
+            alert("Aviso: O Google Maps suporta no máximo 8 paradas intermediárias (waypoints). A rota será otimizada localmente, mas a rota do mapa pode ser incorreta.");
+        }
 
         const request = {
             origin: origin,
             destination: destination,
-            waypoints: waypoints,
+            waypoints: waypoints.slice(0, 8), // Limita aos 8 primeiros para evitar erro da API
             optimizeWaypoints: true,
             travelMode: google.maps.TravelMode.DRIVING
         };
@@ -385,20 +425,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let totalDuration = 0;
 
                 const route = response.routes[0];
-                const optimizedOrder = response.routes[0].waypoint_order;
-                
-                // Mapeia a ordem otimizada (incluindo o destino final)
-                const sortedClients = [
-                    ...optimizedItinerary.slice(0, optimizedItinerary.length - 1)
-                        .filter((_, i) => optimizedOrder.includes(i))
-                        .sort((a, b) => optimizedOrder.indexOf(optimizedItinerary.indexOf(a)) - optimizedOrder.indexOf(optimizedItinerary.indexOf(b))),
-                    optimizedItinerary[optimizedItinerary.length - 1] // Adiciona o destino final
-                ];
                 
                 itineraryList.innerHTML += `<p class="font-bold">A melhor sequência de atendimento é:</p>`;
                 
+                // Mapeia a ordem otimizada do Google Maps de volta para a lista de clientes original
+                const orderedWaypoints = route.waypoint_order.map(i => optimizedItinerary[i]);
+                const finalRoute = [
+                    ...orderedWaypoints,
+                    optimizedItinerary[optimizedItinerary.length - 1] // O último elemento
+                ];
+
                 route.legs.forEach((leg, i) => {
-                    const client = sortedClients[i];
+                    const client = finalRoute[i];
                     totalDistance += leg.distance.value;
                     totalDuration += leg.duration.value;
 
@@ -442,11 +480,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     
     // Save Data Listener
-    saveTechDataBtn.addEventListener('click', () => {
-        saveTechData();
-        alert('Dados dos técnicos salvos com sucesso no seu navegador!');
-        populateTechSelect(); // Recarrega o seletor de técnicos
-    });
+    saveTechDataBtn.addEventListener('click', handleSaveTechData);
     
     // Add Client Row Listener
     addClientRowBtn.addEventListener('click', () => {
@@ -454,7 +488,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderClientTable();
     });
 
-    // Main Function to Fetch API Key and Load Data
+    // Main Initialization Function
     const init = async () => {
         await fetchGoogleMapsApiKey();
         await loadInitialData();
