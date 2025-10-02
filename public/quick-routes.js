@@ -1,4 +1,4 @@
-// public/quick-routes.js
+// public/quick-routes.js (Versão Final Completa)
 
 document.addEventListener('DOMContentLoaded', async () => {
     const techTableBody = document.getElementById('tech-table-body');
@@ -13,6 +13,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const optimizeItineraryBtn = document.getElementById('optimize-itinerary-btn');
     const itineraryList = document.getElementById('itinerary-list');
     const mapContainer = document.getElementById('map');
+    
+    // Elementos do Modal de Cidades (Adicionados no HTML)
+    const citiesModal = document.getElementById('cities-modal');
+    const modalContentArea = document.getElementById('modal-content-area');
+    const modalSaveBtn = document.getElementById('modal-save-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+
 
     let GOOGLE_MAPS_API_KEY = "API_KEY_PLACEHOLDER";
     let techData = [];
@@ -23,7 +30,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Utility Functions (Simulated/Required) ---
     
-    // Simulação de funções utilitárias que devem ser implementadas externamente
     const showLoading = () => console.log("LOADING...");
     const hideLoading = () => console.log("LOADED.");
     const showToast = (message, type) => alert(type.toUpperCase() + ": " + message);
@@ -43,10 +49,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } else {
                 console.error('Falha ao buscar a chave da API do Google Maps.');
-                showToast('Erro: Chave da Google Maps API não carregada.', 'error');
+                showToast('Erro: Chave da Google Maps API não carregada. Funcionalidade de mapa desativada.', 'error');
             }
         } catch (error) {
-            console.error('Erro ao buscar a chave da API do Google Maps:', error);
+            console.error('Error fetching Google Maps API key:', error);
         }
     }
 
@@ -55,7 +61,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function getLatLon(zipCode) {
         if (!zipCode) return [null, null, null, null];
         try {
-            // API pública para consulta de Zip Codes dos EUA
             const response = await fetch(`https://api.zippopotam.us/us/${zipCode}`);
             if (!response.ok) return [null, null, null, null];
             const data = await response.json();
@@ -75,17 +80,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Data Loading and Persistence (Google Sheets Integration) ---
     
-    // Novo: Carrega dados do Sheets via API
     async function loadInitialData() {
         showLoading();
-        // 1. Tenta buscar dados frescos do Google Sheets
         try {
             const response = await fetch('/api/get-tech-coverage'); 
             if (response.ok) {
                 const apiData = await response.json();
                 if (Array.isArray(apiData)) {
                     techData = apiData.filter(t => t.nome);
-                    // Atualiza o cache local (cache para UX rápido)
                     localStorage.setItem('tech_data_cache', JSON.stringify(techData));
                     renderTechTable();
                     populateTechSelect();
@@ -94,8 +96,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                  throw new Error('Falha na resposta da API de leitura.');
             }
         } catch (error) {
-            console.error('Falha ao carregar dados de cobertura do Sheets:', error);
-            // 2. Se falhar, tenta usar o cache local
             const cachedData = localStorage.getItem('tech_data_cache');
             if (cachedData) {
                 techData = JSON.parse(cachedData);
@@ -110,7 +110,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // Novo: Salva dados no Google Sheets via API
     async function handleSaveTechData() {
         showLoading();
         try {
@@ -124,7 +123,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (result.success) {
                 showToast('Dados salvos no Google Sheets com sucesso!', 'success');
-                // Atualiza o cache local após o salvamento bem-sucedido
                 localStorage.setItem('tech_data_cache', JSON.stringify(techData));
             } else {
                 showToast('Erro ao salvar dados no Sheets: ' + result.message, 'error');
@@ -147,14 +145,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const row = document.createElement('tr');
                 row.className = 'border-b border-border hover:bg-muted/50 transition-colors';
                 
-                // Opções de categorias, garantindo que a categoria atual esteja selecionada
                 const categoryOptionsHtml = CATEGORIA_OPTIONS.map(cat => 
                     `<option value="${cat}" ${tech.categoria === cat ? 'selected' : ''}>${cat}</option>`
                 ).join('');
 
-                // Converte array de cidades para string separada por vírgulas para edição
-                const cidadesString = (tech.cidades || []).join(', ');
-
+                const visibleCities = (tech.cidades || []).slice(0, 3);
+                const hiddenCount = (tech.cidades || []).length - visibleCities.length;
+                
                 row.innerHTML = `
                     <td class="p-4"><input type="text" class="w-full bg-transparent border-none focus:outline-none" value="${tech.nome}" data-key="nome" data-index="${i}"></td>
                     <td class="p-4">
@@ -166,10 +163,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td class="p-4"><input type="text" class="w-full bg-transparent border-none focus:outline-none" value="${tech.tipo_atendimento || ''}" data-key="tipo_atendimento" data-index="${i}"></td>
                     <td class="p-4"><input type="text" class="w-full bg-transparent border-none focus:outline-none" value="${tech.zip_code}" data-key="zip_code" data-index="${i}" maxlength="5"></td>
                     <td class="p-4">
-                        <div class="flex flex-wrap gap-1 mb-2">
-                            ${(tech.cidades || []).map(city => `<span class="city-tag bg-brand-primary/10 text-brand-primary px-2 py-1 rounded-full text-xs" data-city="${city}">${city} <button data-index="${i}" data-city="${city}" class="remove-city-btn text-xs ml-1 font-bold">x</button></span>`).join('')}
+                        <div class="flex flex-wrap gap-1 mb-2 max-h-16 overflow-y-auto">
+                            ${visibleCities.map(city => `<span class="city-tag bg-brand-primary/10 text-brand-primary px-2 py-1 rounded-full text-xs">${city}</span>`).join('')}
+                            ${hiddenCount > 0 ? `<span class="city-tag bg-muted text-muted-foreground px-2 py-1 rounded-full text-xs">+ ${hiddenCount} mais</span>` : ''}
                         </div>
-                        <textarea rows="2" class="mt-2 w-full bg-background border border-border focus:ring-2 focus:ring-brand-primary rounded-md px-2 py-1 text-sm" placeholder="Edite as cidades aqui, separando por vírgula" data-key="cidades_textarea" data-index="${i}">${cidadesString}</textarea>
+                        <button class="text-sm font-semibold text-brand-primary hover:text-brand-primary/80 view-edit-cities-btn" data-index="${i}">
+                            Ver/Editar (${(tech.cidades || []).length} cidades)
+                        </button>
                     </td>
                     <td class="p-4"><button data-index="${i}" class="text-red-600 hover:text-red-800 delete-tech-btn">🗑️</button></td>
                 `;
@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             techTableBody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-muted-foreground">Nenhum técnico cadastrado.</td></tr>';
         }
 
-        // Add event listeners for input fields and dropdowns
+        // Add listeners for input fields and dropdowns
         techTableBody.querySelectorAll('input:not([data-key="new_city"]), select').forEach(element => {
             element.addEventListener('change', (e) => {
                 const index = parseInt(e.target.dataset.index, 10);
@@ -188,25 +188,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
         
-        // Listener para o textarea de cidades
-        techTableBody.querySelectorAll('textarea[data-key="cidades_textarea"]').forEach(textarea => {
-            textarea.addEventListener('change', (e) => {
-                const index = parseInt(e.target.dataset.index, 10);
-                const cidadesString = e.target.value;
-                // Converte a string de volta para array
-                const cidadesArray = cidadesString.split(',').map(s => s.trim()).filter(s => s.length > 0);
-                techData[index].cidades = cidadesArray;
-                renderTechTable(); // Rerender para mostrar as tags atualizadas
-            });
-        });
-
-        // Listener para remover tag de cidade (funciona apenas com rerender da tabela)
-        techTableBody.querySelectorAll('.remove-city-btn').forEach(btn => {
+        // Listener para abrir o modal de edição de cidades
+        techTableBody.querySelectorAll('.view-edit-cities-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const index = parseInt(e.target.dataset.index, 10);
-                const cityToRemove = e.target.dataset.city;
-                techData[index].cidades = techData[index].cidades.filter(c => c !== cityToRemove);
-                renderTechTable(); // Rerender para remover a tag
+                showCitiesModal(index);
             });
         });
 
@@ -220,6 +206,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
     }
+    
+    // --- Lógica do Modal de Cidades ---
+    
+    function showCitiesModal(index) {
+        const tech = techData[index];
+        const initialCitiesString = (tech.cidades || []).join(', ');
+        
+        modalContentArea.innerHTML = `
+            <div class="mb-4">
+                <p class="text-sm font-semibold">Técnico:</p>
+                <p class="text-lg font-bold text-brand-primary">${tech.nome || 'Novo Técnico'}</p>
+            </div>
+            <p class="text-sm text-muted-foreground mb-2">Edite a lista de cidades separando-as por vírgula (,). A ordem não importa.</p>
+            <textarea id="modal-cities-textarea" 
+                      class="w-full p-3 border border-border rounded-md focus:ring-2 focus:ring-brand-primary" 
+                      rows="10"
+                      data-index="${index}">${initialCitiesString}</textarea>
+        `;
+
+        modalSaveBtn.onclick = () => {
+            const textarea = document.getElementById('modal-cities-textarea');
+            const newCitiesString = textarea.value;
+            
+            // Converte a string de volta para array
+            const newCitiesArray = newCitiesString.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            
+            techData[index].cidades = newCitiesArray;
+            
+            // Oculta o modal e atualiza a interface
+            citiesModal.classList.add('hidden');
+            renderTechTable();
+        };
+        
+        modalCancelBtn.onclick = () => {
+            citiesModal.classList.add('hidden');
+        };
+
+        citiesModal.classList.remove('hidden');
+    }
+    
 
     function renderClientTable() {
         clientTableBody.innerHTML = '';
@@ -402,8 +428,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             stopover: true
         }));
         
-        // Se houver mais de 10 waypoints, a otimização de waypoints do Google falha.
-        // O limite é 8 waypoints + origem + destino = 10 pontos.
         if (waypoints.length > 8) {
             alert("Aviso: O Google Maps suporta no máximo 8 paradas intermediárias (waypoints). A rota será otimizada localmente, mas a rota do mapa pode ser incorreta.");
         }
@@ -426,7 +450,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const route = response.routes[0];
                 
-                itineraryList.innerHTML += `<p class="font-bold">A melhor sequência de atendimento é:</p>`;
+                itineraryList.innerHTML = `<p class="font-bold">A melhor sequência de atendimento é:</p>`;
                 
                 // Mapeia a ordem otimizada do Google Maps de volta para a lista de clientes original
                 const orderedWaypoints = route.waypoint_order.map(i => optimizedItinerary[i]);
