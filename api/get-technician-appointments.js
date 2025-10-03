@@ -61,9 +61,9 @@ export default async function handler(req, res) {
                 appointmentDate: excelDateToDateTime(appointmentDateRaw), // YYYY/MM/DD HH:MM
                 customers: getCellValue('Customers'),
                 code: getCellValue('Code'),
-                // Campos adicionais necessários para a exibição/lógica
+                // CAMPO REQUERIDO: Verification
+                verification: getCellValue('Verification') || 'Scheduled', 
                 petShowed: getCellValue('Pet Showed'),
-                verification: getCellValue('Verification'),
             };
         }).filter(a => a !== null); // Remove agendamentos sem técnico ou data
 
