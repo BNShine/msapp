@@ -80,6 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             row.innerHTML = `
+                <td class="p-4">${customer.code}</td>
                 <td class="p-4 hidden">${customer.date}</td>
                 <td class="p-4">${customer.customers}</td>
                 <td class="p-4">${customer.pets}</td>
@@ -89,8 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="p-4">${customer.appointmentDate}</td>
                 <td class="p-4">${customer.serviceValue}</td>
                 <td class="p-4">${customer.franchise}</td>
-                <td class="p-4">${customer.month}</td>
-                <td class="p-4">${customer.code}</td>
+
                 <td class="${reminderClasses}">${reminderDisplay}</td>
             `;
             tableBody.appendChild(row);
@@ -241,3 +241,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     initDashboard();
 });
+
