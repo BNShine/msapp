@@ -57,6 +57,25 @@ function generateAlphanumericCode(length = 8) {
 }
 // <<< FIM DA NOVA FUNÇÃO PARA CÓDIGO ALFANUMÉRICO
 
+// *** NOVA FUNÇÃO: Busca o nome da cidade a partir do Zip Code (EUA) ***
+async function getCityFromZip(zipCode) {
+    if (!zipCode || zipCode.length !== 5) return null;
+    try {
+        const response = await fetch(`https://api.zippopotam.us/us/${zipCode}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (data.places && data.places.length > 0) {
+            return data.places[0]['place name'];
+        }
+        return null;
+    } catch (error) {
+        console.error('Erro ao buscar dados de zip code:', error);
+        return null;
+    }
+}
+// *** FIM DA NOVA FUNÇÃO ***
+
+
 // Main function to fetch and update all dashboard data
 async function fetchAndRenderDashboardData() {
     try {
@@ -232,7 +251,6 @@ async function fetchAndRenderDashboardData() {
 async function handleFormSubmission(event) {
     event.preventDefault();
 
-    // *** CORREÇÃO CRÍTICA AQUI: Define 'form' corretamente para o target do evento ***
     const form = event.target;
     console.log("Submit Event Fired. Starting API call..."); 
 
@@ -268,7 +286,6 @@ async function handleFormSubmission(event) {
         value: '', 
         code: document.getElementById('codePass').value,
         reminderDate: document.getElementById('reminderDate').value,
-        // CORREÇÃO ANTERIOR MANTIDA
         verification: 'Scheduled' 
     };
 
@@ -285,7 +302,7 @@ async function handleFormSubmission(event) {
         console.log("API Response:", result);
 
         if (result.success) {
-            form.reset(); // Usa o 'form' capturado
+            form.reset(); 
             fetchAndRenderDashboardData(); 
             alert('Agendamento registrado com sucesso!'); 
         } else {
@@ -301,6 +318,10 @@ async function handleFormSubmission(event) {
 document.addEventListener('DOMContentLoaded', async () => {
     // Initial data fetch and render
     fetchAndRenderDashboardData();
+
+    // Selectors for new feature
+    const zipCodeInput = document.getElementById('zipCode');
+    const cityInput = document.getElementById('city');
 
     // Set default form values
     const customersInput = document.getElementById('customers');
@@ -320,8 +341,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     reminderDateInput.name = 'reminderDate';
     document.getElementById('scheduleForm').appendChild(reminderDateInput);
 
+    // *** NOVO EVENT LISTENER PARA O ZIP CODE ***
+    zipCodeInput.addEventListener('input', async () => {
+        const zipCode = zipCodeInput.value.trim();
+        cityInput.value = ''; // Limpa a cidade ao digitar
+
+        if (zipCode.length === 5) {
+            // Desabilita temporariamente o campo City
+            cityInput.disabled = true;
+            cityInput.placeholder = 'Buscando cidade...';
+
+            const city = await getCityFromZip(zipCode);
+
+            cityInput.disabled = false;
+            cityInput.placeholder = 'Ex: Beverly Hills';
+            
+            if (city) {
+                cityInput.value = city;
+                // Move o foco para o endereço
+                const addressInput = document.getElementById('address');
+                if (addressInput && !addressInput.value) {
+                    addressInput.focus();
+                }
+            } else {
+                cityInput.focus();
+                cityInput.placeholder = 'Zip Code não encontrado. Digite a cidade.';
+            }
+        }
+    });
+    // *** FIM NOVO EVENT LISTENER ***
+
+
     // Add event listeners
-    // Garante que o evento de submissão do formulário seja capturado pelo handler
     document.getElementById('scheduleForm').addEventListener('submit', handleFormSubmission);
 
     appointmentDateInput.addEventListener('input', (event) => {
