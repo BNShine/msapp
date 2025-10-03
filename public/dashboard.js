@@ -57,7 +57,7 @@ function generateAlphanumericCode(length = 8) {
 }
 // <<< FIM DA NOVA FUNÇÃO PARA CÓDIGO ALFANUMÉRICO
 
-// *** NOVA FUNÇÃO: Busca o nome da cidade a partir do Zip Code (EUA) ***
+// *** FUNÇÃO DE BUSCA DO ZIP CODE/CIDADE ***
 async function getCityFromZip(zipCode) {
     if (!zipCode || zipCode.length !== 5) return null;
     try {
@@ -65,7 +65,13 @@ async function getCityFromZip(zipCode) {
         if (!response.ok) return null;
         const data = await response.json();
         if (data.places && data.places.length > 0) {
-            return data.places[0]['place name'];
+            // Retorna o nome da cidade E o estado (place name, state abbreviation)
+            return { 
+                city: data.places[0]['place name'],
+                state: data.places[0]['state abbreviation'],
+                latitude: data.places[0]['latitude'],
+                longitude: data.places[0]['longitude'],
+            };
         }
         return null;
     } catch (error) {
@@ -73,7 +79,7 @@ async function getCityFromZip(zipCode) {
         return null;
     }
 }
-// *** FIM DA NOVA FUNÇÃO ***
+// *** FIM DA FUNÇÃO DE BUSCA ***
 
 
 // Main function to fetch and update all dashboard data
@@ -287,8 +293,7 @@ async function handleFormSubmission(event) {
         code: document.getElementById('codePass').value,
         reminderDate: document.getElementById('reminderDate').value,
         verification: 'Scheduled',
-        // *** CORREÇÃO APLICADA AQUI: ADICIONANDO O CAMPO zipCode ***
-        zipCode: data.zipCode // Mapeia o valor do campo de formulário
+        zipCode: data.zipCode // Valor do campo Zip Code
     };
 
     try {
@@ -324,6 +329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Selectors for new feature
     const zipCodeInput = document.getElementById('zipCode');
     const cityInput = document.getElementById('city');
+    const suggestedTechDisplay = document.getElementById('suggestedTechDisplay'); // NOVO SELETOR
 
     // Set default form values
     const customersInput = document.getElementById('customers');
@@ -347,20 +353,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     zipCodeInput.addEventListener('input', async () => {
         const zipCode = zipCodeInput.value.trim();
         cityInput.value = ''; // Limpa a cidade ao digitar
+        suggestedTechDisplay.textContent = '--/--/----'; // Limpa o sugerido
+        suggestedTechDisplay.classList.remove('text-green-600');
+        suggestedTechDisplay.classList.add('text-muted-foreground');
+
 
         if (zipCode.length === 5) {
             // Desabilita temporariamente o campo City
             cityInput.disabled = true;
             cityInput.placeholder = 'Buscando cidade...';
 
-            const city = await getCityFromZip(zipCode);
+            const locationData = await getCityFromZip(zipCode);
 
             cityInput.disabled = false;
             cityInput.placeholder = 'Ex: Beverly Hills';
             
-            if (city) {
-                cityInput.value = city;
-                // Move o foco para o endereço
+            if (locationData && locationData.city) {
+                cityInput.value = locationData.city;
+                
+                // *** Lógica para Sugerir Técnico (AQUI VOCÊ DEVERIA CHAMAR UMA API/FUNÇÃO DE BUSCA AVANÇADA) ***
+                // SIMULAÇÃO: Preenche com um valor genérico que será substituído
+                suggestedTechDisplay.textContent = 'Procurando...'; 
+                
+                // Exemplo simplificado (substitua esta lógica pela busca real em sua base de técnicos):
+                setTimeout(() => {
+                    suggestedTechDisplay.textContent = 'Alan S.'; // Exemplo de técnico sugerido
+                    suggestedTechDisplay.classList.remove('text-muted-foreground');
+                    suggestedTechDisplay.classList.add('text-green-600');
+                }, 500); 
+                // *** FIM DA LÓGICA DE SIMULAÇÃO ***
+
                 const addressInput = document.getElementById('address');
                 if (addressInput && !addressInput.value) {
                     addressInput.focus();
