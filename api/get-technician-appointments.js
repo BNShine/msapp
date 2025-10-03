@@ -1,0 +1,76 @@
+// api/get-technician-appointments.js
+
+import { GoogleSpreadsheet } from 'google-spreadsheet';
+import { JWT } from 'google-auth-library';
+import dotenv from 'dotenv';
+import { excelDateToDateTime } from './utils.js'; // Reutilizando a função de data
+import { SHEET_NAME_APPOINTMENTS } from './configs/sheets-config.js';
+
+dotenv.config();
+
+const serviceAccountAuth = new JWT({
+    email: process.env.CLIENT_EMAIL,
+    key: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+});
+
+const SPREADSHEET_ID_APPOINTMENTS = process.env.SHEET_ID_APPOINTMENTS;
+
+export default async function handler(req, res) {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    try {
+        const docAppointments = new GoogleSpreadsheet(SPREADSHEET_ID_APPOINTMENTS, serviceAccountAuth);
+        await docAppointments.loadInfo();
+
+        const sheetAppointments = docAppointments.sheetsByTitle[SHEET_NAME_APPOINTMENTS];
+        if (!sheetAppointments) {
+            return res.status(404).json({ error: `Planilha "${SHEET_NAME_APPOINTMENTS}" não encontrada.` });
+        }
+
+        // Carrega todas as linhas
+        const rows = await sheetAppointments.getRows();
+
+        const headerRow = sheetAppointments.headerValues;
+        const headersToIndex = {};
+        headerRow.forEach((header, index) => {
+            headersToIndex[header] = index;
+        });
+
+        const appointments = rows.map(row => {
+            const getCellValue = (header) => {
+                const index = headersToIndex[header];
+                if (index !== undefined && row._rawData.length > index) {
+                    return row._rawData[index];
+                }
+                return '';
+            };
+
+            const appointmentDateRaw = getCellValue('Date (Appointment)');
+            const technician = getCellValue('Technician');
+            
+            // Requer Technician e data de agendamento válida
+            if (!technician || !appointmentDateRaw) {
+                return null;
+            }
+
+            return {
+                id: row.rowNumber, // Importante para o arrastar e soltar (drag-and-drop)
+                technician: technician,
+                appointmentDate: excelDateToDateTime(appointmentDateRaw), // YYYY/MM/DD HH:MM
+                customers: getCellValue('Customers'),
+                code: getCellValue('Code'),
+                // Campos adicionais necessários para a exibição/lógica
+                petShowed: getCellValue('Pet Showed'),
+                verification: getCellValue('Verification'),
+            };
+        }).filter(a => a !== null); // Remove agendamentos sem técnico ou data
+
+        return res.status(200).json({ appointments });
+
+    } catch (error) {
+        console.error('Erro ao buscar agendamentos de técnicos:', error);
+        res.status(500).json({ error: 'Falha ao buscar dados dos agendamentos.' });
+    }
+}
