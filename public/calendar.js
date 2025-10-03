@@ -161,6 +161,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 fetch('/api/get-technician-appointments')
             ]);
 
+            // VERIFICAÇÃO DE SUCESSO DO FETCH: Se falhar, lança um erro com detalhes.
+            if (!techDataResponse.ok) {
+                throw new Error('Failed to load technician list. Check API /api/get-dashboard-data.');
+            }
+            if (!appointmentsResponse.ok) {
+                throw new Error('Failed to load appointments list. Check API /api/get-technician-appointments.');
+            }
+
+
             const techData = await techDataResponse.json();
             const apptsData = await appointmentsResponse.json();
 
@@ -176,7 +185,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } catch (error) {
             console.error('Error loading initial data:', error);
-            alert('Falha ao carregar dados iniciais. Verifique a API.');
+            alert(`Falha ao carregar dados iniciais. ${error.message || 'Verifique a API e as permissões.'}`);
+            // Garante que o dropdown de técnico exiba o erro e não o "Loading..."
+            if (techSelectDropdown) {
+                techSelectDropdown.innerHTML = '<option value="">ERROR: Failed to load</option>';
+                selectedTechDisplay.textContent = 'ERROR';
+                loadingOverlay.classList.remove('hidden');
+            }
         }
     }
     
@@ -288,12 +303,12 @@ document.addEventListener('DOMContentLoaded', async () => {
              const foundAppt = allAppointments.find(appt => String(appt.id) === String(activeSearchApptId));
              if (foundAppt) {
                  appointmentsToRender.push(foundAppt);
+                 
+                 // Filtra outros agendamentos do MESMO TÉCNICO na mesma semana para verificar sobreposição
+                 appointmentsToRender = appointmentsToRender.concat(allAppointments.filter(appt => 
+                     appt.technician === foundAppt.technician && String(appt.id) !== String(activeSearchApptId)
+                 ));
              }
-             // Filtra os agendamentos do MESMO TÉCNICO na mesma semana para verificar sobreposição
-             appointmentsToRender = appointmentsToRender.concat(allAppointments.filter(appt => 
-                 appt.technician === foundAppt.technician && String(appt.id) !== String(activeSearchApptId)
-             ));
-
         } else if (selectedTechnician) {
              // Caso contrário, filtra pelo técnico selecionado
              appointmentsToRender = allAppointments.filter(appt => 
@@ -318,6 +333,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const dateKey = formatDateToYYYYMMDD(apptDate);
             
             const colIndex = columnMap[dateKey];
+            
+            // CORREÇÃO: Pula se o agendamento não tem uma coluna válida (dia visível)
             if (!colIndex) return; 
             
             const startHour = apptDate.getHours();
