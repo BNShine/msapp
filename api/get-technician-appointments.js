@@ -41,7 +41,8 @@ export default async function handler(req, res) {
             const getCellValue = (header) => {
                 const index = headersToIndex[header];
                 if (index !== undefined && row._rawData.length > index) {
-                    return row._rawData[index];
+                    // Garante que o valor é uma string (null/undefined são tratados)
+                    return String(row._rawData[index] || '');
                 }
                 return '';
             };
@@ -61,7 +62,7 @@ export default async function handler(req, res) {
                 code: getCellValue('Code'),
                 verification: getCellValue('Verification') || 'Scheduled', 
                 petShowed: getCellValue('Pet Showed'),
-                // CAMPOS ADICIONADOS PARA ESTABILIDADE E EDIÇÃO INLINE/MODAL
+                // CAMPOS CRÍTICOS DE PAGAMENTO/EDIÇÃO (Garantidos como Strings)
                 serviceShowed: getCellValue('Service Showed'),
                 tips: getCellValue('Tips'),
                 percentage: getCellValue('Percentage'),
