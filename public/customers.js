@@ -34,8 +34,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     let techAvailability = {}; 
     
-    // CORRIGIDO: 2 horas de duração (120px)
-    const SCHEDULE_DURATION_HOURS = 2; 
+    // MUDANÇA: Altura para 1 hora (60px) para cards pequenos
+    const SCHEDULE_DURATION_HOURS = 1; 
     const SLOT_HEIGHT_PX = 60; // 1 hora = 60px
 
     const TIME_SLOTS = Array.from({ length: 11 }, (_, i) => `${(8 + i).toString().padStart(2, '0')}:00`);
@@ -83,25 +83,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         return dateTimeStr.replace(/\//g, '-').replace(' ', 'T'); 
     }
 
-    function parseTime(timeStr) {
-        const [hours, minutes] = timeStr.split(':').map(Number);
-        return hours * 60 + minutes;
-    }
-
-    // FUNÇÃO PARA CALCULAR SOBREPOSIÇÃO (2 horas de duração)
+    // NOVA FUNÇÃO: Calcula a colisão no tempo para aplicar a borda amarela
     function calculateOverlap(apptA, apptB) {
         const dateA = parseSheetDate(apptA.appointmentDate);
         const dateB = parseSheetDate(apptB.appointmentDate);
 
+        // Se as datas forem diferentes (mesmo que por milissegundos), não há sobreposição de dia
         if (!dateA || !dateB || formatDateToYYYYMMDD(dateA) !== formatDateToYYYYMMDD(dateB)) return false;
 
-        const durationMs = SCHEDULE_DURATION_HOURS * 60 * 60 * 1000;
-        
         const startA = dateA.getTime();
-        const endA = startA + durationMs;
+        const endA = startA + (SCHEDULE_DURATION_HOURS * 60 * 60 * 1000); // 1 hora de duração
         
         const startB = dateB.getTime();
-        const endB = startB + durationMs;
+        const endB = startB + (SCHEDULE_DURATION_HOURS * 60 * 60 * 1000); // 1 hora de duração
 
         // Verifica se os intervalos de tempo se sobrepõem
         return (startA < endB) && (endA > startB);
@@ -111,7 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Populate static data needed for save payload (read from cache/local appt object)
         modalApptId.value = appt.id;
         modalOriginalTechnician.value = appt.technician;
-        // Campos de cache (passados via hidden inputs)
+        // Campos que precisam ser passados de volta
         modalPetShowed.value = appt.petShowed || '';
         modalTips.value = appt.tips || '';
         modalPercentage.value = appt.percentage || '';
@@ -151,7 +145,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             initializeAvailability(); 
             populateTechSelects();
-            renderScheduler(); 
 
         } catch (error) {
             console.error('Error loading initial data:', error);
@@ -160,7 +153,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function populateTechSelects() {
-        if (!techSelectDropdown) return; 
+        if (!techSelectDropdown) return; // Defensive check for stability
 
         techSelectDropdown.innerHTML = '<option value="">Select Technician...</option>';
         allTechnicians.forEach(tech => {
@@ -284,12 +277,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             const block = document.createElement('div');
             
-            // Cor de Fundo
-            let bgColor = 'bg-custom-primary'; 
+            // CORREÇÃO: Cor de Fundo
+            let bgColor = 'bg-custom-primary'; // Cor Primária
+            let borderColor = '';
             
             if (appt.verification === 'Canceled') {
-                // NOVO: Usando a classe Cherry Red
-                bgColor = 'bg-cherry-red'; 
+                bgColor = 'bg-destructive/80'; 
             } else if (appt.verification === 'Showed') {
                 bgColor = 'bg-green-600'; 
             }
@@ -302,27 +295,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             if (overlappingAppts.length > 0) {
-                // Borda amarela para sobreposição (#ffda2d)
+                // CORREÇÃO VISUAL 2: Borda amarela para sobreposição
                 block.style.borderColor = '#ffda2d'; 
                 block.style.borderWidth = '2px';
-                block.style.borderStyle = 'solid'; 
+                block.style.borderStyle = 'solid'; // Adicionado para garantir a visibilidade
             }
 
-            // A classe 'appointment-block' já define a altura de 120px no HTML
+
             block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
             block.dataset.id = appt.id;
             block.dataset.technician = appt.technician;
             block.dataset.date = appt.appointmentDate; 
-            block.dataset.serviceshowed = appt.serviceShowed || ''; 
-            block.dataset.verification = appt.verification; 
+            block.dataset.serviceshowed = appt.serviceShowed || ''; // USANDO SERVICE SHOWED (CORREÇÃO DE MODELO)
+            block.dataset.verification = appt.verification; // Para o modal
             block.draggable = true;
             
-            // CORREÇÃO CRÍTICA: Definir a COLUNA DO GRID explicitamente para evitar vazamento horizontal
-            block.style.gridColumnStart = colIndex; 
-            block.style.gridColumnEnd = colIndex + 1;
-            
-            // POSICIONAMENTO: Altura e Posição
+            // POSICIONAMENTO: Restrito à Coluna do Dia (colIndex)
+            block.style.gridColumn = colIndex; 
             block.style.top = `${topOffset}px`;
+            
+            // POSICIONAMENTO: Altura Fixa de 1 hora (60px)
             block.style.height = `${SCHEDULE_DURATION_HOURS * SLOT_HEIGHT_PX}px`; 
 
             const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
@@ -547,9 +539,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- Fim Confirmação ---
 
             draggedAppointment.element.style.top = `${snapOffsetTop}px`;
-            // Não defina a coluna aqui, a lógica abaixo cuida disso na renderização,
-            // mas mantemos o elemento visível na nova posição temporariamente.
-            // draggedAppointment.element.style.gridColumn = targetCol; 
+            draggedAppointment.element.style.gridColumn = targetCol;
             draggedAppointment.element.style.display = 'block';
             
             const newDateSheetFormat = formatDateToYYYYMMDD(newDate) + ' ' + getTimeHHMM(newDate);
@@ -557,11 +547,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             
             if (localAppt) {
-                // Prepara o payload para a API de atualização (usando dados de cache do dragstart)
+                // Prepara o payload para a API de atualização
                 const dataToUpdate = {
                     rowIndex: parseInt(draggedAppointment.id, 10),
                     appointmentDate: newDateLocalFormat, 
                     technician: newTech,
+                    // Campos de cache do DragStart
                     verification: draggedAppointment.verification, 
                     serviceShowed: draggedAppointment.serviceShowed, 
                     petShowed: draggedAppointment.petShowed,
