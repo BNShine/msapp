@@ -137,12 +137,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         editModal.classList.remove('hidden');
         
-        // CORREÇÃO FINAL: Força a rolagem para o topo ao abrir o modal
-        window.scrollTo(0, 0); 
+        // SOLUÇÃO DEFINITIVA: Adiciona classe para desativar a rolagem na página principal
+        document.body.classList.add('modal-open');
+        window.scrollTo(0, 0); // Força a rolagem para o topo por garantia
     }
 
     function closeEditModal() {
         if (editModal) editModal.classList.add('hidden');
+        
+        // SOLUÇÃO DEFINITIVA: Remove classe para reativar a rolagem na página principal
+        document.body.classList.remove('modal-open');
     }
     
     function handleEditAppointmentClick(event) {
