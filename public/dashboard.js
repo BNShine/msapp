@@ -44,6 +44,19 @@ function populateDropdowns(selectElement, items) {
     }
 }
 
+// >>> INÍCIO DA NOVA FUNÇÃO PARA CÓDIGO ALFANUMÉRICO (8 CARACTERES)
+function generateAlphanumericCode(length = 8) {
+    // Caracteres alfanuméricos (letras maiúsculas e minúsculas, e números)
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+}
+// <<< FIM DA NOVA FUNÇÃO PARA CÓDIGO ALFANUMÉRICO
+
 // Main function to fetch and update all dashboard data
 async function fetchAndRenderDashboardData() {
     try {
@@ -323,10 +336,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     customersInput.addEventListener('input', () => {
         const value = customersInput.value.trim();
         if (value.length > 0) {
-            const randomNumber = Math.floor(Math.random() * 10000);
-            const paddedNumber = randomNumber.toString().padStart(4, '0');
-            codePassDisplay.textContent = paddedNumber;
-            codePassInput.value = paddedNumber;
+            // CÓDIGO ATUALIZADO (8 caracteres alfanuméricos):
+            const generatedCode = generateAlphanumericCode(8);
+            codePassDisplay.textContent = generatedCode;
+            codePassInput.value = generatedCode;
+            
         } else {
             codePassDisplay.textContent = '--/--/----';
             codePassInput.value = '';
