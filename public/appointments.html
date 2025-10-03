@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sales Dashboard</title>
-    <!-- Inclui o CSS compilado (Tailwind) -->
     <link href="output.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Icones Lucide -->
     <script src="https://cdn.jsdelivr.net/npm/lucide-static@latest/dist/umd/lucide.js"></script>
 </head>
 <body class="min-h-screen bg-background flex flex-col">
@@ -27,7 +25,6 @@
               Sales Dashboard
             </h1>
           </div>
-          <!-- Menu de Navegação (Desktop) -->
           <nav class="hidden md:flex items-center space-x-1">
             <a href="appointments.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 bg-gradient-primary text-white shadow-brand" aria-current="page">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar w-4 h-4"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
@@ -46,7 +43,6 @@
                 <span>Routes</span>
             </a>
           </nav>
-          <!-- Ações e Perfil -->
           <div class="flex items-center gap-2">
             <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 h-11 w-11 relative hover:bg-accent hover:text-accent-foreground">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell w-4 h-4"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
@@ -61,7 +57,6 @@
             </button>
           </div>
         </div>
-        <!-- Menu Mobile (abaixo do header) -->
         <div class="md:hidden border-t border-border">
           <nav class="flex items-center justify-around py-2">
             <a href="appointments.html" class="flex flex-col items-center gap-1 p-2 rounded-lg text-xs font-medium transition-all duration-300 text-brand-primary">
@@ -83,7 +78,6 @@
           </nav>
         </div>
       </div>
-      <!-- Barra de Status/Perfil -->
       <div class="bg-muted border-t border-border">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between py-2">
@@ -107,7 +101,6 @@
     <main class="flex-1 p-8 overflow-y-auto">
         <div class="max-w-7xl mx-auto space-y-8">
 
-            <!-- Metrics Section (Summary Cards) -->
             <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-gradient-subtle p-6">
                     <div class="flex items-center justify-between mb-4">
@@ -162,7 +155,6 @@
                 </div>
             </section>
 
-            <!-- Main Appointment Registration Section -->
             <section class="rounded-lg border bg-card text-card-foreground shadow-large">
                 <div class="flex flex-col space-y-1.5 p-6 border-b border-border">
                     <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
@@ -173,7 +165,6 @@
                 
                 <form id="scheduleForm" class="p-6">
                     
-                    <!-- Row 1: Client Details (Name, Contact) -->
                     <div class="mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
                         <h3 class="text-xl font-semibold mb-6 text-foreground/80 flex items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-check"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 11 2 2 4-4"/></svg>
@@ -207,64 +198,50 @@
                         </div>
                     </div>
                     
-                    <!-- Row 2: Service and Sales Details -->
                     <div class="mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
                          <h3 class="text-xl font-semibold mb-6 text-foreground/80 flex items-center gap-2">
                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-check"><path d="M8 12L12 16L20 8"/><path d="M8 12L12 16L20 8"/></svg>
                              Service and Sales Details
                          </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <!-- Appointment Date/Time -->
                             <div class="space-y-2">
                                 <label for="appointmentDate" class="block text-sm font-semibold text-foreground">Appointment Date/Time</label>
                                 <input type="datetime-local" id="appointmentDate" name="appointmentDate" required class="input-style">
                             </div>
-                            <!-- Estimated Value -->
                             <div class="space-y-2">
                                 <label for="serviceValue" class="block text-sm font-semibold text-foreground">Estimated Value</label>
                                 <input type="text" id="serviceValue" name="serviceValue" required class="input-style" placeholder="Ex: $150.00">
                             </div>
-                            <!-- Estimated Qty (Pets) -->
                             <div class="space-y-2">
                                 <label for="pets" class="block text-sm font-semibold text-foreground">Estimated Qty (Pets/Services)</label>
                                 <select id="pets" name="pets" class="input-style">
                                     <option value="">Select Qty</option>
-                                    <!-- Options populated by JS -->
-                                </select>
+                                    </select>
                             </div>
-                            <!-- Franchise -->
                             <div class="space-y-2">
                                 <label for="franchise" class="block text-sm font-semibold text-foreground">Franchise</label>
                                 <select id="franchise" name="franchise" required class="input-style">
                                     <option value="">Select Franchise</option>
-                                    <!-- Options populated by JS -->
-                                </select>
+                                    </select>
                             </div>
-                            <!-- Closer -->
                             <div class="space-y-2">
                                 <label for="closer1" class="block text-sm font-semibold text-foreground">Closer</label>
                                 <select id="closer1" name="closer1" required class="input-style">
                                     <option value="">Select Closer</option>
-                                    <!-- Options populated by JS -->
-                                </select>
+                                    </select>
                             </div>
-                            <!-- SDR -->
                             <div class="space-y-2">
                                 <label for="closer2" class="block text-sm font-semibold text-foreground">SDR</label>
                                 <select id="closer2" name="closer2" class="input-style">
                                     <option value="">Select SDR</option>
-                                    <!-- Options populated by JS -->
-                                </select>
+                                    </select>
                             </div>
-                            <!-- Lead Source -->
                             <div class="space-y-2">
                                 <label for="source" class="block text-sm font-semibold text-foreground">Lead Source</label>
                                 <select id="source" name="source" required class="input-style">
                                     <option value="">Select Source</option>
-                                    <!-- Options populated by JS -->
-                                </select>
+                                    </select>
                             </div>
-                            <!-- Phase (Old/New) -->
                             <div class="space-y-2">
                                 <label for="oldNew" class="block text-sm font-semibold text-foreground">Phase (New/Old)</label>
                                 <select id="oldNew" name="oldNew" required class="input-style">
@@ -275,19 +252,15 @@
                         </div>
                     </div>
                     
-                    <!-- Row 3: Automatic Fields (Hidden/Read-Only) -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
                         <div class="space-y-2">
                             <label for="codePassDisplay" class="block text-sm font-semibold text-foreground">Confirmation Code (Generated)</label>
-                            <!-- Adiciona as classes de flex e h-12 de volta para garantir o alinhamento e altura -->
                             <div id="codePassDisplay" class="h-12 flex items-center input-display-style">--/--/----</div>
                         </div>
                         <div class="space-y-2">
                             <label for="reminderDateDisplay" class="block text-sm font-semibold text-foreground">Reminder Date (5 Months)</label>
-                            <!-- Adiciona as classes de flex e h-12 de volta para garantir o alinhamento e altura -->
                             <div id="reminderDateDisplay" class="h-12 flex items-center input-display-style">--/--/----</div>
                         </div>
-                        <!-- Campos automáticos para data (Type, Week, Month, Year) -->
                         <div class="space-y-2 hidden">
                             <label for="data" class="block text-sm font-semibold text-foreground">Creation Date (Auto)</label>
                             <input type="date" id="data" name="data" class="input-style">
@@ -309,7 +282,6 @@
         </div>
     </main>
 
-    <!-- Custom Input Style and Fixes -->
     <style>
         .input-style {
             /* Borda cinza escura para ser visível mesmo quando inativo */
@@ -340,7 +312,6 @@
         }
     </style>
     
-    <!-- Includes the Dashboard JS Script -->
     <script src="dashboard.js"></script>
 </body>
 </html>
