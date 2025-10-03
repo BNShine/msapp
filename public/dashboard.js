@@ -83,15 +83,16 @@ async function getCityFromZip(zipCode) {
 
 // *** LÓGICA PARA SUGERIR TÉCNICO ***
 async function updateSuggestedTechnician(customerState, suggestedTechDisplay) {
-    // Estilos padrão para display/dropdown
-    const inputStyleClasses = 'mt-1 block w-full h-12 rounded-xl border-2 border-foreground/80 hover:border-brand-primary transition-colors bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground/80';
-    const displayStyleClasses = 'mt-1 w-full rounded-xl border-2 border-foreground/80 bg-muted/50 px-3 py-2 text-sm font-mono flex items-center';
+    // Estilos que criam o visual de "input" - aplicados ao SELECT
+    const inputStyleClassesForSelect = 'block w-full h-full rounded-xl border-2 border-foreground/80 hover:border-brand-primary transition-colors bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground/80';
 
-    suggestedTechDisplay.classList.remove('text-green-600', 'text-red-600');
-    suggestedTechDisplay.classList.add(...displayStyleClasses.split(' ').filter(c => c !== 'flex' && c !== 'items-center'));
-    suggestedTechDisplay.innerHTML = 'Procurando técnicos...'; // Loading state
+    // 1. Configura o DIV para o estado de LOADING: adiciona classes de caixa para o texto
+    suggestedTechDisplay.className = 'h-12 w-full flex items-center bg-muted/50 px-3 py-2 text-muted-foreground font-medium rounded-xl border-2 border-foreground/80';
+    suggestedTechDisplay.innerHTML = 'Procurando...'; 
 
     if (!customerState) {
+        // Reseta para o estado inicial se o CEP for inválido/incompleto
+        suggestedTechDisplay.className = 'h-12 w-full flex items-center bg-muted/50 px-3 py-2 text-muted-foreground font-medium rounded-xl border-2 border-foreground/80';
         suggestedTechDisplay.textContent = '--/--/----';
         return;
     }
@@ -128,27 +129,29 @@ async function updateSuggestedTechnician(customerState, suggestedTechDisplay) {
         // 4. Render Dropdown or Message
         if (suggestedTechs.length > 0) {
             
-            let dropdownHTML = `<select id="suggestedTechSelect" name="technician" class="${inputStyleClasses} w-full">`;
+            // CORREÇÃO DA SOBREPOSIÇÃO: Remove *todos* os estilos de "caixa" do DIV externo 
+            // e deixa apenas a altura/largura, aplicando o estilo de caixa ao SELECT interno.
+            suggestedTechDisplay.className = 'h-12 w-full';
             
-            // Add a default empty option and the suggested technicians
+            // Cria o SELECT com a estilização completa de input.
+            let dropdownHTML = `<select id="suggestedTechSelect" name="technician" class="${inputStyleClassesForSelect} w-full h-full">`;
+            
             dropdownHTML += `<option value="">Selecione um técnico (Central)</option>`;
             suggestedTechs.forEach((name) => {
                 dropdownHTML += `<option value="${name}">${name}</option>`;
             });
 
             dropdownHTML += `</select>`;
-            // Remove the placeholder classes from the display div and inject the select
-            suggestedTechDisplay.classList.remove('input-display-style', 'font-medium', 'text-muted-foreground');
             suggestedTechDisplay.innerHTML = dropdownHTML;
         } else {
-            // Fallback message
-            suggestedTechDisplay.classList.add('input-display-style', 'font-medium', 'text-red-600');
+            // Renderiza o fallback, restaurando o estilo de caixa (displayStyleClasses) e erro.
+            suggestedTechDisplay.className = 'h-12 w-full flex items-center bg-muted/50 px-3 py-2 font-medium rounded-xl border-2 border-foreground/80 text-red-600';
             suggestedTechDisplay.textContent = 'Nenhum técnico Central disponível neste estado.';
         }
 
     } catch (error) {
-        console.error('Erro na lógica do técnico sugerido:', error);
-        suggestedTechDisplay.classList.add('input-display-style', 'font-medium', 'text-red-600');
+        // Tratamento de erro, garantindo que o DIV tenha o estilo de caixa
+        suggestedTechDisplay.className = 'h-12 w-full flex items-center bg-muted/50 px-3 py-2 font-medium rounded-xl border-2 border-foreground/80 text-red-600';
         suggestedTechDisplay.textContent = 'Erro ao buscar técnicos.';
     }
 }
@@ -432,15 +435,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         cityInput.value = ''; // Limpa a cidade ao digitar
         
         // Reset suggested technician display to default loading style
-        suggestedTechDisplay.innerHTML = 'Procurando...'; 
-        suggestedTechDisplay.classList.add('input-display-style', 'font-medium', 'text-muted-foreground');
+        suggestedTechDisplay.innerHTML = '--/--/----'; 
         suggestedTechDisplay.classList.remove('text-green-600', 'text-red-600');
+        suggestedTechDisplay.classList.add('input-display-style', 'font-medium', 'text-muted-foreground');
 
 
         if (zipCode.length === 5) {
             // Desabilita temporariamente o campo City
             cityInput.disabled = true;
             cityInput.placeholder = 'Buscando cidade...';
+            suggestedTechDisplay.innerHTML = 'Procurando...'; // Set to loading state after zip check
 
             const locationData = await getCityFromZip(zipCode);
 
@@ -462,11 +466,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Fallback if city not found
                 cityInput.focus();
                 cityInput.placeholder = 'Zip Code não encontrado. Digite a cidade.';
-                suggestedTechDisplay.textContent = '--/--/----';
+                suggestedTechDisplay.innerHTML = '--/--/----';
             }
         } else {
              // Reset if zip code is incomplete
-             suggestedTechDisplay.textContent = '--/--/----';
+             suggestedTechDisplay.innerHTML = '--/--/----';
         }
     });
     // *** FIM NOVO EVENT LISTENER ***
