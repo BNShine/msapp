@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const monthFilter = document.getElementById('month-filter');
     const yearFilter = document.getElementById('year-filter');
     const reminderFilter = document.getElementById('reminder-filter');
+    const displayDataBtn = document.getElementById('display-data-btn'); // Novo elemento
     const totalAppointmentsCount = document.getElementById('totalAppointmentsCount');
     const totalPetsCount = document.getElementById('totalPetsCount');
 
@@ -39,8 +40,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Function to render the table rows based on filtered data
     function renderTable(data) {
         tableBody.innerHTML = ''; // Clear the table
+        
         if (data.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="12" class="p-4 text-center text-muted-foreground">Nenhum cliente encontrado.</td></tr>';
+            // Verifica se a lista de dados está vazia para definir a mensagem
+            const message = allCustomersData.length > 0 
+                ? 'Nenhum cliente encontrado para os filtros selecionados.' 
+                : 'Selecione os filtros e pressione "Exibir" para carregar os dados.';
+
+            tableBody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-muted-foreground">${message}</td></tr>`;
             totalAppointmentsCount.textContent = 0;
             totalPetsCount.textContent = 0;
             return;
@@ -89,6 +96,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Function to apply all filters
     function applyFilters() {
+        // Se os dados ainda não foram carregados, apenas retorna e exibe a mensagem padrão
+        if (allCustomersData.length === 0) {
+            renderTable([]); 
+            return;
+        }
+        
         const searchTerm = searchInput.value.toLowerCase();
         const selectedStartDate = startDateFilter.value ? new Date(startDateFilter.value) : null;
         const selectedEndDate = endDateFilter.value ? new Date(endDateFilter.value) : null;
@@ -132,46 +145,86 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderTable(filteredData);
     }
     
-    // Function to populate filter dropdowns
-    function populateFilters(data) {
-        const franchises = new Set();
-        const closers = new Set();
-        const months = new Set();
-        const years = new Set();
-        data.forEach(item => {
-            if (item.franchise) franchises.add(item.franchise);
-            if (item.closer1) closers.add(item.closer1);
-            if (item.closer2) closers.add(item.closer2);
-            if (item.month) months.add(item.month);
-            if (item.year) years.add(item.year);
-        });
-
-        populateDropdowns(franchiseFilter, [...franchises].sort());
-        populateDropdowns(closerFilter, [...closers].sort());
-        populateDropdowns(monthFilter, [...months].sort((a,b) => a-b));
-        populateDropdowns(yearFilter, [...years].sort((a,b) => a-b));
-    }
-
-    // Main function to fetch and initialize the dashboard
-    async function initDashboard() {
+    // Function to populate filter dropdowns using dedicated API calls (new logic)
+    async function populateFilterDropdowns() {
         try {
+            // Busca listas de meses/anos e listas de funcionários/franquias
+            const [listsResponse, dashboardResponse] = await Promise.all([
+                fetch('/api/get-lists'),
+                fetch('/api/get-dashboard-data')
+            ]);
+
+            const lists = await listsResponse.json();
+            const dashboardData = await dashboardResponse.json();
+
+            // Popula listas estáticas
+            populateDropdowns(monthFilter, lists.months);
+            populateDropdowns(yearFilter, lists.years);
+            
+            // Popula listas dinâmicas (Franquias e Closers/Employees)
+            franchiseFilter.innerHTML = '<option value=\"\">All Franchises</option>';
+            populateDropdowns(franchiseFilter, dashboardData.franchises);
+            
+            closerFilter.innerHTML = '<option value=\"\">All Closers</option>';
+            populateDropdowns(closerFilter, dashboardData.employees); 
+
+        } catch (error) {
+            console.error('Error populating filter dropdowns:', error);
+        }
+    }
+    
+    // Function to fetch data, apply filters, and render (called by the button)
+    async function handleDisplayDataClick() {
+        // 1. Desabilita o botão e mostra o estado de carregamento
+        displayDataBtn.disabled = true;
+        displayDataBtn.textContent = 'Carregando...';
+
+        totalAppointmentsCount.textContent = 0;
+        totalPetsCount.textContent = 0;
+        tableBody.innerHTML = '<tr><td colspan="12" class="p-4 text-center">Carregando dados da API...</td></tr>';
+        
+        try {
+            // 2. Busca todos os dados do cliente (a chamada de custo, agora sob demanda)
             const response = await fetch('/api/get-customers-data');
             if (!response.ok) {
-                throw new Error('Failed to load customer data.');
+                 const error = await response.json();
+                 throw new Error(error.error || 'Failed to load customer data.');
             }
             const data = await response.json();
             allCustomersData = data.customers;
             
-            renderTable(allCustomersData);
-            populateFilters(allCustomersData);
-
+            // 3. Aplica Filtros e Renderiza
+            applyFilters(); 
+            
         } catch (error) {
             console.error('Error fetching customer data:', error);
-            tableBody.innerHTML = '<tr><td colspan="12" class="p-4 text-center text-red-600">Erro ao carregar dados. Tente novamente.</td></tr>';
+            const errorMessage = `Erro ao carregar dados: ${error.message}.`;
+            tableBody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-red-600">${errorMessage}</td></tr>`;
+            totalAppointmentsCount.textContent = 0;
+            totalPetsCount.textContent = 0;
+        } finally {
+            // 4. Reabilita o botão e reseta o texto
+            displayDataBtn.disabled = false;
+            displayDataBtn.textContent = 'Exibir';
         }
     }
 
-    // Add event listeners for filters
+    // Main function to initialize the dashboard (new logic)
+    async function initDashboard() {
+        // 1. Popula os dropdowns de filtro
+        await populateFilterDropdowns(); 
+        
+        // 2. Define o estado inicial: sem dados carregados, solicita ao usuário que clique no botão
+        allCustomersData = [];
+        totalAppointmentsCount.textContent = 0;
+        totalPetsCount.textContent = 0;
+        renderTable([]); // Exibe a mensagem de "Pressione Exibir"
+    }
+
+    // Adiciona event listeners para os filtros e o novo botão
+    if (displayDataBtn) {
+        displayDataBtn.addEventListener('click', handleDisplayDataClick);
+    }
     searchInput.addEventListener('input', applyFilters);
     startDateFilter.addEventListener('change', applyFilters);
     endDateFilter.addEventListener('change', applyFilters);
