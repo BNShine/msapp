@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technician Scheduler</title>
+    <link href="output.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide-static@latest/dist/umd/lucide.js"></script>
+    <style>
+        .scheduler-grid {
+            display: grid;
+            /* Defina uma coluna para a linha do tempo (Time) + Colunas dinâmicas para Técnicos */
+            grid-template-columns: 80px repeat(var(--num-techs), 1fr); 
+            grid-auto-rows: minmax(60px, auto); /* Cada hora tem uma altura mínima */
+            overflow-x: auto;
+        }
+        .time-slot {
+            height: 60px; /* Altura padrão para 1 hora */
+        }
+        .appointment-block {
+            /* 2 horas de duração (2 * 60px de altura) */
+            height: 120px; 
+            position: absolute;
+            width: 95%; /* 95% da coluna para espaçamento */
+            z-index: 10;
+        }
+        .timeline-header {
+            grid-column: 1;
+            position: sticky;
+            left: 0;
+            background-color: hsl(var(--card));
+            z-index: 20;
+        }
+        .tech-column-header {
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-background flex flex-col">
+
+    <header class="bg-card shadow-large border-b border-border">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center gap-4">
+            <h1 class="text-xl font-bold text-foreground">Technician Scheduler</h1>
+          </div>
+          <a href="appointments.html" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
+             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-4 h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+             New Appointment
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 p-8 overflow-y-auto">
+        <div class="max-w-[86rem] mx-auto space-y-8">
+
+            <section class="rounded-lg border bg-card text-card-foreground shadow-large">
+                <div class="p-6 border-b border-border flex justify-between items-center">
+                    <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">Weekly Schedule</h2>
+                    <div class="flex gap-4">
+                        <button id="prev-week" class="p-2 border rounded-md hover:bg-muted">Prev</button>
+                        <span id="current-week-display" class="font-bold text-lg flex items-center">Sep 29 - Oct 05, 2025</span>
+                        <button id="next-week" class="p-2 border rounded-md hover:bg-muted">Next</button>
+                    </div>
+                </div>
+                
+                <div class="flex">
+                    <div id="tech-filter-panel" class="w-64 border-r border-border p-4 space-y-4 flex-shrink-0">
+                        <h3 class="text-lg font-semibold">Technicians</h3>
+                        <div id="tech-checkboxes" class="space-y-2 max-h-96 overflow-y-auto">
+                            <p class="text-sm text-muted-foreground">Loading...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 overflow-x-auto p-4">
+                        <div id="scheduler-header" class="scheduler-grid mb-2" style="--num-techs: 1;">
+                            <div class="timeline-header p-2 font-semibold">Time</div>
+                            </div>
+                        <div id="scheduler-body" class="scheduler-grid relative min-w-full" style="--num-techs: 1;">
+                            </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-lg border bg-card text-card-foreground shadow-large p-6">
+                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-6">Technician Availability Configuration</h2>
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div class="space-y-4">
+                        <label for="tech-config-select" class="block text-sm font-semibold text-foreground">Select Technician to Configure</label>
+                        <select id="tech-config-select" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <option value="">Select Technician</option>
+                        </select>
+                    </div>
+                    <div class="xl:col-span-2">
+                        <button id="save-availability-btn" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
+                            Save Availability
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="availability-form-container" class="mt-6 space-y-4">
+                    </div>
+            </section>
+        </div>
+    </main>
+    
+    <script src="calendar.js"></script>
+</body>
+</html>
