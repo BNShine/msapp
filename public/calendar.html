@@ -149,7 +149,7 @@
     <script src="calendar.js"></script>
 <div id="edit-appointment-modal" class="modal-overlay-fixed hidden">
     <div class="bg-card p-6 rounded-lg shadow-2xl w-full max-w-sm relative" style="z-index: 1001;">
-        <button type="button" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800" onclick="document.getElementById('edit-appointment-modal').classList.add('hidden'); document.body.classList.remove('modal-open');">
+        <button type="button" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800" id="modal-close-x-btn">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
         
@@ -187,7 +187,7 @@
             <button id="modal-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
                 Save Changes
             </button>
-            <button id="modal-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted" onclick="document.getElementById('edit-appointment-modal').classList.add('hidden'); document.body.classList.remove('modal-open');">
+            <button id="modal-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">
                 Cancel
             </button>
         </div>
