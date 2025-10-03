@@ -3,7 +3,7 @@
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import dotenv from 'dotenv';
-import { excelDateToDateTime } from './utils.js'; // Reutilizando a função de data
+import { excelDateToDateTime } from './utils.js';
 import { SHEET_NAME_APPOINTMENTS } from './configs/sheets-config.js';
 
 dotenv.config();
@@ -29,7 +29,6 @@ export default async function handler(req, res) {
             return res.status(404).json({ error: `Planilha "${SHEET_NAME_APPOINTMENTS}" não encontrada.` });
         }
 
-        // Carrega todas as linhas
         const rows = await sheetAppointments.getRows();
 
         const headerRow = sheetAppointments.headerValues;
@@ -50,22 +49,20 @@ export default async function handler(req, res) {
             const appointmentDateRaw = getCellValue('Date (Appointment)');
             const technician = getCellValue('Technician');
             
-            // Requer Technician e data de agendamento válida
             if (!technician || !appointmentDateRaw) {
                 return null;
             }
 
             return {
-                id: row.rowNumber, // Importante para o arrastar e soltar (drag-and-drop)
+                id: row.rowNumber,
                 technician: technician,
                 appointmentDate: excelDateToDateTime(appointmentDateRaw), // YYYY/MM/DD HH:MM
                 customers: getCellValue('Customers'),
                 code: getCellValue('Code'),
-                // CAMPO REQUERIDO: Verification
                 verification: getCellValue('Verification') || 'Scheduled', 
                 petShowed: getCellValue('Pet Showed'),
             };
-        }).filter(a => a !== null); // Remove agendamentos sem técnico ou data
+        }).filter(a => a !== null);
 
         return res.status(200).json({ appointments });
 
