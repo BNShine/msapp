@@ -138,10 +138,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             `<option value="${opt}" ${appt.verification === opt ? 'selected' : ''}>${opt}</option>`
         ).join('');
 
-        // EXIBE O MODAL REMOVENDO A CLASSE HIDDEN
+        // 1. EXIBE O MODAL
         editModal.classList.remove('hidden');
         
-        // Ativa o travamento de rolagem
+        // 2. Ativa o travamento de rolagem
         document.body.classList.add('modal-open');
     }
 
@@ -744,7 +744,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (searchBtn) searchBtn.addEventListener('click', handleSearch);
 
-    // Event listeners de fechamento e salvamento
+    // Event listeners de Modal
     if (modalSaveBtn) modalSaveBtn.addEventListener('click', handleSaveAppointment);
     if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal); 
     
