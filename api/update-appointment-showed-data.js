@@ -27,10 +27,11 @@ function parseToNumeric(value) {
     return isNaN(parsed) ? 0 : parsed;
 }
 
-// Função auxiliar para converter YYYY-MM-DD (de input HTML) para YYYY/MM/DD (para consistência na planilha)
+// Função auxiliar para converter YYYY-MM-DDTHH:MM (de input HTML type=datetime-local) para YYYY/MM/DD HH:MM (para consistência na planilha)
 function formatToSheetDate(isoDate) {
     if (!isoDate) return '';
-    return isoDate.replace(/-/g, '/');
+    // Converte YYYY-MM-DDTHH:MM (datetime-local format) para YYYY/MM/DD HH:MM
+    return isoDate.replace('T', ' ').replace(/-/g, '/');
 }
 
 export default async function handler(req, res) {
