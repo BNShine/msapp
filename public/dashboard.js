@@ -25,8 +25,13 @@ function setTextAndColor(elementId, text, value) {
     }
 }
 
-// Function to populate dropdowns
+// Function to populate dropdowns (FIXED DUPLICATION ISSUE)
 function populateDropdowns(selectElement, items) {
+    // Clear dynamically added options (keeping the first option which is typically "Select...")
+    while (selectElement.options.length > 1) {
+        selectElement.remove(1);
+    }
+
     if (items && Array.isArray(items)) {
         items.forEach(item => {
             if (item) {
