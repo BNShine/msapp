@@ -81,6 +81,62 @@ async function getCityFromZip(zipCode) {
 }
 // *** FIM DA FUNÇÃO DE BUSCA ***
 
+// *** VALIDAÇÃO DE SLOT DE TEMPO (09:00 - 17:00, 2h intervalos) ***
+function validateTimeSlot(dateTimeLocalValue) {
+    if (!dateTimeLocalValue) return false;
+
+    // Expected format is YYYY-MM-DDTHH:MM
+    const timePart = dateTimeLocalValue.split('T')[1];
+    if (!timePart) return false;
+
+    // Allowed slots (HH:MM) for 2-hour appointments starting at the hour
+    const allowedSlots = ['09:00', '11:00', '13:00', '15:00', '17:00'];
+
+    return allowedSlots.includes(timePart);
+}
+// *** FIM DA VALIDAÇÃO DE SLOT DE TEMPO ***
+
+// *** VERIFICAÇÃO DE CONFLITO DE AGENDAMENTO (2h duração) ***
+async function checkAppointmentConflict(dateString, technician) {
+    // dateString should be in YYYY/MM/DD HH:MM format
+    if (!dateString || !technician) return false;
+    
+    // 1. Convert client date/time (YYYY/MM/DD HH:MM) to Date objects
+    const newApptStart = new Date(dateString.replace(/\//g, '-'));
+    const newApptEnd = new Date(newApptStart.getTime() + (2 * 60 * 60 * 1000)); // 2 hours duration assumed
+
+    try {
+        const response = await fetch('/api/get-technician-appointments');
+        if (!response.ok) return false; 
+        
+        const data = await response.json();
+        const appointments = data.appointments || [];
+
+        // Filter appointments for the selected technician
+        const techAppointments = appointments.filter(appt => appt.technician === technician);
+
+        for (const appt of techAppointments) {
+            // Convert existing appointment date/time (YYYY/MM/DD HH:MM) to Date objects
+            // The API returns YYYY/MM/DD HH:MM format, which is correctly parsed here.
+            const existingStart = new Date(appt.appointmentDate.replace(/\//g, '-'));
+            const existingEnd = new Date(existingStart.getTime() + (2 * 60 * 60 * 1000)); // Assume 2 hours duration
+            
+            // Check for overlap: [Start A < End B] AND [End A > Start B]
+            const isConflict = (newApptStart.getTime() < existingEnd.getTime() && newApptEnd.getTime() > existingStart.getTime());
+            
+            if (isConflict) {
+                return true; // Conflict found
+            }
+        }
+        return false; // No conflict
+    } catch (error) {
+        console.error("Error during conflict check:", error);
+        return false; // Fail safe, allow scheduling if check fails
+    }
+}
+// *** FIM DA VERIFICAÇÃO DE CONFLITO ***
+
+
 // *** LÓGICA PARA SUGERIR TÉCNICO ***
 async function updateSuggestedTechnician(customerState, suggestedTechDisplay) {
     // Estilos que criam o visual de "input" - aplicados ao SELECT
@@ -343,14 +399,28 @@ async function handleFormSubmission(event) {
         data[key] = value;
     });
     
-    // NOTE: The suggested technician is now passed as `data.technician` if the select element exists.
+    const technician = data.technician || '';
+    const appointmentDateLocal = data.appointmentDate; // YYYY-MM-DDTHH:MM
 
-    // 1. FORMAT APPOINTMENT DATE/TIME: Convert YYYY-MM-DDTHH:MM (datetime-local format) to YYYY/MM/DD HH:MM
-    let formattedAppointmentDate = data.appointmentDate;
-    if (formattedAppointmentDate) {
-        formattedAppointmentDate = formattedAppointmentDate.replace('T', ' ').replace(/-/g, '/');
+    // 1. Time Slot Validation (09:00 - 17:00, 2h intervals)
+    if (!validateTimeSlot(appointmentDateLocal)) {
+        alert('Horário inválido. Selecione um horário nos slots de 09:00, 11:00, 13:00, 15:00, ou 17:00.');
+        return; // STOP submission
     }
 
+    // Convert to YYYY/MM/DD HH:MM format for API payload and Conflict Check
+    const formattedAppointmentDate = appointmentDateLocal.replace('T', ' ').replace(/-/g, '/');
+
+    // 2. Conflict Validation (requires technician and formatted date string)
+    if (technician) { 
+        const hasConflict = await checkAppointmentConflict(formattedAppointmentDate, technician);
+        
+        if (hasConflict) {
+            alert("Schedule locked, choose another date/time");
+            return; // STOP submission
+        }
+    }
+    
     const formattedData = {
         type: data.type,
         data: data.data,
@@ -373,8 +443,7 @@ async function handleFormSubmission(event) {
         reminderDate: document.getElementById('reminderDate').value,
         verification: 'Scheduled',
         zipCode: data.zipCode, // Valor do campo Zip Code
-        // NEW: Include the selected technician from the dropdown in the payload
-        technician: data.technician || '', 
+        technician: technician, // Inclui o técnico selecionado
     };
 
     try {
