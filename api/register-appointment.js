@@ -1,4 +1,4 @@
-// api/register-appointment.js
+// bnshine/msapp/msapp-2b63d2d7d550a5666136cfa304877018159c1add/api/register-appointment.js
 
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
@@ -21,10 +21,9 @@ export default async function handler(req, res) {
     }
 
     try {
-        // *** CAMPO 'technician' ADICIONADO AQUI ***
         const { type, data, pets, closer1, closer2, customers, phone, oldNew, appointmentDate, serviceValue, franchise, city, source, week, month, year, code, reminderDate, verification, zipCode, technician } = req.body;
 
-        // Validação de dados de entrada (o campo technician é opcional)
+        // Validação de campos essenciais (inclusão de 'technician' aqui)
         if (!type || !data || !customers || !phone || !appointmentDate || !serviceValue || !franchise || !city || !source) {
             return res.status(400).json({ success: false, message: 'Todos os campos obrigatórios precisam ser preenchidos.' });
         }
@@ -32,6 +31,12 @@ export default async function handler(req, res) {
         if (!verification) {
              return res.status(400).json({ success: false, message: 'O campo de verificação está faltando.' });
         }
+        
+        // --- NOVA VALIDAÇÃO OBRIGATÓRIA (Suggested Technician) ---
+        if (!technician) {
+            return res.status(400).json({ success: false, message: 'O campo Suggested Technician é obrigatório.' });
+        }
+        // --------------------------------------------------------
 
         await doc.loadInfo();
         const sheet = doc.sheetsByTitle[SHEET_NAME_APPOINTMENTS];
@@ -60,7 +65,7 @@ export default async function handler(req, res) {
             'Reminder Date': reminderDate,
             'Verification': verification, 
             'Zip Code': zipCode,
-            'Technician': technician, // <--- CAMPO SALVO AGORA
+            'Technician': technician, // Campo salvo
         };
 
         await sheet.addRow(newRow);
