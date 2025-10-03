@@ -262,7 +262,7 @@
                             <select id="year" name="year"><option value="2025">2025</option></select>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                             
                             <div class="space-y-2">
                                 <label for="codePassDisplay" class="block text-sm font-semibold text-foreground">Confirmation Code (Generated)</label>
@@ -278,14 +278,18 @@
                                 <label for="reminderDateDisplay" class="block text-sm font-semibold text-foreground">Reminder Date (5 Months)</label>
                                 <div id="reminderDateDisplay" class="h-12 flex items-center input-display-style">--/--/----</div>
                             </div>
-                            
+
                             <div class="space-y-2">
-                                <label for="submit" class="block text-sm font-semibold text-foreground opacity-0">Action</label>
-                                <button type="submit" form="scheduleForm" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-base font-bold bg-gradient-primary text-white hover:shadow-brand hover:-translate-y-0.5 transform transition-all duration-300 h-12 px-8">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send w-4 h-4"><path d="m22 2-11 11m0 0-3 9 9-3L22 2zM12 12 3 21"/></svg>
-                                    Register Appointment
-                                </button>
+                                <label for="suggestedTechDisplay" class="block text-sm font-semibold text-foreground">Suggested Technician</label>
+                                <div id="suggestedTechDisplay" class="h-12 flex items-center input-display-style text-muted-foreground font-medium">--/--/----</div>
                             </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <button type="submit" form="scheduleForm" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-base font-bold bg-gradient-primary text-white hover:shadow-brand hover:-translate-y-0.5 transform transition-all duration-300 h-12 px-8">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send w-4 h-4"><path d="m22 2-11 11m0 0-3 9 9-3L22 2zM12 12 3 21"/></svg>
+                                Register Appointment
+                            </button>
                         </div>
                     </div>
                 </form>
@@ -300,7 +304,6 @@
         }
         .input-display-style {
             /* Estilo da div de display baseado no input-style, garantindo padding e borda */
-            /* A classe 'block' no label acima garante que o rótulo ocupe a linha inteira */
             @apply mt-1 w-full rounded-xl border-2 border-foreground/80 bg-muted/50 px-3 py-2 text-sm font-mono text-foreground/80;
         }
 
