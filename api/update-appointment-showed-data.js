@@ -34,6 +34,20 @@ function formatToSheetDate(isoDate) {
     return isoDate.replace('T', ' ').replace(/-/g, '/');
 }
 
+// NOVO: Helper para garantir que valores numéricos/de quantidade vazios sejam salvos como '0'
+const ensureNumericString = (value) => {
+    // Se o valor for uma string vazia, null, ou undefined, retorna '0'. Caso contrário, retorna o valor como string.
+    if (value === '' || value === undefined || value === null) return '0';
+    return String(value);
+};
+
+// NOVO: Helper para garantir que o valor de porcentagem vazio seja salvo como '0%'
+const ensurePercentageString = (value) => {
+    // Se o valor for uma string vazia, null, ou undefined, retorna '0%'. Caso contrário, retorna o valor como string.
+    if (value === '' || value === undefined || value === null) return '0%';
+    return String(value);
+};
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ message: 'Método não permitido.' });
@@ -50,8 +64,7 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, message: 'O índice da linha é inválido.' });
         }
         
-        // 1. Calculate 'To Pay'
-        // NOTA: serviceShowed está sendo usado como Service Value para o cálculo do To Pay (para fins do Calendário)
+        // 1. Calculate 'To Pay' - Baseado nos valores ANTES de garantir a string '0' para o Sheet.
         const serviceValue = parseToNumeric(serviceShowed); 
         const percentageValue = parseToNumeric(percentage) / 100;
         const tipsValue = parseToNumeric(tips);
@@ -106,10 +119,13 @@ export default async function handler(req, res) {
 
         if (appointmentDateCell) appointmentDateCell.value = formatToSheetDate(appointmentDate);
         if (technicianCell) technicianCell.value = technician;
-        if (petShowedCell) petShowedCell.value = petShowed;
-        if (serviceShowedCell) serviceShowedCell.value = serviceShowed;
-        if (tipsCell) tipsCell.value = tips;
-        if (percentageCell) percentageCell.value = percentage;
+        
+        // CORREÇÃO APLICADA AQUI: Garantir que campos numéricos sejam salvos como '0' se vazios
+        if (petShowedCell) petShowedCell.value = ensureNumericString(petShowed);
+        if (serviceShowedCell) serviceShowedCell.value = ensureNumericString(serviceShowed);
+        if (tipsCell) tipsCell.value = ensureNumericString(tips);
+        if (percentageCell) percentageCell.value = ensurePercentageString(percentage); // '0%' se vazio
+        
         if (methodCell) methodCell.value = paymentMethod;
         if (verificationCell) verificationCell.value = verification;
         
