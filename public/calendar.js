@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalPercentage = document.getElementById('modal-percentage');
     const modalPaymentMethod = document.getElementById('modal-payment-method');
 
-    // VARIÁVEIS PRINCIPAIS (CORRIGIDO: Agora estão no escopo do DOMContentLoaded)
+    // VARIÁVEIS PRINCIPAIS (AGORA NO ESCOPO CORRETO)
     let allAppointments = []; 
     let allTechnicians = [];
     let selectedTechnician = ''; 
@@ -734,9 +734,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (searchBtn) searchBtn.addEventListener('click', handleSearch);
 
-    // O onclick no HTML já garante o fechamento, mas mantemos o listener do botão Cancelar para consistência
     if (modalSaveBtn) modalSaveBtn.addEventListener('click', handleSaveAppointment);
-    if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal);
+    
+    // O modalCancelBtn tem um onclick no HTML, mas aqui está a função de fechar para o JS
+    if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal); 
     
     if (saveAvailabilityBtn) saveAvailabilityBtn.addEventListener('click', () => {
         if (!techConfigSelect.value) {
