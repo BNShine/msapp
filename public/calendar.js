@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function closeEditModal() {
-        editModal.classList.add('hidden');
+        if (editModal) editModal.classList.add('hidden');
     }
 
 
@@ -491,6 +491,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             const snapOffsetTop = (newHour - 8) * SLOT_HEIGHT_PX + newMinute; 
             const targetCol = target.style.gridColumn;
 
+            // --- Lógica de Confirmação ---
+            const localAppt = allAppointments.find(a => String(a.id) === draggedAppointment.id);
+            const newDateDisplay = newDate.toLocaleDateString() + ' ' + newHour.toString().padStart(2, '0') + ':' + newMinute.toString().padStart(2, '0');
+
+            const confirmation = confirm(`Tem certeza que deseja mover o agendamento de ${localAppt.customers} para o dia ${newDateDisplay}?`);
+            
+            if (!confirmation) {
+                draggedAppointment.element.style.display = 'block';
+                return;
+            }
+            // --- Fim Confirmação ---
+
             draggedAppointment.element.style.top = `${snapOffsetTop}px`;
             draggedAppointment.element.style.gridColumn = targetCol;
             draggedAppointment.element.style.display = 'block';
@@ -498,7 +510,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const newDateSheetFormat = formatDateToYYYYMMDD(newDate) + ' ' + getTimeHHMM(newDate);
             const newDateLocalFormat = formatDateTimeForInput(newDateSheetFormat); // Para API
 
-            const localAppt = allAppointments.find(a => String(a.id) === draggedAppointment.id);
             
             if (localAppt) {
                 // Prepara o payload para a API de atualização (usando a mesma estrutura de manage-showed)
