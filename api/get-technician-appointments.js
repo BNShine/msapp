@@ -61,11 +61,11 @@ export default async function handler(req, res) {
                 code: getCellValue('Code'),
                 verification: getCellValue('Verification') || 'Scheduled', 
                 petShowed: getCellValue('Pet Showed'),
-                serviceValue: getCellValue('Service Value'), // Adding this for reference
-                serviceShowed: getCellValue('Service Showed'), // NEW: For inline edit/save calc
-                tips: getCellValue('Tips'), // NEW: For inline edit/save calc
-                percentage: getCellValue('Percentage'), // NEW: For inline edit/save calc
-                paymentMethod: getCellValue('Method'), // NEW: For inline edit/save calc
+                // CAMPOS ADICIONADOS PARA ESTABILIDADE E EDIÇÃO INLINE/MODAL
+                serviceShowed: getCellValue('Service Showed'),
+                tips: getCellValue('Tips'),
+                percentage: getCellValue('Percentage'),
+                paymentMethod: getCellValue('Method'),
             };
         }).filter(a => a !== null);
 
