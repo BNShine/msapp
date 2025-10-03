@@ -13,6 +13,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const availabilityFormContainer = document.getElementById('availability-form-container');
     const saveAvailabilityBtn = document.getElementById('save-availability-btn');
 
+    // NOVOS SELETORES DE BUSCA
+    const searchCustomer = document.getElementById('searchCustomer');
+    const searchDate = document.getElementById('searchDate');
+    const searchCode = document.getElementById('searchCode');
+    const searchTechnician = document.getElementById('searchTechnician');
+    const searchBtn = document.getElementById('searchBtn');
+
     // Modal Selectors (New)
     const editModal = document.getElementById('edit-appointment-modal');
     const modalSaveBtn = document.getElementById('modal-save-btn');
@@ -33,6 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentWeekStart = getStartOfWeek(new Date()); 
     
     let techAvailability = {}; 
+    let activeSearchApptId = null; // Armazena o ID do agendamento encontrado na busca, se houver.
     
     // CORRIGIDO: 2 horas de duração (120px)
     const SCHEDULE_DURATION_HOURS = 2; 
@@ -51,6 +59,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         d.setDate(d.getDate() - d.getDay()); 
         return d;
     }
+    
+    function getStartOfWeekFromDateStr(dateStr) {
+        // Assume dateStr is YYYY/MM/DD HH:MM
+        const datePart = dateStr.split(' ')[0]; 
+        const parts = datePart.split('/'); // Pega a parte da data YYYY/MM/DD
+        // Constrói a data no formato YYYY-MM-DD para garantir o parse correto
+        const date = new Date(parts[0], parts[1] - 1, parts[2]); 
+        return getStartOfWeek(date);
+    }
+
 
     function formatDateToYYYYMMDD(date) {
         const year = date.getFullYear();
@@ -148,6 +166,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             allTechnicians = techData.technicians || [];
             allAppointments = apptsData.appointments || [];
+            
+            // Filtra e remove agendamentos sem data válida
+            allAppointments = allAppointments.filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
 
             initializeAvailability(); 
             populateTechSelects();
@@ -180,6 +201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function handleTechSelectionChange(event) {
         selectedTechnician = event.target.value;
+        activeSearchApptId = null; // Reseta a busca ao mudar o técnico
         if (selectedTechnician) {
             selectedTechDisplay.textContent = selectedTechnician;
             loadingOverlay.classList.add('hidden');
@@ -245,29 +267,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         renderAppointments(columnMap);
         
-        if (!selectedTechnician) {
+        if (!selectedTechnician && activeSearchApptId === null) {
             loadingOverlay.classList.remove('hidden');
+        } else {
+            loadingOverlay.classList.add('hidden');
         }
         
         updateWeekDisplay();
     }
     
     function renderAppointments(columnMap) {
-        if (!selectedTechnician) return;
         
         const weekEnd = new Date(currentWeekStart);
         weekEnd.setDate(currentWeekStart.getDate() + 7);
         
-        const filteredAppointments = allAppointments.filter(appt => 
-            appt.technician === selectedTechnician
-        );
+        let appointmentsToRender = [];
         
-        filteredAppointments.forEach(appt => {
+        if (activeSearchApptId !== null) {
+             // Se houver uma busca ativa, encontre o agendamento específico
+             const foundAppt = allAppointments.find(appt => String(appt.id) === String(activeSearchApptId));
+             if (foundAppt) {
+                 appointmentsToRender.push(foundAppt);
+             }
+             // Filtra os agendamentos do MESMO TÉCNICO na mesma semana para verificar sobreposição
+             appointmentsToRender = appointmentsToRender.concat(allAppointments.filter(appt => 
+                 appt.technician === foundAppt.technician && String(appt.id) !== String(activeSearchApptId)
+             ));
+
+        } else if (selectedTechnician) {
+             // Caso contrário, filtra pelo técnico selecionado
+             appointmentsToRender = allAppointments.filter(appt => 
+                 appt.technician === selectedTechnician
+             );
+        }
+        
+        // Remove duplicatas (se necessário)
+        appointmentsToRender = Array.from(new Set(appointmentsToRender));
+
+
+        appointmentsToRender.forEach(appt => {
 
             const apptDate = parseSheetDate(appt.appointmentDate);
             if (!apptDate) return;
 
-            if (apptDate < currentWeekStart || apptDate >= weekEnd) return;
+            if (apptDate < currentWeekStart || apptDate >= weekEnd) {
+                // Se o agendamento não pertence à semana, pule.
+                return;
+            }
             
             const dateKey = formatDateToYYYYMMDD(apptDate);
             
@@ -288,15 +334,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             let bgColor = 'bg-custom-primary'; 
             
             if (appt.verification === 'Canceled') {
-                // NOVO: Usando a classe Cherry Red
+                // Usando a classe Cherry Red
                 bgColor = 'bg-cherry-red'; 
             } else if (appt.verification === 'Showed') {
                 bgColor = 'bg-green-600'; 
             }
             
-            // Lógica de Overlap: Verifica se há outro agendamento no mesmo dia que se sobrepõe
-            const overlappingAppts = filteredAppointments.filter(otherAppt => {
+            // Lógica de Overlap: Verifica se há outro agendamento do mesmo técnico que se sobrepõe
+            const overlappingAppts = allAppointments.filter(otherAppt => {
                 if (otherAppt.id === appt.id) return false;
+                
+                // Apenas verifica sobreposição com outros agendamentos do MESMO TÉCNICO
+                if (otherAppt.technician !== appt.technician) return false;
                 
                 return calculateOverlap(appt, otherAppt);
             });
@@ -308,7 +357,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 block.style.borderStyle = 'solid'; 
             }
 
-            // A classe 'appointment-block' já define a altura de 120px no HTML
             block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
             block.dataset.id = appt.id;
             block.dataset.technician = appt.technician;
@@ -343,359 +391,62 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- Nova Função para Editar/Salvar o Agendamento (Modal Logic) ---
+    // --- Lógica de Busca ---
+    function handleSearch() {
+        const customerTerm = searchCustomer.value.toLowerCase().trim();
+        // Converte o formato do input Date (YYYY-MM-DD) para o formato da planilha (YYYY/MM/DD)
+        const dateTerm = searchDate.value ? searchDate.value.replace(/-/g, '/') : ''; 
+        const codeTerm = searchCode.value.toLowerCase().trim();
+        const techTerm = searchTechnician.value.toLowerCase().trim();
 
-    function handleEditAppointmentClick(event) {
-        const block = event.currentTarget;
-        
-        const apptId = block.dataset.id;
-        const localAppt = allAppointments.find(a => String(a.id) === apptId);
-        
-        if (localAppt) {
-            openEditModal(localAppt);
+        if (!customerTerm && !dateTerm && !codeTerm && !techTerm) {
+            alert("Please enter at least one search criterion.");
+            activeSearchApptId = null;
+            renderScheduler();
+            return;
+        }
+
+        const foundAppt = allAppointments.find(appt => {
+            const matchesCustomer = !customerTerm || (appt.customers && appt.customers.toLowerCase().includes(customerTerm));
+            // A busca por data usa startsWith para encontrar a data, ignorando a hora
+            const matchesDate = !dateTerm || (appt.appointmentDate && appt.appointmentDate.startsWith(dateTerm));
+            const matchesCode = !codeTerm || (appt.code && appt.code.toLowerCase() === codeTerm);
+            const matchesTech = !techTerm || (appt.technician && appt.technician.toLowerCase().includes(techTerm));
+            
+            return matchesCustomer && matchesDate && matchesCode && matchesTech;
+        });
+
+        if (foundAppt) {
+            const apptDateStr = foundAppt.appointmentDate; // YYYY/MM/DD HH:MM
+            
+            // 1. Ajusta a semana do calendário para a semana do agendamento encontrado
+            currentWeekStart = getStartOfWeekFromDateStr(apptDateStr);
+            
+            // 2. Define o técnico como o do agendamento encontrado
+            selectedTechnician = foundAppt.technician;
+            techSelectDropdown.value = foundAppt.technician;
+            selectedTechDisplay.textContent = foundAppt.technician;
+            
+            // 3. Define a busca ativa para renderizar apenas este agendamento (e seus vizinhos de técnico/dia)
+            activeSearchApptId = foundAppt.id;
+            
+            alert(`Appointment found for: ${foundAppt.customers}. Loading week of ${apptDateStr.split(' ')[0]}.`);
+            renderScheduler();
         } else {
-            alert('Erro: Agendamento não encontrado.');
-        }
-    }
-
-    async function handleSaveAppointment(event) {
-        event.stopPropagation();
-        
-        const apptId = modalApptId.value;
-        
-        // Coleta os novos dados do modal
-        const newDateLocal = modalDate.value;
-        const newVerification = modalVerificationSelect.value;
-        const newServiceShowed = modalServiceValue.value; 
-        
-        // Validação básica do formulário modal
-        if (!newDateLocal || !newVerification) {
-             alert("Data e Status são campos obrigatórios.");
-             return;
-        }
-
-        // Converte a data para o formato aceito pela API (YYYY/MM/DD HH:MM)
-        const newAppointmentDateSheetFormat = newDateLocal.replace('T', ' ').replace(/-/g, '/');
-
-        // Encontra o agendamento na lista local (a fonte de verdade)
-        const localAppt = allAppointments.find(a => String(a.id) === apptId);
-        
-        if (!localAppt) {
-            alert('Erro: Agendamento não encontrado localmente.');
-            return;
-        }
-
-        // Usa os valores dos campos ocultos e dos campos editáveis para o payload
-        const dataToUpdate = {
-            rowIndex: parseInt(apptId, 10), // ID é o rowNumber
-            // Campos editados/do modal
-            appointmentDate: newDateLocal, 
-            verification: newVerification,
-            serviceShowed: newServiceShowed, 
-            
-            // Campos obrigatórios da API (do cache local ou hidden inputs)
-            technician: localAppt.technician,
-            petShowed: modalPetShowed.value || '',
-            tips: modalTips.value || '',
-            percentage: modalPercentage.value || '',
-            paymentMethod: modalPaymentMethod.value || '',
-        };
-
-        try {
-            const response = await fetch('/api/update-appointment-showed-data', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToUpdate),
-            });
-
-            const result = await response.json();
-            
-            if (result.success) {
-                // CORREÇÃO: Atualiza o registro localmente com TODOS os valores enviados para a API
-                localAppt.appointmentDate = newAppointmentDateSheetFormat;
-                localAppt.verification = newVerification;
-                localAppt.serviceShowed = newServiceShowed;
-                localAppt.petShowed = dataToUpdate.petShowed;
-                localAppt.tips = dataToUpdate.tips;
-                localAppt.percentage = dataToUpdate.percentage;
-                localAppt.paymentMethod = dataToUpdate.paymentMethod;
-                
-                alert('Agendamento atualizado com sucesso!');
-                closeEditModal();
-                renderScheduler(); 
-            } else {
-                alert(`Erro ao salvar: ${result.message}`);
-            }
-        } catch (error) {
-            console.error('Erro na requisição da API:', error);
-            alert('Erro de comunicação com o servidor. Tente novamente.');
+            alert("No appointment found matching the criteria.");
+            activeSearchApptId = null;
+            renderScheduler();
         }
     }
 
 
-    // [Funções de Navegação e Drag and Drop]
-
-    function updateWeekDisplay() {
-        const endOfWeek = new Date(currentWeekStart);
-        endOfWeek.setDate(currentWeekStart.getDate() + 6);
-        
-        const startMonth = currentWeekStart.toLocaleString('en-US', { month: 'short' });
-        const startDay = currentWeekStart.getDate().toString().padStart(2, '0');
-        const endMonth = endOfWeek.toLocaleString('en-US', { month: 'short' });
-        const endDay = endOfWeek.getDate().toString().padStart(2, '0');
-        const year = currentWeekStart.getFullYear();
-        
-        currentWeekDisplay.textContent = `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
-    }
+    // --- Event Listeners and Initial Setup ---
     
-    if (prevWeekBtn) prevWeekBtn.addEventListener('click', () => {
-        currentWeekStart.setDate(currentWeekStart.getDate() - 7);
-        renderScheduler();
-    });
+    // Anexa a função de busca ao botão
+    if (searchBtn) searchBtn.addEventListener('click', handleSearch);
 
-    if (nextWeekBtn) nextWeekBtn.addEventListener('click', () => {
-        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-        renderScheduler();
-    });
-
-    let draggedAppointment = null;
-    
-    function addDragAndDropListeners(element) {
-        element.addEventListener('dragstart', (e) => {
-            const id = element.dataset.id;
-            const localAppt = allAppointments.find(a => String(a.id) === id);
-
-            draggedAppointment = {
-                element: element,
-                id: id,
-                technician: element.dataset.technician,
-                originalDate: element.dataset.date,
-                // Adiciona campos de cache para o payload do drag&drop
-                verification: localAppt.verification || '',
-                serviceShowed: localAppt.serviceShowed || '', 
-                petShowed: localAppt.petShowed || '',
-                tips: localAppt.tips || '',
-                percentage: localAppt.percentage || '',
-                paymentMethod: localAppt.paymentMethod || '',
-            };
-            e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => element.style.display = 'none', 0);
-        });
-
-        element.addEventListener('dragend', (e) => {
-            e.target.style.display = 'block';
-            draggedAppointment = null;
-        });
-    }
-
-    if (schedulerBody) {
-        schedulerBody.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-        });
-
-        schedulerBody.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            
-            if (!draggedAppointment || !selectedTechnician) {
-                 if (draggedAppointment) draggedAppointment.element.style.display = 'block';
-                 return;
-            }
-
-            const target = e.target.closest('.time-slot'); 
-            if (!target) {
-                 draggedAppointment.element.style.display = 'block';
-                 return;
-            }
-            
-            const newTech = selectedTechnician; 
-            const targetDateKey = target.dataset.datekey; 
-
-            if (!targetDateKey) {
-                 draggedAppointment.element.style.display = 'block';
-                 return;
-            }
-
-            const rect = target.getBoundingClientRect();
-            const dropY = e.clientY - rect.top; 
-            
-            const minuteUnit = 15; 
-            const pixelsPerMinute = SLOT_HEIGHT_PX / 60; 
-            const snappedMinutes = Math.round(dropY / (minuteUnit * pixelsPerMinute)) * minuteUnit;
-            
-            const slotHour = parseTime(target.dataset.time) / 60; 
-            
-            const newHour = slotHour + Math.floor(snappedMinutes / 60);
-            const newMinute = (snappedMinutes % 60);
-
-            const newDate = parseSheetDate(`${targetDateKey} 00:00`); 
-            newDate.setHours(newHour, newMinute, 0, 0);
-
-            const snapOffsetTop = (newHour - 8) * SLOT_HEIGHT_PX + newMinute; 
-            const targetCol = target.style.gridColumn;
-
-            // --- Lógica de Confirmação ---
-            const localAppt = allAppointments.find(a => String(a.id) === draggedAppointment.id);
-            const newDateDisplay = newDate.toLocaleDateString() + ' ' + newHour.toString().padStart(2, '0') + ':' + newMinute.toString().padStart(2, '0');
-
-            const confirmation = confirm(`Tem certeza que deseja mover o agendamento de ${localAppt.customers} para o dia ${newDateDisplay}?`);
-            
-            if (!confirmation) {
-                draggedAppointment.element.style.display = 'block';
-                return;
-            }
-            // --- Fim Confirmação ---
-
-            draggedAppointment.element.style.top = `${snapOffsetTop}px`;
-            // Não defina a coluna aqui, a lógica abaixo cuida disso na renderização,
-            // mas mantemos o elemento visível na nova posição temporariamente.
-            // draggedAppointment.element.style.gridColumn = targetCol; 
-            draggedAppointment.element.style.display = 'block';
-            
-            const newDateSheetFormat = formatDateToYYYYMMDD(newDate) + ' ' + getTimeHHMM(newDate);
-            const newDateLocalFormat = formatDateTimeForInput(newDateSheetFormat); // Para API
-
-            
-            if (localAppt) {
-                // Prepara o payload para a API de atualização (usando dados de cache do dragstart)
-                const dataToUpdate = {
-                    rowIndex: parseInt(draggedAppointment.id, 10),
-                    appointmentDate: newDateLocalFormat, 
-                    technician: newTech,
-                    verification: draggedAppointment.verification, 
-                    serviceShowed: draggedAppointment.serviceShowed, 
-                    petShowed: draggedAppointment.petShowed,
-                    tips: draggedAppointment.tips,
-                    percentage: draggedAppointment.percentage,
-                    paymentMethod: draggedAppointment.paymentMethod,
-                };
-
-                try {
-                    const response = await fetch('/api/update-appointment-showed-data', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(dataToUpdate),
-                    });
-                    const result = await response.json();
-
-                    if (result.success) {
-                        // Atualiza o registro local
-                        localAppt.technician = newTech;
-                        localAppt.appointmentDate = newDateSheetFormat;
-                        
-                        console.log(`[API CALL SUCESSO] ID: ${localAppt.id} movido para Tech: ${newTech}, Horário: ${newDateSheetFormat}`);
-                        renderScheduler();
-                    } else {
-                        alert(`Erro ao mover agendamento: ${result.message}`);
-                        renderScheduler(); // Redesenha para reverter o movimento visual
-                    }
-                } catch (error) {
-                    alert('Erro de comunicação ao mover agendamento.');
-                    renderScheduler(); // Redesenha para reverter o movimento visual
-                }
-            }
-        });
-    }
-
-
-    function initializeAvailability() {
-        const savedConfig = localStorage.getItem('techAvailability');
-        if (savedConfig) {
-            techAvailability = JSON.parse(savedConfig);
-        }
-    }
-    
-    function renderAvailabilityForm(technician) {
-        if (!technician) {
-            availabilityFormContainer.innerHTML = '<p class="text-muted-foreground">Please select a technician.</p>';
-            return;
-        }
-        
-        const techConfig = techAvailability[technician] || {};
-        const days = DAY_NAMES;
-        const timeOptionsStart = TIME_SLOTS;
-        const timeOptionsEnd = TIME_SLOTS.slice(1);
-
-        availabilityFormContainer.innerHTML = days.map(day => {
-            const config = techConfig[day] || { start: '09:00', end: '17:00', active: (day !== 'Sun') };
-            const isDisabled = day === 'Sun' || !config.active;
-            
-            const startOptionsHtml = timeOptionsStart.map(t => 
-                `<option value="${t}" ${config.start === t ? 'selected' : ''}>${t}</option>`
-            ).join('');
-            
-            const endOptionsHtml = timeOptionsEnd.map(t => 
-                `<option value="${t}" ${config.end === t ? 'selected' : ''}>${t}</option>`
-            ).join('');
-
-            return `
-                <div class="flex items-center gap-4 p-4 border rounded-lg ${config.active ? 'border-brand-primary/20 bg-muted/50' : 'bg-muted/10'}">
-                    <input type="checkbox" id="${day}-active" data-day="${day}" class="availability-checkbox" ${config.active ? 'checked' : ''} ${day === 'Sun' ? 'disabled' : ''}>
-                    <label for="${day}-active" class="flex-1 font-semibold">${day}</label>
-                    <select data-day="${day}" data-field="start" class="w-32 p-2 border rounded-md" ${isDisabled ? 'disabled' : ''}>
-                        ${startOptionsHtml}
-                    </select>
-                    <span>to</span>
-                    <select data-day="${day}" data-field="end" class="w-32 p-2 border rounded-md" ${isDisabled ? 'disabled' : ''}>
-                        ${endOptionsHtml}
-                    </select>
-                </div>
-            `;
-        }).join('');
-        
-        availabilityFormContainer.querySelectorAll('select').forEach(select => {
-            select.addEventListener('change', handleAvailabilityChange);
-        });
-        availabilityFormContainer.querySelectorAll('.availability-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', handleAvailabilityChange);
-        });
-    }
-
-    function handleTechConfigSelectChange(e) {
-        const technician = e.target.value;
-        renderAvailabilityForm(technician);
-    }
-    
-    function handleAvailabilityChange(e) {
-        const technician = techConfigSelect.value;
-        if (!technician) return;
-        
-        const day = e.target.dataset.day;
-        const field = e.target.dataset.field;
-        const isCheckbox = e.target.type === 'checkbox';
-        
-        if (!techAvailability[technician]) {
-            techAvailability[technician] = {};
-        }
-        if (!techAvailability[technician][day]) {
-            techAvailability[technician][day] = { start: '09:00', end: '17:00', active: (day !== 'Sun') };
-        }
-        
-        if (isCheckbox) {
-            techAvailability[technician][day].active = e.target.checked;
-        } else {
-            techAvailability[technician][day][field] = e.target.value;
-        }
-        
-        renderAvailabilityForm(technician);
-    }
-
-    if (saveAvailabilityBtn) saveAvailabilityBtn.addEventListener('click', () => {
-        if (!techConfigSelect.value) {
-            alert('Please select a technician before saving.');
-            return;
-        }
-        localStorage.setItem('techAvailability', JSON.stringify(techAvailability));
-        alert('Availability saved successfully!');
-        renderScheduler(); 
-    });
-
-    if (techConfigSelect) techConfigSelect.addEventListener('change', handleTechConfigSelectChange);
-
-    // Attach listeners for modal buttons (Defensive Check)
     if (modalSaveBtn) modalSaveBtn.addEventListener('click', handleSaveAppointment);
     if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal);
 
-    // --- Initialization ---
     loadInitialData();
 });
