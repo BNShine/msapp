@@ -51,7 +51,8 @@ export default async function handler(req, res) {
         }
         
         // 1. Calculate 'To Pay'
-        const serviceValue = parseToNumeric(serviceShowed);
+        // NOTA: serviceShowed está sendo usado como Service Value para o cálculo do To Pay (para fins do Calendário)
+        const serviceValue = parseToNumeric(serviceShowed); 
         const percentageValue = parseToNumeric(percentage) / 100;
         const tipsValue = parseToNumeric(tips);
 
