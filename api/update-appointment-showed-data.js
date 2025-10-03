@@ -88,7 +88,13 @@ export default async function handler(req, res) {
         
         await sheet.loadHeaderRow();
 
-        await sheet.loadCells(`A${rowIndex}:Z${rowIndex}`);
+        // CORREÇÃO CRÍTICA AQUI: Carregar uma faixa de linhas para evitar o erro "This cell has not been loaded yet"
+        // Carrega a linha anterior (ou linha 1) e a linha seguinte.
+        const startRowForLoad = Math.max(rowIndex - 1, 1); 
+        const endRowForLoad = rowIndex + 1; 
+        
+        // Carrega um intervalo maior para garantir que a linha do índice (rowIndex) esteja carregada no cache.
+        await sheet.loadCells(`A${startRowForLoad}:Z${endRowForLoad}`);
         
         // Mapeamento dos nomes de cabeçalho para os índices de coluna.
         const headerRow = sheet.headerValues;
@@ -103,6 +109,7 @@ export default async function handler(req, res) {
                  console.warn(`Header not found: ${header}. This field will not be updated.`);
                  return null;
              }
+             // getCell espera rowNumber 0-indexed. rowIndex é 1-indexed.
              return sheet.getCell(rowIndex - 1, colIndex);
         }
 
