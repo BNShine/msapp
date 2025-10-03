@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // SOLUÇÃO DEFINITIVA: Adiciona classe para desativar a rolagem na página principal
         document.body.classList.add('modal-open');
-        window.scrollTo(0, 0); // Força a rolagem para o topo por garantia
+        window.scrollTo(0, 0); // Força a rolagem para o topo para garantir a posição
     }
 
     function closeEditModal() {
