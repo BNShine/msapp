@@ -221,6 +221,12 @@ async function handleFormSubmission(event) {
         data[key] = value;
     });
 
+    // 1. FORMAT APPOINTMENT DATE/TIME: Convert YYYY-MM-DDTHH:MM (datetime-local format) to YYYY/MM/DD HH:MM
+    let formattedAppointmentDate = data.appointmentDate;
+    if (formattedAppointmentDate) {
+        formattedAppointmentDate = formattedAppointmentDate.replace('T', ' ').replace(/-/g, '/');
+    }
+
     const formattedData = {
         type: data.type,
         data: data.data,
@@ -230,7 +236,7 @@ async function handleFormSubmission(event) {
         customers: data.customers,
         phone: data.phone,
         oldNew: data.oldNew,
-        appointmentDate: data.appointmentDate,
+        appointmentDate: formattedAppointmentDate, // Usa o novo formato YYYY/MM/DD HH:MM
         serviceValue: data.serviceValue,
         franchise: data.franchise,
         city: data.city,
@@ -290,14 +296,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('scheduleForm').addEventListener('submit', handleFormSubmission);
 
     appointmentDateInput.addEventListener('input', (event) => {
-        const appointmentDateValue = event.target.value;
+        const appointmentDateValue = event.target.value; // YYYY-MM-DDTHH:MM
         if (appointmentDateValue) {
+            // New logic to handle datetime-local input
             const appointmentDate = new Date(appointmentDateValue);
             appointmentDate.setMonth(appointmentDate.getMonth() + 5);
-            const displayDate = formatDateToYYYYMMDD(appointmentDate);
+            
+            // Format only the date part to YYYY/MM/DD for display
+            const displayDate = formatDateToYYYYMMDD(appointmentDate); 
             reminderDateDisplay.textContent = displayDate;
+            
+            // API Date format for Sheets is YYYY-MM-DD (Date Only)
             const apiDate = appointmentDate.toISOString().split('T')[0];
-            reminderDateInput.value = apiDate;
+            reminderDateInput.value = apiDate; 
         } else {
             reminderDateDisplay.textContent = '--/--/----';
             reminderDateInput.value = '';
