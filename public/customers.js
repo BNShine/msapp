@@ -1,235 +1,217 @@
-// public/customers.js (Corrigido e Implementado para o Customer Dashboard)
+// public/calendar.js
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const tableBody = document.getElementById('customers-table-body');
-    const totalAppointmentsCount = document.getElementById('totalAppointmentsCount');
-    const totalPetsCount = document.getElementById('totalPetsCount');
-    const searchInput = document.getElementById('search-input');
-    const startDateFilter = document.getElementById('start-date-filter');
-    const endDateFilter = document.getElementById('end-date-filter');
-    const franchiseFilter = document.getElementById('franchise-filter');
-    const closerFilter = document.getElementById('closer-filter');
-    const monthFilter = document.getElementById('month-filter');
-    const yearFilter = document.getElementById('year-filter');
-    const reminderFilter = document.getElementById('reminder-filter');
-    const displayDataBtn = document.getElementById('display-data-btn');
+    const techSelectDropdown = document.getElementById('tech-select-dropdown');
+    const selectedTechDisplay = document.getElementById('selected-tech-display');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const schedulerHeader = document.getElementById('scheduler-header');
+    const schedulerBody = document.getElementById('scheduler-body');
+    const currentWeekDisplay = document.getElementById('current-week-display');
+    const prevWeekBtn = document.getElementById('prev-week');
+    const nextWeekBtn = document.getElementById('next-week');
+    const techConfigSelect = document.getElementById('tech-config-select');
+    const availabilityFormContainer = document.getElementById('availability-form-container');
+    const saveAvailabilityBtn = document.getElementById('save-availability-btn');
 
-    let allCustomersData = [];
-    let allFranchises = [];
-    let allEmployees = [];
-    let allLists = {};
+    // NOVOS SELETORES DE BUSCA
+    const searchCustomer = document.getElementById('searchCustomer');
+    const searchDate = document.getElementById('searchDate');
+    const searchCode = document.getElementById('searchCode');
+    const searchTechnician = document.getElementById('searchTechnician');
+    const searchBtn = document.getElementById('searchBtn');
+
+    // Modal Selectors (New)
+    const editModal = document.getElementById('edit-appointment-modal');
+    const modalSaveBtn = document.getElementById('modal-save-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const modalVerificationSelect = document.getElementById('modal-verification');
+    const modalApptId = document.getElementById('modal-appt-id');
+    const modalDate = document.getElementById('modal-date');
+    const modalServiceValue = document.getElementById('modal-service-value');
+    const modalOriginalTechnician = document.getElementById('modal-original-technician');
+    const modalPetShowed = document.getElementById('modal-pet-showed');
+    const modalTips = document.getElementById('modal-tips');
+    const modalPercentage = document.getElementById('modal-percentage');
+    const modalPaymentMethod = document.getElementById('modal-payment-method');
+
+    // VARIÁVEIS GLOBAIS DENTRO DO ESCOPO DE DOMContentLoaded
+    let allAppointments = []; 
+    let allTechnicians = [];
+    let selectedTechnician = ''; 
+    let currentWeekStart = getStartOfWeek(new Date()); // Variável com erro
+    
+    let techAvailability = {}; 
+    let activeSearchApptId = null; 
+    
+    // CORRIGIDO: 2 horas de duração (120px)
+    const SCHEDULE_DURATION_HOURS = 2; 
+    const SLOT_HEIGHT_PX = 60; // 1 hora = 60px
+
+    const TIME_SLOTS = Array.from({ length: 11 }, (_, i) => `${(8 + i).toString().padStart(2, '0')}:00`);
+    const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const VISIBLE_DAY_INDICES = [1, 2, 3, 4, 5, 6]; // Mon a Sat
+    const VERIFICATION_OPTIONS = ["Scheduled", "Showed", "Canceled"];
 
     // --- Helper Functions ---
 
-    // Função auxiliar para popular dropdowns
-    function populateDropdowns(selectElement, items, defaultText) {
-        selectElement.innerHTML = `<option value="">${defaultText}</option>`;
-        if (items && Array.isArray(items)) {
-            items.forEach(item => {
-                if (item) {
-                    const option = document.createElement('option');
-                    option.value = item;
-                    option.textContent = item;
-                    selectElement.appendChild(option);
-                }
-            });
-        }
+    function getStartOfWeek(date) {
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - d.getDay()); 
+        return d;
     }
     
-    function formatDateToDisplay(dateStr) {
-        // Converte YYYY/MM/DD HH:MM para DD/MM/YYYY HH:MM (ou apenas data se for YYYY/MM/DD)
-        if (!dateStr) return '';
-        const parts = dateStr.split(' ');
-        const dateParts = parts[0].split('/');
-        if (dateParts.length === 3) {
-            // YYYY/MM/DD -> DD/MM/YYYY
-            return `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}${parts.length > 1 ? ' ' + parts[1] : ''}`;
-        }
-        return dateStr;
+    function getStartOfWeekFromDateStr(dateStr) {
+        // Assume dateStr is YYYY/MM/DD HH:MM
+        const datePart = dateStr.split(' ')[0]; 
+        const parts = datePart.split('/'); // Pega a parte da data YYYY/MM/DD
+        // Constrói a data no formato YYYY-MM-DD para garantir o parse correto
+        const date = new Date(parts[0], parts[1] - 1, parts[2]); 
+        return getStartOfWeek(date);
     }
 
+
+    function formatDateToYYYYMMDD(date) {
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return `${year}/${month}/${day}`;
+    }
+    
     function parseSheetDate(dateStr) {
-        // Converte YYYY/MM/DD para objeto Date (apenas data)
-        if (!dateStr) return null;
-        const [datePart] = dateStr.split(' ');
-        const parts = datePart.split('/').map(Number); // [YYYY, MM, DD]
-        if (parts.length === 3) {
-            // Month is 0-indexed in Date constructor (parts[1] - 1)
-            return new Date(parts[0], parts[1] - 1, parts[2]);
-        }
-        return null;
-    }
-
-    // --- Core Logic ---
-
-    function renderTable(data) {
-        tableBody.innerHTML = '';
-        
-        let totalAppointments = 0;
-        let totalPets = 0;
-
-        if (data.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="10" class="p-4 text-center text-muted-foreground">Nenhum cliente encontrado.</td></tr>';
-        } else {
-            data.forEach((customer) => {
-                totalAppointments++;
-                totalPets += (parseInt(customer.pets) || 0);
-
-                const row = document.createElement('tr');
-                row.classList.add('border-b', 'border-border', 'hover:bg-muted/50', 'transition-colors');
-                
-                // Truncate name
-                const customerName = customer.customers || '';
-                const truncatedCustomers = customerName.length > 25 
-                    ? customerName.substring(0, 22) + '...'
-                    : customerName;
-                
-                // Color for Reminder Date
-                const reminderClass = customer.reminderDate && customer.reminderDate.toLowerCase() === 'send-reminder' ? 'text-red-600 font-bold' : 'text-foreground';
-
-                row.innerHTML = `
-                    <td class="p-4">${customer.code || ''}</td>
-                    <td class="p-4 font-medium">${truncatedCustomers}</td>
-                    <td class="p-4">${customer.pets || '0'}</td>
-                    <td class="p-4">${customer.closer1 || ''}</td>
-                    <td class="p-4">${customer.closer2 || ''}</td>
-                    <td class="p-4">${customer.phone || ''}</td>
-                    <td class="p-4">${formatDateToDisplay(customer.appointmentDate)}</td>
-                    <td class="p-4">${customer.serviceValue || ''}</td>
-                    <td class="p-4">${customer.franchise || ''}</td>
-                    <td class="p-4 ${reminderClass}">${customer.reminderDate ? formatDateToDisplay(customer.reminderDate) : 'N/A'}</td>
-                `;
-                tableBody.appendChild(row);
-            });
-        }
-        
-        totalAppointmentsCount.textContent = totalAppointments;
-        totalPetsCount.textContent = totalPets;
-    }
-
-    function applyFilters() {
-        const searchTerm = searchInput.value.toLowerCase().trim();
-        const selectedStartDate = startDateFilter.value ? parseSheetDate(startDateFilter.value.replace(/-/g, '/')) : null;
-        const selectedEndDate = endDateFilter.value ? parseSheetDate(endDateFilter.value.replace(/-/g, '/')) : null;
-        const selectedFranchise = franchiseFilter.value.toLowerCase();
-        const selectedCloser = closerFilter.value.toLowerCase();
-        const selectedMonth = monthFilter.value;
-        const selectedYear = yearFilter.value;
-        const selectedReminder = reminderFilter.value;
-        
-        const filteredData = allCustomersData.filter(customer => {
-            
-            // Search filter
-            const matchesSearch = !searchTerm ||
-                                  (customer.customers && customer.customers.toLowerCase().includes(searchTerm)) ||
-                                  (customer.phone && customer.phone.toLowerCase().includes(searchTerm)) ||
-                                  (customer.city && customer.city.toLowerCase().includes(searchTerm));
-
-            // Date Range Filter (using only the date part YYYY/MM/DD)
-            const apptDate = parseSheetDate(customer.appointmentDate);
-            const matchesDateRange = (!selectedStartDate || (apptDate && apptDate >= selectedStartDate)) &&
-                                     (!selectedEndDate || (apptDate && apptDate <= selectedEndDate));
-            
-            // Dropdown filters
-            const matchesFranchise = !selectedFranchise || 
-                                     (customer.franchise && customer.franchise.toLowerCase() === selectedFranchise);
-            
-            const matchesCloser = !selectedCloser || 
-                                  (customer.closer1 && customer.closer1.toLowerCase() === selectedCloser) ||
-                                  (customer.closer2 && customer.closer2.toLowerCase() === selectedCloser);
-
-            const matchesMonth = !selectedMonth || (customer.month && customer.month.toString() === selectedMonth);
-            const matchesYear = !selectedYear || (customer.year && customer.year.toString() === selectedYear);
-            
-            // Reminder Filter
-            const matchesReminder = !selectedReminder || (customer.reminderDate && customer.reminderDate.toLowerCase() === 'send-reminder');
-
-            return matchesSearch && matchesDateRange && matchesFranchise && matchesCloser && matchesMonth && matchesYear && matchesReminder;
-        });
-
-        renderTable(filteredData);
+        if (!dateStr || dateStr.length < 16) return null;
+        const [datePart, timePart] = dateStr.split(' ');
+        const [year, month, day] = datePart.split('/').map(Number);
+        const [hour, minute] = timePart.split(':').map(Number);
+        return new Date(year, month - 1, day, hour, minute); 
     }
     
-    // --- Data Fetching and Initialization ---
+    function getDayOfWeek(date) {
+        return DAY_NAMES[date.getDay()];
+    }
 
-    async function initPage() {
-        tableBody.innerHTML = '<tr><td colspan="10" class="p-4 text-center">Loading customer data...</td></tr>';
+    function getTimeHHMM(date) {
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+    }
+    
+    function formatDateTimeForInput(dateTimeStr) {
+        if (!dateTimeStr) return '';
+        // Converte YYYY/MM/DD HH:MM para YYYY-MM-DDTHH:MM (datetime-local format)
+        return dateTimeStr.replace(/\//g, '-').replace(' ', 'T'); 
+    }
+
+    function parseTime(timeStr) {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+    }
+
+    // FUNÇÃO PARA CALCULAR SOBREPOSIÇÃO (2 horas de duração)
+    function calculateOverlap(apptA, apptB) {
+        const dateA = parseSheetDate(apptA.appointmentDate);
+        const dateB = parseSheetDate(apptB.appointmentDate);
+
+        if (!dateA || !dateB || formatDateToYYYYMMDD(dateA) !== formatDateToYYYYMMDD(dateB)) return false;
+
+        const durationMs = SCHEDULE_DURATION_HOURS * 60 * 60 * 1000;
         
+        const startA = dateA.getTime();
+        const endA = startA + durationMs;
+        
+        const startB = dateB.getTime();
+        const endB = startB + durationMs;
+
+        // Verifica se os intervalos de tempo se sobrepõem
+        return (startA < endB) && (endA > startB);
+    }
+    
+    function openEditModal(appt) {
+        // Populate static data needed for save payload (read from cache/local appt object)
+        modalApptId.value = appt.id;
+        modalOriginalTechnician.value = appt.technician;
+        // Campos de cache (passados via hidden inputs)
+        modalPetShowed.value = appt.petShowed || '';
+        modalTips.value = appt.tips || '';
+        modalPercentage.value = appt.percentage || '';
+        modalPaymentMethod.value = appt.paymentMethod || '';
+
+        // Populate editable fields
+        modalDate.value = formatDateTimeForInput(appt.appointmentDate);
+        modalServiceValue.value = appt.serviceShowed || '';
+
+        // Populate Verification dropdown
+        modalVerificationSelect.innerHTML = VERIFICATION_OPTIONS.map(opt => 
+            `<option value="${opt}" ${appt.verification === opt ? 'selected' : ''}>${opt}</option>`
+        ).join('');
+
+        editModal.classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+        if (editModal) editModal.classList.add('hidden');
+    }
+
+
+    // --- Data Load and Setup ---
+
+    async function loadInitialData() {
+        console.log('--- STARTING INITIAL DATA LOAD ---');
         try {
-            const [customersResponse, dashboardResponse, listsResponse] = await Promise.all([
-                fetch('/api/get-customers-data', { cache: 'no-store' }),
+            const [techDataResponse, appointmentsResponse] = await Promise.all([
                 fetch('/api/get-dashboard-data'),
-                fetch('/api/get-lists')
+                fetch('/api/get-technician-appointments')
             ]);
-            
-            // --- CORREÇÃO: Tratamento de erros detalhado ---
-            if (!customersResponse.ok) {
-                 const errorText = await customersResponse.text();
-                 let errorDetails = errorText.substring(0, 50) + '...';
-                 try {
-                      const errorJson = JSON.parse(errorText);
-                      errorDetails = errorJson.error || errorJson.message || errorDetails;
-                 } catch (e) {}
-                 throw new Error(`Failed to load customer data (Status: ${customersResponse.status}). Details: ${errorDetails}`);
-            }
-            if (!dashboardResponse.ok) {
-                 const errorText = await dashboardResponse.text();
-                 let errorDetails = errorText.substring(0, 50) + '...';
-                 try {
-                      const errorJson = JSON.parse(errorText);
-                      errorDetails = errorJson.error || errorJson.message || errorDetails;
-                 } catch (e) {}
-                 throw new Error(`Failed to load dashboard data (Status: ${dashboardResponse.status}). Details: ${errorDetails}`);
-            }
-            if (!listsResponse.ok) {
-                 const errorText = await listsResponse.text();
-                 let errorDetails = errorText.substring(0, 50) + '...';
-                 try {
-                      const errorJson = JSON.parse(errorText);
-                      errorDetails = errorJson.error || errorJson.message || errorDetails;
-                 } catch (e) {}
-                 throw new Error(`Failed to load dynamic lists (Status: ${listsResponse.status}). Details: ${errorDetails}`);
-            }
-            // --- Fim CORREÇÃO ---
 
-            const customersData = await customersResponse.json();
-            const dashboardData = await dashboardResponse.json();
-            const listsData = await listsResponse.json();
-            
-            allCustomersData = customersData.customers || [];
-            allFranchises = dashboardData.franchises || [];
-            allEmployees = dashboardData.employees || [];
-            allLists = listsData;
+            console.log('API /api/get-dashboard-data Status:', techDataResponse.status);
+            console.log('API /api/get-technician-appointments Status:', appointmentsResponse.status);
 
-            // Populate filters
-            populateDropdowns(franchiseFilter, allFranchises.sort(), 'All Franchises');
-            populateDropdowns(closerFilter, allEmployees.sort(), 'All Closers');
-            populateDropdowns(monthFilter, allLists.months, 'All Months');
-            populateDropdowns(yearFilter, allLists.years, 'All Years');
+            // VERIFICAÇÃO DE SUCESSO DO FETCH: Se falhar, lança um erro com detalhes.
+            if (!techDataResponse.ok) {
+                const errorText = await techDataResponse.text();
+                let errorDetails = errorText.substring(0, 50) + '...';
+                try {
+                     const errorJson = JSON.parse(errorText);
+                     errorDetails = errorJson.error || errorJson.message || errorDetails;
+                } catch (e) {}
+                throw new Error(`Failed to load technician list (Status: ${techDataResponse.status}). Details: ${errorDetails}`);
+            }
+            if (!appointmentsResponse.ok) {
+                const errorText = await appointmentsResponse.text();
+                let errorDetails = errorText.substring(0, 50) + '...';
+                try {
+                     const errorJson = JSON.parse(errorText);
+                     errorDetails = errorJson.error || errorJson.message || errorDetails;
+                } catch (e) {}
+                throw new Error(`Failed to load appointments list (Status: ${appointmentsResponse.status}). Details: ${errorDetails}`);
+            }
+
+
+            const techData = await techDataResponse.json();
+            const apptsData = await appointmentsResponse.json();
+
+            allTechnicians = techData.technicians || [];
+            allAppointments = apptsData.appointments || [];
             
-            // Initial render
-            renderTable(allCustomersData);
+            console.log('Loaded Technicians Count:', allTechnicians.length);
+            console.log('Loaded Appointments Count (Raw):', allAppointments.length);
+            
+            // Filtra e remove agendamentos sem data válida
+            allAppointments = allAppointments.filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
+            console.log('Loaded Appointments Count (Valid):', allAppointments.length);
+
+
+            initializeAvailability(); 
+            populateTechSelects();
+            renderScheduler(); 
+            console.log('--- INITIAL DATA LOAD SUCCESSFUL ---');
+
 
         } catch (error) {
-            console.error('Error fetching data:', error);
-            const errorMessage = `Erro ao carregar dados: ${error.message}. Verifique a API e as permissões.`;
-            tableBody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-red-600">${errorMessage}</td></tr>`;
-            totalAppointmentsCount.textContent = '0';
-            totalPetsCount.textContent = '0';
-        }
-    }
+            console.error('CRITICAL ERROR during loadInitialData:', error);
+            
+            const userMessage = `Falha ao carregar dados iniciais. ${error.message || 'Erro desconhecido.'} Verifique a API e as variáveis de ambiente.`;
+            alert(userMessage);
 
-    // --- Event Listeners ---
-    displayDataBtn.addEventListener('click', (e) => { e.preventDefault(); applyFilters(); });
-    searchInput.addEventListener('input', applyFilters);
-    startDateFilter.addEventListener('change', applyFilters);
-    endDateFilter.addEventListener('change', applyFilters);
-    franchiseFilter.addEventListener('change', applyFilters);
-    closerFilter.addEventListener('change', applyFilters);
-    monthFilter.addEventListener('change', applyFilters);
-    yearFilter.addEventListener('change', applyFilters);
-    reminderFilter.addEventListener('change', applyFilters);
-
-
-    initPage();
-});
+            if (techSelectDropdown) {
+                const displayError
