@@ -34,13 +34,17 @@ function formatToSheetDate(isoDate) {
 // Helper para garantir que valores numéricos/de quantidade vazios sejam salvos como '0'
 const ensureNumericString = (value) => {
     if (value === '' || value === undefined || value === null) return '0';
-    return String(value);
+    // Remove qualquer formatação de moeda ou vírgulas que possam ter sido injetadas pelo frontend
+    const cleaned = String(value).replace(/[^0-9.-]/g, '');
+    return cleaned === '' ? '0' : cleaned;
 };
 
 // Helper para garantir que o valor de porcentagem vazio seja salvo como '0%'
 const ensurePercentageString = (value) => {
     if (value === '' || value === undefined || value === null) return '0%';
-    return String(value);
+    const stringValue = String(value);
+    if (stringValue.includes('%')) return stringValue;
+    return `${stringValue}%`;
 };
 
 export default async function handler(req, res) {
@@ -91,15 +95,15 @@ export default async function handler(req, res) {
         }
         
         // 3. Atualiza as propriedades do objeto da linha (usando nomes de cabeçalho)
-        // Isso resolve o problema "This cell has not been loaded yet"
         targetRow['Date (Appointment)'] = formatToSheetDate(appointmentDate);
         targetRow['Technician'] = technician;
-        // Campos que não podem ser vazios no Sheets
+
+        // Garante formatação correta para o Sheets
         targetRow['Pet Showed'] = ensureNumericString(petShowed);
         targetRow['Service Showed'] = ensureNumericString(serviceShowed);
         targetRow['Tips'] = ensureNumericString(tips);
         targetRow['Percentage'] = ensurePercentageString(percentage);
-        // Outros campos
+        
         targetRow['Method'] = paymentMethod;
         targetRow['Verification'] = verification;
         targetRow['To Pay'] = toPayValue.toFixed(2);
