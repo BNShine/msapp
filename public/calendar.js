@@ -316,11 +316,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             block.dataset.verification = appt.verification; 
             block.draggable = true;
             
-            // POSICIONAMENTO: Restrito à Coluna do Dia (colIndex)
-            block.style.gridColumn = colIndex; 
-            block.style.top = `${topOffset}px`;
+            // CORREÇÃO CRÍTICA: Definir a COLUNA DO GRID explicitamente para evitar vazamento horizontal
+            block.style.gridColumnStart = colIndex; 
+            block.style.gridColumnEnd = colIndex + 1;
             
-            // POSICIONAMENTO: Altura Fixa de 2 horas (120px)
+            // POSICIONAMENTO: Altura e Posição
+            block.style.top = `${topOffset}px`;
             block.style.height = `${SCHEDULE_DURATION_HOURS * SLOT_HEIGHT_PX}px`; 
 
             const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
@@ -545,7 +546,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- Fim Confirmação ---
 
             draggedAppointment.element.style.top = `${snapOffsetTop}px`;
-            draggedAppointment.element.style.gridColumn = targetCol;
+            // Não defina a coluna aqui, a lógica abaixo cuida disso na renderização,
+            // mas mantemos o elemento visível na nova posição temporariamente.
+            // draggedAppointment.element.style.gridColumn = targetCol; 
             draggedAppointment.element.style.display = 'block';
             
             const newDateSheetFormat = formatDateToYYYYMMDD(newDate) + ' ' + getTimeHHMM(newDate);
