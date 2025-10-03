@@ -65,7 +65,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         return hours * 60 + minutes;
     }
 
-    // LÓGICA DE CONFLITO REMOVIDA: function isValidAppointmentTime(...) { return true; });
+    // LÓGICA DE CONFLITO REMOVIDA: function isValidAppointmentTime(newDate, technician, currentApptId) {
+    // LÓGICA DE CONFLITO REMOVIDA A PEDIDO DO CLIENTE: Horários flexíveis e sobreposição são permitidos.
+    return true;
+});
 
         if (conflictingAppts.length > 0) {
             console.warn(`Conflito com o agendamento: ${conflictingAppts[0].customers}`);
