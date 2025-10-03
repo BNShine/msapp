@@ -286,7 +286,9 @@ async function handleFormSubmission(event) {
         value: '', 
         code: document.getElementById('codePass').value,
         reminderDate: document.getElementById('reminderDate').value,
-        verification: 'Scheduled' 
+        verification: 'Scheduled',
+        // *** CORREÇÃO APLICADA AQUI: ADICIONANDO O CAMPO zipCode ***
+        zipCode: data.zipCode // Mapeia o valor do campo de formulário
     };
 
     try {
