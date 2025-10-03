@@ -206,7 +206,9 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div class="space-y-2">
                                 <label for="appointmentDate" class="block text-sm font-semibold text-foreground">Appointment Date/Time</label>
-                                <input type="datetime-local" id="appointmentDate" name="appointmentDate" required class="input-style">
+                                <input type="datetime-local" id="appointmentDate" name="appointmentDate" required 
+                   min="2024-01-01T09:00" max="2099-12-31T17:00" step="7200" 
+                   class="input-style">
                             </div>
                             <div class="space-y-2">
                                 <label for="serviceValue" class="block text-sm font-semibold text-foreground">Estimated Value</label>
