@@ -41,8 +41,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderTable(data) {
         tableBody.innerHTML = ''; // Clear the table
         
-        // Colspan é 11 (12 colunas originais - 1 coluna removida)
-        const COLSPAN_COUNT = 11;
+        // Colspan corrigido para 12 (total de colunas, incluindo a oculta)
+        const COLSPAN_COUNT = 12;
 
         if (data.length === 0) {
             // Verifica se a lista de dados está vazia para definir a mensagem
@@ -80,6 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             row.innerHTML = `
+                <td class="p-4 hidden">${customer.date}</td>
                 <td class="p-4">${customer.customers}</td>
                 <td class="p-4">${customer.pets}</td>
                 <td class="p-4">${customer.closer1}</td>
@@ -183,7 +184,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         totalAppointmentsCount.textContent = 0;
         totalPetsCount.textContent = 0;
-        tableBody.innerHTML = '<tr><td colspan="11" class="p-4 text-center">Carregando dados da API...</td></tr>';
+        // Colspan corrigido para 12 no estado de carregamento
+        tableBody.innerHTML = '<tr><td colspan="12" class="p-4 text-center">Carregando dados da API...</td></tr>';
         
         try {
             // 2. Busca todos os dados do cliente (a chamada de custo, agora sob demanda)
@@ -201,7 +203,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error('Error fetching customer data:', error);
             const errorMessage = `Erro ao carregar dados: ${error.message}.`;
-            tableBody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-red-600">${errorMessage}</td></tr>`;
+            // Colspan corrigido para 12 no estado de erro
+            tableBody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-red-600">${errorMessage}</td></tr>`;
             totalAppointmentsCount.textContent = 0;
             totalPetsCount.textContent = 0;
         } finally {
