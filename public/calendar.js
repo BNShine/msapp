@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalPercentage = document.getElementById('modal-percentage');
     const modalPaymentMethod = document.getElementById('modal-payment-method');
 
-    // VARIÁVEIS PRINCIPAIS 
+    // VARIÁVEIS PRINCIPAIS (CORRIGIDO: Agora estão no escopo do DOMContentLoaded)
     let allAppointments = []; 
     let allTechnicians = [];
     let selectedTechnician = ''; 
@@ -243,6 +243,105 @@ document.addEventListener('DOMContentLoaded', async () => {
         element.addEventListener('dragend', (e) => {
             e.target.style.display = 'block';
             draggedAppointment = null;
+        });
+    }
+
+    if (schedulerBody) {
+        schedulerBody.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+
+        schedulerBody.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            
+            if (!draggedAppointment || !selectedTechnician) {
+                 if (draggedAppointment) draggedAppointment.element.style.display = 'block';
+                 return;
+            }
+
+            const target = e.target.closest('.time-slot'); 
+            if (!target) {
+                 draggedAppointment.element.style.display = 'block';
+                 return;
+            }
+            
+            const newTech = selectedTechnician; 
+            const targetDateKey = target.dataset.datekey; 
+
+            if (!targetDateKey) {
+                 draggedAppointment.element.style.display = 'block';
+                 return;
+            }
+
+            const rect = target.getBoundingClientRect();
+            const dropY = e.clientY - rect.top; 
+            
+            const minuteUnit = 15; 
+            const pixelsPerMinute = SLOT_HEIGHT_PX / 60; 
+            const snappedMinutes = Math.round(dropY / (minuteUnit * pixelsPerMinute)) * minuteUnit;
+            
+            const slotHour = parseTime(target.dataset.time) / 60; 
+            
+            const newHour = slotHour + Math.floor(snappedMinutes / 60);
+            const newMinute = (snappedMinutes % 60);
+
+            const newDate = parseSheetDate(`${targetDateKey} 00:00`); 
+            newDate.setHours(newHour, newMinute, 0, 0);
+
+            const snapOffsetTop = (newHour - 8) * SLOT_HEIGHT_PX + newMinute; 
+
+            const localAppt = allAppointments.find(a => String(a.id) === draggedAppointment.id);
+            const newDateDisplay = newDate.toLocaleDateString() + ' ' + newHour.toString().padStart(2, '0') + ':' + newMinute.toString().padStart(2, '0');
+
+            const confirmation = confirm(`Tem certeza que deseja mover o agendamento de ${localAppt.customers} para o dia ${newDateDisplay}?`);
+            
+            if (!confirmation) {
+                draggedAppointment.element.style.display = 'block';
+                return;
+            }
+
+            draggedAppointment.element.style.top = `${snapOffsetTop}px`;
+            draggedAppointment.element.style.display = 'block';
+            
+            const newDateSheetFormat = formatDateToYYYYMMDD(newDate) + ' ' + getTimeHHMM(newDate);
+            const newDateLocalFormat = formatDateTimeForInput(newDateSheetFormat); 
+
+            
+            if (localAppt) {
+                const dataToUpdate = {
+                    rowIndex: parseInt(draggedAppointment.id, 10),
+                    appointmentDate: newDateLocalFormat, 
+                    technician: newTech,
+                    verification: draggedAppointment.verification, 
+                    serviceShowed: draggedAppointment.serviceShowed, 
+                    petShowed: draggedAppointment.petShowed,
+                    tips: draggedAppointment.tips,
+                    percentage: draggedAppointment.percentage,
+                    paymentMethod: draggedAppointment.paymentMethod,
+                };
+
+                try {
+                    const response = await fetch('/api/update-appointment-showed-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataToUpdate),
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        localAppt.technician = newTech;
+                        localAppt.appointmentDate = newDateSheetFormat;
+                        renderScheduler();
+                    } else {
+                        alert(`Erro ao mover agendamento: ${result.message}`);
+                        renderScheduler(); 
+                    }
+                } catch (error) {
+                    alert('Erro de comunicação ao mover agendamento.');
+                    renderScheduler(); 
+                }
+            }
         });
     }
 
@@ -499,7 +598,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // --- Lógica de Busca ---
     function handleSearch() {
-        // ... (Implementação da busca)
+        const customerTerm = searchCustomer.value.toLowerCase().trim();
+        const dateTerm = searchDate.value ? searchDate.value.replace(/-/g, '/') : ''; 
+        const codeTerm = searchCode.value.toLowerCase().trim();
+        const techTerm = searchTechnician.value.toLowerCase().trim();
+
+        if (!customerTerm && !dateTerm && !codeTerm && !techTerm) {
+            alert("Please enter at least one search criterion.");
+            activeSearchApptId = null;
+            renderScheduler();
+            return;
+        }
+
+        const foundAppt = allAppointments.find(appt => {
+            const matchesCustomer = !customerTerm || (appt.customers && appt.customers.toLowerCase().includes(customerTerm));
+            const matchesDate = !dateTerm || (appt.appointmentDate && appt.appointmentDate.startsWith(dateTerm));
+            const matchesCode = !codeTerm || (appt.code && appt.code.toLowerCase() === codeTerm);
+            const matchesTech = !techTerm || (appt.technician && appt.technician.toLowerCase().includes(techTerm));
+            
+            return matchesCustomer && matchesDate && matchesCode && matchesTech;
+        });
+
+        if (foundAppt) {
+            const apptDateStr = foundAppt.appointmentDate;
+            currentWeekStart = getStartOfWeekFromDateStr(apptDateStr);
+            selectedTechnician = foundAppt.technician;
+            techSelectDropdown.value = foundAppt.technician;
+            selectedTechDisplay.textContent = foundAppt.technician;
+            activeSearchApptId = foundAppt.id;
+            
+            alert(`Appointment found for: ${foundAppt.customers}. Loading week of ${apptDateStr.split(' ')[0]}.`);
+            renderScheduler();
+        } else {
+            alert("No appointment found matching the criteria.");
+            activeSearchApptId = null;
+            renderScheduler();
+        }
     }
 
     // --- Lógica de Disponibilidade ---
@@ -511,7 +645,49 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function renderAvailabilityForm(technician) {
-        // ... (Implementação do formulário de disponibilidade)
+        if (!technician) {
+            availabilityFormContainer.innerHTML = '<p class="text-muted-foreground">Please select a technician.</p>';
+            return;
+        }
+        
+        const techConfig = techAvailability[technician] || {};
+        const days = DAY_NAMES;
+        const timeOptionsStart = TIME_SLOTS;
+        const timeOptionsEnd = TIME_SLOTS.slice(1);
+
+        availabilityFormContainer.innerHTML = days.map(day => {
+            const config = techConfig[day] || { start: '09:00', end: '17:00', active: (day !== 'Sun') };
+            const isDisabled = day === 'Sun' || !config.active;
+            
+            const startOptionsHtml = timeOptionsStart.map(t => 
+                `<option value="${t}" ${config.start === t ? 'selected' : ''}>${t}</option>`
+            ).join('');
+            
+            const endOptionsHtml = timeOptionsEnd.map(t => 
+                `<option value="${t}" ${config.end === t ? 'selected' : ''}>${t}</option>`
+            ).join('');
+
+            return `
+                <div class="flex items-center gap-4 p-4 border rounded-lg ${config.active ? 'border-brand-primary/20 bg-muted/50' : 'bg-muted/10'}">
+                    <input type="checkbox" id="${day}-active" data-day="${day}" class="availability-checkbox" ${config.active ? 'checked' : ''} ${day === 'Sun' ? 'disabled' : ''}>
+                    <label for="${day}-active" class="flex-1 font-semibold">${day}</label>
+                    <select data-day="${day}" data-field="start" class="w-32 p-2 border rounded-md" ${isDisabled ? 'disabled' : ''}>
+                        ${startOptionsHtml}
+                    </select>
+                    <span>to</span>
+                    <select data-day="${day}" data-field="end" class="w-32 p-2 border rounded-md" ${isDisabled ? 'disabled' : ''}>
+                        ${endOptionsHtml}
+                    </select>
+                </div>
+            `;
+        }).join('');
+        
+        availabilityFormContainer.querySelectorAll('select').forEach(select => {
+            select.addEventListener('change', handleAvailabilityChange);
+        });
+        availabilityFormContainer.querySelectorAll('.availability-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', handleAvailabilityChange);
+        });
     }
 
     function handleTechConfigSelectChange(e) {
@@ -520,13 +696,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function handleAvailabilityChange(e) {
-        // ... (Implementação da mudança de disponibilidade)
+        const technician = techConfigSelect.value;
+        if (!technician) return;
+        
+        const day = e.target.dataset.day;
+        const field = e.target.dataset.field;
+        const isCheckbox = e.target.type === 'checkbox';
+        
+        if (!techAvailability[technician]) {
+            techAvailability[technician] = {};
+        }
+        if (!techAvailability[technician][day]) {
+            techAvailability[technician][day] = { start: '09:00', end: '17:00', active: (day !== 'Sun') };
+        }
+        
+        if (isCheckbox) {
+            techAvailability[technician][day].active = e.target.checked;
+        } else {
+            techAvailability[technician][day][field] = e.target.value;
+        }
+        
+        renderAvailabilityForm(technician);
     }
 
 
     // --- Event Listeners e Inicialização ---
     
-    // CORRIGIDO: Event listeners para navegação da semana
     if (prevWeekBtn) prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
         renderScheduler();
@@ -539,6 +734,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (searchBtn) searchBtn.addEventListener('click', handleSearch);
 
+    // O onclick no HTML já garante o fechamento, mas mantemos o listener do botão Cancelar para consistência
     if (modalSaveBtn) modalSaveBtn.addEventListener('click', handleSaveAppointment);
     if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal);
     
