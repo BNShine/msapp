@@ -133,9 +133,10 @@ async function updateSuggestedTechnician(customerState, suggestedTechDisplay) {
             // e deixa apenas a altura/largura, aplicando o estilo de caixa ao SELECT interno.
             suggestedTechDisplay.className = 'h-12 w-full';
             
-            // Cria o SELECT com a estilização completa de input.
-            let dropdownHTML = `<select id="suggestedTechSelect" name="technician" class="${inputStyleClassesForSelect} w-full h-full">`;
+            // Cria o SELECT com a estilização completa de input. Adicionado 'required'
+            let dropdownHTML = `<select id="suggestedTechSelect" name="technician" required class="${inputStyleClassesForSelect} w-full h-full">`;
             
+            // Default option with empty value is critical for 'required' to work
             dropdownHTML += `<option value="">Selecione um técnico (Central)</option>`;
             suggestedTechs.forEach((name) => {
                 dropdownHTML += `<option value="${name}">${name}</option>`;
