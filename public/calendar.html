@@ -21,13 +21,13 @@
             position: relative; /* Container para o appointment-block (absolute) */
         }
         .appointment-block {
-            /* 2 horas de duração (2 * 60px de altura) */
-            height: 120px; 
+            /* MUDANÇA: Altura para 1 hora (60px) */
+            height: 60px; 
             position: absolute;
             width: 100%; /* GARANTE A LARGURA RESTRITA À COLUNA */
             left: 0;
             top: 0; 
-            padding: 8px; 
+            padding: 4px; /* Reduzindo padding para caber o conteúdo */
             box-sizing: border-box;
             z-index: 10;
         }
