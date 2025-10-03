@@ -41,13 +41,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderTable(data) {
         tableBody.innerHTML = ''; // Clear the table
         
+        // Colspan é 11 (12 colunas originais - 1 coluna removida)
+        const COLSPAN_COUNT = 11;
+
         if (data.length === 0) {
             // Verifica se a lista de dados está vazia para definir a mensagem
             const message = allCustomersData.length > 0 
                 ? 'Nenhum cliente encontrado para os filtros selecionados.' 
                 : 'Selecione os filtros e pressione "Exibir" para carregar os dados.';
 
-            tableBody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-muted-foreground">${message}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="${COLSPAN_COUNT}" class="p-4 text-center text-muted-foreground">${message}</td></tr>`;
             totalAppointmentsCount.textContent = 0;
             totalPetsCount.textContent = 0;
             return;
@@ -77,7 +80,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             row.innerHTML = `
-                <td class="p-4">${customer.date}</td>
                 <td class="p-4">${customer.customers}</td>
                 <td class="p-4">${customer.pets}</td>
                 <td class="p-4">${customer.closer1}</td>
@@ -181,7 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         totalAppointmentsCount.textContent = 0;
         totalPetsCount.textContent = 0;
-        tableBody.innerHTML = '<tr><td colspan="12" class="p-4 text-center">Carregando dados da API...</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="11" class="p-4 text-center">Carregando dados da API...</td></tr>';
         
         try {
             // 2. Busca todos os dados do cliente (a chamada de custo, agora sob demanda)
@@ -199,7 +201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error('Error fetching customer data:', error);
             const errorMessage = `Erro ao carregar dados: ${error.message}.`;
-            tableBody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-red-600">${errorMessage}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-red-600">${errorMessage}</td></tr>`;
             totalAppointmentsCount.textContent = 0;
             totalPetsCount.textContent = 0;
         } finally {
