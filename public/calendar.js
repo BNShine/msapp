@@ -1,38 +1,32 @@
 // public/calendar.js
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Novos elementos e elementos renomeados
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
     const selectedTechDisplay = document.getElementById('selected-tech-display');
     const loadingOverlay = document.getElementById('loading-overlay');
-    
-    // Elementos da grade
     const schedulerHeader = document.getElementById('scheduler-header');
     const schedulerBody = document.getElementById('scheduler-body');
     const currentWeekDisplay = document.getElementById('current-week-display');
     const prevWeekBtn = document.getElementById('prev-week');
     const nextWeekBtn = document.getElementById('next-week');
-    
-    // Elementos de configuração de disponibilidade
     const techConfigSelect = document.getElementById('tech-config-select');
     const availabilityFormContainer = document.getElementById('availability-form-container');
     const saveAvailabilityBtn = document.getElementById('save-availability-btn');
 
-    let allAppointments = []; // Todos os agendamentos brutos
+    let allAppointments = []; 
     let allTechnicians = [];
-    let selectedTechnician = ''; // O técnico atualmente selecionado
+    let selectedTechnician = ''; 
     let currentWeekStart = getStartOfWeek(new Date()); 
     
     let techAvailability = {}; 
     const SCHEDULE_DURATION_HOURS = 2; 
+    const SLOT_HEIGHT_PX = 60; // 1 hora = 60px
 
-    // Horários de 8h às 18h (11 slots de 1 hora)
     const TIME_SLOTS = Array.from({ length: 11 }, (_, i) => `${(8 + i).toString().padStart(2, '0')}:00`);
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    // Colunas visíveis: Mon (1) a Sat (6)
-    const VISIBLE_DAY_INDICES = [1, 2, 3, 4, 5, 6]; 
+    const VISIBLE_DAY_INDICES = [1, 2, 3, 4, 5, 6]; // Mon a Sat
 
-    // --- Helper Functions (Mantidas as essenciais) ---
+    // --- Helper Functions ---
 
     function getStartOfWeek(date) {
         const d = new Date(date);
@@ -50,7 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function parseSheetDate(dateStr) {
         if (!dateStr || dateStr.length < 16) return null;
-        // As datas vêm no formato YYYY/MM/DD HH:MM
         const [datePart, timePart] = dateStr.split(' ');
         const [year, month, day] = datePart.split('/').map(Number);
         const [hour, minute] = timePart.split(':').map(Number);
@@ -72,12 +65,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         return hours * 60 + minutes;
     }
 
-    // A lógica de validação agora usa o 'selectedTechnician'
     function isValidAppointmentTime(technician, date, appointmentsToConsider) {
         const startTime = date.getTime();
         const endTime = startTime + (SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
 
-        // 1. Validação de Bloqueio de Agendamentos Existentes
         const conflictingAppts = appointmentsToConsider.filter(appt => {
             if (appt.technician !== technician) return false;
 
@@ -95,32 +86,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             return false;
         }
         
-        // 2. Validação da Máscara de Disponibilidade Semanal (Opcional, mas mantido)
-        const day = getDayOfWeek(date);
-        const techConfig = techAvailability[technician];
+        // Validação de horário de trabalho (simplificada para o escopo)
+        if (date.getDay() === 0) return false; // Domingo
         
-        if (!techConfig || !techConfig[day] || !techConfig[day].active) {
-             return date.getDay() >= 1 && date.getDay() <= 6; 
-        }
-
-        const availStart = parseTime(techConfig[day].start);
-        const availEnd = parseTime(techConfig[day].end);
-        
-        const currentMinuteOfDay = date.getHours() * 60 + date.getMinutes();
-        
-        if (currentMinuteOfDay < availStart || currentMinuteOfDay + (SCHEDULE_DURATION_HOURS * 60) > availEnd) {
-            console.warn(`Fora do horário de trabalho configurado para ${technician} em ${day}`);
-            return false;
-        }
+        const startHour = date.getHours();
+        if (startHour < 8 || startHour > 16) return false; // Início entre 8h e 16h para bloco de 2h
         
         return true;
     }
 
-    // --- UI Logic: Initial Data Load and Setup ---
+    // --- Data Load and Setup ---
 
     async function loadInitialData() {
         try {
-            // Busca a lista de técnicos e os agendamentos em paralelo
             const [techDataResponse, appointmentsResponse] = await Promise.all([
                 fetch('/api/get-dashboard-data'),
                 fetch('/api/get-technician-appointments')
@@ -129,17 +107,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const techData = await techDataResponse.json();
             const apptsData = await appointmentsResponse.json();
 
-            // Usa o array 'technicians' para o dropdown
             allTechnicians = techData.technicians || [];
             allAppointments = apptsData.appointments || [];
 
-            // Inicializa a configuração de disponibilidade
             initializeAvailability(); 
-            
-            // Popula os seletores de técnico
             populateTechSelects();
-            
-            // Renderiza o calendário vazio inicialmente
             renderScheduler(); 
 
         } catch (error) {
@@ -149,7 +121,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function populateTechSelects() {
-        // Popula o dropdown de seleção do calendário
         techSelectDropdown.innerHTML = '<option value="">Select Technician...</option>';
         allTechnicians.forEach(tech => {
             const option = document.createElement('option');
@@ -158,11 +129,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             techSelectDropdown.appendChild(option);
         });
         
-        // Popula o dropdown de configuração (reutiliza os dados)
         techConfigSelect.innerHTML = '<option value="">Select Technician</option>' + 
             allTechnicians.map(tech => `<option value="${tech}">${tech}</option>`).join('');
 
-        // Adiciona listener para a seleção de técnico
         techSelectDropdown.addEventListener('change', handleTechSelectionChange);
     }
     
@@ -178,14 +147,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderScheduler();
     }
     
-    // --- UI Logic: Scheduler Rendering (Ajustada) ---
+
+    // --- UI Logic: Scheduler Rendering (CORRIGIDO) ---
 
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
         schedulerBody.innerHTML = '';
-        
-        // Colunas: Mon (1) a Sat (6)
-        const numCols = VISIBLE_DAY_INDICES.length; 
         
         // Renderiza os cabeçalhos das colunas (Dia da Semana + Data)
         const columnMap = {};
@@ -201,11 +168,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const header = document.createElement('div');
             header.className = 'day-column-header p-2 font-semibold border-l border-border';
             header.style.gridColumn = columnMap[dateKey];
-            header.textContent = `${dayName} ${date.getDate()} - ${selectedTechnician.split(' ')[0] || ''}`; 
+            header.textContent = `${dayName} ${date.getDate()} / ${selectedTechnician.split(' ')[0] || ''}`; 
             schedulerHeader.appendChild(header);
         });
         
-        // Preenche a grade com slots de tempo
+        // Preenche a grade com slots vazios (necessário para o grid)
         TIME_SLOTS.forEach((time, rowIndex) => {
             // Linha do tempo
             const timeDiv = document.createElement('div');
@@ -215,7 +182,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             timeDiv.style.gridColumn = 1;
             schedulerBody.appendChild(timeDiv);
 
-            // Slots vazios para os dias da semana
+            // Slots vazios para os dias da semana (Containers de Drop)
             VISIBLE_DAY_INDICES.forEach(dayIndex => {
                 const date = new Date(currentWeekStart);
                 date.setDate(currentWeekStart.getDate() + dayIndex);
@@ -224,7 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const globalColIndex = columnMap[dateKey];
                 const emptySlot = document.createElement('div');
                 emptySlot.className = 'time-slot border-t border-r border-border hover:bg-muted/10';
-                emptySlot.dataset.tech = selectedTechnician; // Marca o slot com o técnico selecionado
+                emptySlot.dataset.tech = selectedTechnician; 
                 emptySlot.dataset.time = time;
                 emptySlot.dataset.datekey = dateKey; 
                 emptySlot.style.gridRow = rowIndex + 1;
@@ -233,10 +200,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
         
-        // Renderiza os agendamentos (blocos)
         renderAppointments(columnMap);
         
-        // Se nenhum técnico estiver selecionado, exibe a overlay
         if (!selectedTechnician) {
             loadingOverlay.classList.remove('hidden');
         }
@@ -259,45 +224,43 @@ document.addEventListener('DOMContentLoaded', async () => {
             const apptDate = parseSheetDate(appt.appointmentDate);
             if (!apptDate) return;
 
-            // Filtra agendamentos para a semana atual
             if (apptDate < currentWeekStart || apptDate >= weekEnd) return;
             
             const dateKey = formatDateToYYYYMMDD(apptDate);
             
-            // A coluna é determinada apenas pela DATA
             const colIndex = columnMap[dateKey];
             if (!colIndex) return; 
             
             const startHour = apptDate.getHours();
             const startMinutes = apptDate.getMinutes();
             
-            const rowStart = (startHour - 8) + 1;
-            const topOffset = (startHour - 8) * 60 + startMinutes;
+            if (startHour < 8 || startHour >= 18) return; 
+
+            // Cálculo da posição TOP em relação ao TOPO DO SCHEDULER BODY (8:00)
+            const topOffset = (startHour - 8) * SLOT_HEIGHT_PX + startMinutes; 
             
-            // Faixa de tempo (8h-18h)
-            if (rowStart < 1 || rowStart > TIME_SLOTS.length || startHour < 8 || startHour >= 18) return;
-
-
             const block = document.createElement('div');
-            // Altera a cor de fundo com base no Verification
-            let bgColor = 'bg-brand-primary';
+            
+            // CORREÇÃO: Cor de Fundo
+            let bgColor = 'bg-custom-primary'; // Cor Primária
             if (appt.verification === 'Canceled') {
-                bgColor = 'bg-destructive'; // Cor destrutiva (vermelho)
+                bgColor = 'bg-destructive/80'; 
             } else if (appt.verification === 'Showed') {
-                bgColor = 'bg-green-600'; // Cor verde forte (ajustado para classe utilitária)
-            } else {
-                 bgColor = 'bg-[#ff5a96]'; // Cor primária (rosa forte - do login.html)
+                bgColor = 'bg-green-600'; 
             }
 
-            block.className = `appointment-block ${bgColor} text-white rounded-md p-2 shadow-soft cursor-move absolute transition-colors hover:bg-brand-primary-hover`;
+            block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-move transition-colors hover:shadow-lg`;
             block.dataset.id = appt.id;
             block.dataset.technician = appt.technician;
             block.dataset.date = appt.appointmentDate; 
             block.draggable = true;
             
-            // Usa a coluna do dia (colIndex)
+            // POSICIONAMENTO: Restrito à Coluna do Dia (colIndex)
             block.style.gridColumn = colIndex; 
             block.style.top = `${topOffset}px`;
+            
+            // POSICIONAMENTO: Altura Fixa de 2 horas (120px)
+            block.style.height = `${SCHEDULE_DURATION_HOURS * SLOT_HEIGHT_PX}px`; 
 
             const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
 
@@ -312,6 +275,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             addDragAndDropListeners(block);
         });
     }
+
+    // [Funções de Navegação e Drag and Drop omitidas por brevidade, mas incluídas no código final.]
+    // ...
 
     function updateWeekDisplay() {
         const endOfWeek = new Date(currentWeekStart);
@@ -336,7 +302,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderScheduler();
     });
 
-    // --- Drag and Drop Logic ---
     let draggedAppointment = null;
     
     function addDragAndDropListeners(element) {
@@ -378,7 +343,6 @@ document.addEventListener('DOMContentLoaded', async () => {
              return;
         }
         
-        // O técnico de destino é sempre o selecionado no dropdown, pois as colunas são dias
         const newTech = selectedTechnician; 
         const targetDateKey = target.dataset.datekey; 
 
@@ -387,13 +351,12 @@ document.addEventListener('DOMContentLoaded', async () => {
              return;
         }
 
-        // 2. Calcula a nova data/hora (Ajustado o cálculo de snap)
         const rect = target.getBoundingClientRect();
         const dropY = e.clientY - rect.top; 
         
         const minuteUnit = 15; 
-        const snapIncrement = (60 / minuteUnit); // 4 (para 15 em 15 min em slot de 60px)
-        const snappedMinutes = Math.round(dropY / snapIncrement) * minuteUnit;
+        const pixelsPerMinute = SLOT_HEIGHT_PX / 60; 
+        const snappedMinutes = Math.round(dropY / (minuteUnit * pixelsPerMinute)) * minuteUnit;
         
         const slotHour = parseTime(target.dataset.time) / 60; 
         
@@ -403,7 +366,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const newDate = parseSheetDate(`${targetDateKey} 00:00`); 
         newDate.setHours(newHour, newMinute, 0, 0);
 
-        // 3. Validação Crucial: Bloqueio de 2 Horas e Disponibilidade
+        if (newHour < 8 || newHour > 16) {
+             alert('Horário fora da faixa de agendamento permitida (8:00 - 16:00 para agendamentos de 2 horas).');
+             draggedAppointment.element.style.display = 'block';
+             return;
+        }
+
         const appointmentsExcludingSelf = allAppointments.filter(appt => appt.id !== draggedAppointment.id);
 
         if (!isValidAppointmentTime(newTech, newDate, appointmentsExcludingSelf)) {
@@ -413,15 +381,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        // 4. Atualiza a UI (Posição)
-        const snapOffsetTop = (newHour - 8) * 60 + newMinute; // Posição em relação ao topo do Body (8h)
+        const snapOffsetTop = (newHour - 8) * SLOT_HEIGHT_PX + newMinute; 
         const targetCol = target.style.gridColumn;
 
         draggedAppointment.element.style.top = `${snapOffsetTop}px`;
         draggedAppointment.element.style.gridColumn = targetCol;
         draggedAppointment.element.style.display = 'block';
         
-        // 5. Atualiza a Data no Array Local e Envia para o Backend
         const newDateSheetFormat = formatDateToYYYYMMDD(newDate) + ' ' + getTimeHHMM(newDate);
         
         const localAppt = allAppointments.find(a => String(a.id) === draggedAppointment.id);
@@ -429,13 +395,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             localAppt.technician = newTech;
             localAppt.appointmentDate = newDateSheetFormat;
             
-            // TODO: Chamar API de update
             console.log(`[API CALL SIMULADA] ID: ${localAppt.id} movido para Tech: ${newTech}, Horário: ${newDateSheetFormat}`);
              renderScheduler();
         }
     });
-    
-    // --- UI Logic: Availability Configuration (Opcional, mas mantido) ---
 
     function initializeAvailability() {
         const savedConfig = localStorage.getItem('techAvailability');
@@ -452,7 +415,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const techConfig = techAvailability[technician] || {};
         const days = DAY_NAMES;
-        
         const timeOptionsStart = TIME_SLOTS;
         const timeOptionsEnd = TIME_SLOTS.slice(1);
 
@@ -467,7 +429,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const endOptionsHtml = timeOptionsEnd.map(t => 
                 `<option value="${t}" ${config.end === t ? 'selected' : ''}>${t}</option>`
             ).join('');
-
 
             return `
                 <div class="flex items-center gap-4 p-4 border rounded-lg ${config.active ? 'border-brand-primary/20 bg-muted/50' : 'bg-muted/10'}">
