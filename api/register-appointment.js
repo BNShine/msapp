@@ -1,4 +1,4 @@
-// bnshine/msapp/msapp-b3d1729f33477a4e5366a8540b0b373ff98218e6/api/register-appointment.js
+// api/register-appointment.js
 
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
@@ -21,10 +21,10 @@ export default async function handler(req, res) {
     }
 
     try {
-        // *** CORREÇÃO APLICADA AQUI: Adicionado 'verification' e 'zipCode' à desestruturação ***
-        const { type, data, pets, closer1, closer2, customers, phone, oldNew, appointmentDate, serviceValue, franchise, city, source, week, month, year, code, reminderDate, verification, zipCode } = req.body;
+        // *** CAMPO 'technician' ADICIONADO AQUI ***
+        const { type, data, pets, closer1, closer2, customers, phone, oldNew, appointmentDate, serviceValue, franchise, city, source, week, month, year, code, reminderDate, verification, zipCode, technician } = req.body;
 
-        // Validação de dados de entrada
+        // Validação de dados de entrada (o campo technician é opcional)
         if (!type || !data || !customers || !phone || !appointmentDate || !serviceValue || !franchise || !city || !source) {
             return res.status(400).json({ success: false, message: 'Todos os campos obrigatórios precisam ser preenchidos.' });
         }
@@ -59,7 +59,8 @@ export default async function handler(req, res) {
             'Code': code,
             'Reminder Date': reminderDate,
             'Verification': verification, 
-            'Zip Code': zipCode, // <--- CAMPO MAPEADO CORRETAMENTE PARA A PLANILHA
+            'Zip Code': zipCode,
+            'Technician': technician, // <--- CAMPO SALVO AGORA
         };
 
         await sheet.addRow(newRow);
