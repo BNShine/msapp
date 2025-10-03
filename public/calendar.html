@@ -18,13 +18,17 @@
         }
         .time-slot {
             height: 60px;
-            position: relative;
+            position: relative; /* Container para o appointment-block (absolute) */
         }
         .appointment-block {
             /* 2 horas de duração (2 * 60px de altura) */
             height: 120px; 
             position: absolute;
-            width: 95%; 
+            width: 100%; /* GARANTE A LARGURA RESTRITA À COLUNA */
+            left: 0;
+            top: 0; 
+            padding: 8px; 
+            box-sizing: border-box;
             z-index: 10;
         }
         .timeline-header {
@@ -37,6 +41,9 @@
         .day-column-header {
             text-align: center;
         }
+        /* Definição de cores para classes utilitárias no JS */
+        .bg-custom-primary { background-color: hsl(337 100% 67%); }
+        .bg-green-600 { background-color: rgb(22 163 74); }
     </style>
 </head>
 <body class="min-h-screen bg-background flex flex-col">
@@ -77,11 +84,13 @@
                         <p id="selected-tech-display" class="text-sm font-bold text-brand-primary">No Technician Selected</p>
                     </div>
                     
-                    <div class="flex-1 overflow-x-auto p-4">
-                        <div id="scheduler-header" class="scheduler-grid mb-2" style="--num-techs: 6;">
+                    <div class="flex-1 overflow-x-auto">
+                        <div id="scheduler-header" class="scheduler-grid border-b border-border" style="--num-techs: 6;">
                             <div class="timeline-header p-2 font-semibold">Time</div>
-                            </div>
-                        <div id="scheduler-body" class="scheduler-grid relative min-w-full" style="--num-techs: 6;">
+                        </div>
+                        <div id="scheduler-body-wrapper" class="relative">
+                            <div id="scheduler-body" class="scheduler-grid relative min-w-full" style="--num-techs: 6;">
+                                </div>
                             <div id="loading-overlay" class="absolute inset-0 bg-white/70 flex items-center justify-center hidden z-30">
                                 <p class="text-xl font-semibold text-muted-foreground">Please select a technician.</p>
                             </div>
@@ -97,7 +106,7 @@
                         <label for="tech-config-select" class="block text-sm font-semibold text-foreground">Select Technician to Configure</label>
                         <select id="tech-config-select" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                             <option value="">Select Technician</option>
-                            </select>
+                        </select>
                     </div>
                     <div class="space-y-2">
                         <label for="save-availability-btn" class="block text-sm font-semibold text-foreground opacity-0">Action</label>
