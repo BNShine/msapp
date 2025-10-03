@@ -336,8 +336,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     customersInput.addEventListener('input', () => {
         const value = customersInput.value.trim();
         if (value.length > 0) {
-            // CÓDIGO ATUALIZADO (8 caracteres alfanuméricos):
-            const generatedCode = generateAlphanumericCode(8);
+            // CÓDIGO ATUALIZADO (10 caracteres alfanuméricos):
+            const generatedCode = generateAlphanumericCode(10);
             codePassDisplay.textContent = generatedCode;
             codePassInput.value = generatedCode;
             
