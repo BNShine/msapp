@@ -264,7 +264,9 @@ async function handleFormSubmission(event) {
         year: data.year,
         value: '', 
         code: document.getElementById('codePass').value,
-        reminderDate: document.getElementById('reminderDate').value
+        reminderDate: document.getElementById('reminderDate').value,
+        // *** CORREÇÃO APLICADA: Adiciona o campo 'verification' com o valor padrão "Scheduled" ***
+        verification: 'Scheduled' 
     };
 
     try {
