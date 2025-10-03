@@ -25,7 +25,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const TIME_SLOTS = Array.from({ length: 11 }, (_, i) => `${(8 + i).toString().padStart(2, '0')}:00`);
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const VISIBLE_DAY_INDICES = [1, 2, 3, 4, 5, 6]; // Mon a Sat
-    const VERIFICATION_OPTIONS = ["Scheduled", "Showed", "Canceled"];
 
     // --- Helper Functions ---
 
@@ -61,20 +60,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${hours}:${minutes}`;
     }
     
-    function formatDateTimeForInput(dateTimeStr) {
-        if (!dateTimeStr) return '';
-        // Converte YYYY/MM/DD HH:MM para YYYY-MM-DDTHH:MM (datetime-local format)
-        return dateTimeStr.replace(/\//g, '-').replace(' ', 'T'); 
-    }
-
     function parseTime(timeStr) {
         const [hours, minutes] = timeStr.split(':').map(Number);
         return hours * 60 + minutes;
     }
-    
-    // LÓGICA DE CONFLITO REMOVIDA:
-    // function isValidAppointmentTime(...) { return true; }
 
+    // LÓGICA DE CONFLITO REMOVIDA: function isValidAppointmentTime(...) { return true; });
+
+        if (conflictingAppts.length > 0) {
+            console.warn(`Conflito com o agendamento: ${conflictingAppts[0].customers}`);
+            return false;
+        }
+        
+        // Validação de horário de trabalho (simplificada para o escopo)
+        if (date.getDay() === 0) return false; // Domingo
+        
+        const startHour = date.getHours();
+        if (startHour < 8 || startHour > 16) return false; // Início entre 8h e 16h para bloco de 2h
+        
+        return true;
+    }
 
     // --- Data Load and Setup ---
 
@@ -230,14 +235,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 bgColor = 'bg-green-600'; 
             }
 
-            // Adiciona a classe 'editable' e o data-state
-            block.className = `appointment-block editable ${bgColor} text-white rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
+            block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-move transition-colors hover:shadow-lg`;
             block.dataset.id = appt.id;
             block.dataset.technician = appt.technician;
             block.dataset.date = appt.appointmentDate; 
-            block.dataset.servicevalue = appt.serviceValue || ''; // Novo campo Service Value
-            block.dataset.verification = appt.verification;
-            block.dataset.state = 'view';
             block.draggable = true;
             
             // POSICIONAMENTO: Restrito à Coluna do Dia (colIndex)
@@ -250,141 +251,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
 
             block.innerHTML = `
-                <div data-view-content>
-                    <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p>
-                    <p class="text-sm font-bold truncate">${appt.customers}</p>
-                    <p class="text-xs font-medium text-white/80">${appt.verification}</p>
-                    <p class="text-xs font-medium text-white/80">R$${appt.serviceValue || '0.00'}</p>
-                </div>
+                <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p>
+                <p class="text-sm font-bold truncate">${appt.customers}</p>
+                <p class="text-xs font-medium text-white/80">${appt.verification}</p>
             `;
             
             schedulerBody.appendChild(block);
             
             addDragAndDropListeners(block);
-            block.addEventListener('click', handleEditAppointmentClick);
         });
     }
 
-    // --- Nova Função para Editar/Salvar o Agendamento ---
-
-    function handleEditAppointmentClick(event) {
-        const block = event.currentTarget;
-        if (block.dataset.state === 'edit') return; // Já está em modo de edição
-        
-        block.dataset.state = 'edit';
-        block.draggable = false; // Desabilita drag ao editar
-        block.classList.remove('cursor-pointer');
-
-        // Pega os dados atuais
-        const apptId = block.dataset.id;
-        const apptDateStr = block.dataset.date;
-        const verification = block.dataset.verification;
-        const serviceValue = block.dataset.servicevalue;
-
-        // Formata a data para o input datetime-local
-        const formattedDate = formatDateTimeForInput(apptDateStr);
-
-        // Cria o HTML do modo de edição
-        const editHtml = `
-            <div class="space-y-1 p-1">
-                <input type="datetime-local" data-field="date" value="${formattedDate}" 
-                       class="w-full text-xs p-1 rounded bg-white text-gray-800 border focus:border-brand-primary" required>
-                
-                <select data-field="verification" class="w-full text-xs p-1 rounded bg-white text-gray-800 border">
-                    ${VERIFICATION_OPTIONS.map(opt => 
-                        `<option value="${opt}" ${verification === opt ? 'selected' : ''}>${opt}</option>`
-                    ).join('')}
-                </select>
-
-                <input type="text" data-field="serviceValue" value="${serviceValue}" placeholder="Service Value"
-                       class="w-full text-xs p-1 rounded bg-white text-gray-800 border focus:border-brand-primary">
-
-                <button data-id="${apptId}" data-action="save" class="mt-2 w-full text-xs font-bold text-white bg-brand-primary p-1 rounded hover:bg-brand-primary/80">
-                    Save
-                </button>
-                <button data-id="${apptId}" data-action="cancel" class="mt-1 w-full text-xs font-medium text-white bg-gray-500 p-1 rounded hover:bg-gray-600">
-                    Cancel
-                </button>
-            </div>
-        `;
-
-        block.innerHTML = editHtml;
-
-        // Adiciona listeners para Salvar e Cancelar
-        block.querySelector('[data-action="save"]').addEventListener('click', handleSaveAppointment);
-        block.querySelector('[data-action="cancel"]').addEventListener('click', (e) => {
-            e.stopPropagation(); // Evita que o clique no botão ative o modo de edição novamente
-            block.dataset.state = 'view';
-            block.draggable = true;
-            block.classList.add('cursor-pointer');
-            renderScheduler(); // Redesenha o scheduler para restaurar o card
-        });
-    }
-
-    async function handleSaveAppointment(event) {
-        event.stopPropagation();
-        const apptId = event.currentTarget.dataset.id;
-        const block = event.currentTarget.closest('.appointment-block');
-        
-        // Coleta os novos dados do formulário
-        const newDateLocal = block.querySelector('[data-field="date"]').value;
-        const newVerification = block.querySelector('[data-field="verification"]').value;
-        const newServiceValue = block.querySelector('[data-field="serviceValue"]').value;
-        
-        // Converte a data para o formato aceito pela API (YYYY/MM/DD HH:MM)
-        const newAppointmentDateSheetFormat = newDateLocal.replace('T', ' ').replace(/-/g, '/');
-
-        // Encontra o agendamento na lista local para obter outros dados necessários
-        const localAppt = allAppointments.find(a => String(a.id) === apptId);
-        
-        if (!localAppt) {
-            alert('Erro: Agendamento não encontrado localmente.');
-            return;
-        }
-
-        const dataToUpdate = {
-            rowIndex: parseInt(apptId, 10), // ID é o rowNumber
-            // Campos editados
-            appointmentDate: newDateLocal, // Envia o formato datetime-local para a API
-            verification: newVerification,
-            serviceShowed: newServiceValue,
-            
-            // Campos obrigatórios da API update-appointment-showed-data.js (podem ser vazios se não alterados)
-            technician: localAppt.technician,
-            petShowed: localAppt.petShowed || '',
-            tips: localAppt.tips || '',
-            percentage: localAppt.percentage || '',
-            paymentMethod: localAppt.paymentMethod || '',
-        };
-
-        try {
-            const response = await fetch('/api/update-appointment-showed-data', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToUpdate),
-            });
-
-            const result = await response.json();
-            
-            if (result.success) {
-                // Atualiza o registro localmente (para a próxima renderização)
-                localAppt.appointmentDate = newAppointmentDateSheetFormat;
-                localAppt.verification = newVerification;
-                localAppt.serviceValue = newServiceValue; 
-                
-                alert('Agendamento atualizado com sucesso!');
-                renderScheduler(); // Redesenha para mostrar as mudanças
-            } else {
-                alert(`Erro ao salvar: ${result.message}`);
-            }
-        } catch (error) {
-            console.error('Erro na requisição da API:', error);
-            alert('Erro de comunicação com o servidor. Tente novamente.');
-        }
-    }
-
-
-    // [Funções de Navegação e Drag and Drop]
+    // [Funções de Navegação e Drag and Drop omitidas por brevidade, mas incluídas no código final.]
+    // ...
 
     function updateWeekDisplay() {
         const endOfWeek = new Date(currentWeekStart);
@@ -413,10 +292,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function addDragAndDropListeners(element) {
         element.addEventListener('dragstart', (e) => {
-            if (element.dataset.state === 'edit') {
-                 e.preventDefault(); // Não permite arrastar se estiver editando
-                 return;
-            }
             draggedAppointment = {
                 element: element,
                 id: element.dataset.id,
@@ -424,7 +299,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 originalDate: element.dataset.date,
                 originalTop: element.style.top,
                 originalColumn: element.style.gridColumn,
-                serviceValue: element.dataset.servicevalue,
             };
             e.dataTransfer.effectAllowed = 'move';
             setTimeout(() => element.style.display = 'none', 0);
@@ -441,11 +315,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.dataTransfer.dropEffect = 'move';
     });
 
-    schedulerBody.addEventListener('drop', async (e) => {
+    schedulerBody.addEventListener('drop', (e) => {
         e.preventDefault();
         
         if (!draggedAppointment || !selectedTechnician) {
-             if (draggedAppointment) draggedAppointment.element.style.display = 'block';
+             draggedAppointment.element.style.display = 'block';
              return;
         }
 
@@ -478,8 +352,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         const newDate = parseSheetDate(`${targetDateKey} 00:00`); 
         newDate.setHours(newHour, newMinute, 0, 0);
 
-        // Sem checagem de conflito ou restrição de horário de slot.
+        if (newHour < 8 || newHour > 16) {
+             alert('Horário fora da faixa de agendamento permitida (8:00 - 16:00 para agendamentos de 2 horas).');
+             draggedAppointment.element.style.display = 'block';
+             return;
+        }
 
+        const appointmentsExcludingSelf = allAppointments.filter(appt => appt.id !== draggedAppointment.id);
+
+        if (!isValidAppointmentTime(newTech, newDate, appointmentsExcludingSelf)) {
+            alert('Conflito: Este horário se sobrepõe a um agendamento de 2h existente ou está fora da disponibilidade do técnico.');
+            
+            draggedAppointment.element.style.display = 'block';
+            return;
+        }
+        
         const snapOffsetTop = (newHour - 8) * SLOT_HEIGHT_PX + newMinute; 
         const targetCol = target.style.gridColumn;
 
@@ -488,49 +375,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         draggedAppointment.element.style.display = 'block';
         
         const newDateSheetFormat = formatDateToYYYYMMDD(newDate) + ' ' + getTimeHHMM(newDate);
-        const newDateLocalFormat = formatDateTimeForInput(newDateSheetFormat); // Para API
-
-        const localAppt = allAppointments.find(a => String(a.id) === draggedAppointment.id);
         
+        const localAppt = allAppointments.find(a => String(a.id) === draggedAppointment.id);
         if (localAppt) {
-            // Prepara o payload para a API de atualização (usando a mesma estrutura de manage-showed)
-            const dataToUpdate = {
-                rowIndex: parseInt(draggedAppointment.id, 10),
-                appointmentDate: newDateLocalFormat, 
-                technician: newTech,
-                verification: localAppt.verification, 
-                serviceShowed: localAppt.serviceValue || '', // Reusa o serviceValue do localAppt
-                // Outros campos obrigatórios da API (podem ser vazios se não alterados)
-                petShowed: localAppt.petShowed || '',
-                tips: localAppt.tips || '',
-                percentage: localAppt.percentage || '',
-                paymentMethod: localAppt.paymentMethod || '',
-            };
-
-            try {
-                const response = await fetch('/api/update-appointment-showed-data', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dataToUpdate),
-                });
-                const result = await response.json();
-
-                if (result.success) {
-                    // Atualiza o registro local
-                    localAppt.technician = newTech;
-                    localAppt.appointmentDate = newDateSheetFormat;
-                    localAppt.serviceValue = dataToUpdate.serviceShowed; 
-                    
-                    console.log(`[API CALL SUCESSO] ID: ${localAppt.id} movido para Tech: ${newTech}, Horário: ${newDateSheetFormat}`);
-                    renderScheduler();
-                } else {
-                    alert(`Erro ao mover agendamento: ${result.message}`);
-                    renderScheduler(); // Redesenha para reverter o movimento visual
-                }
-            } catch (error) {
-                alert('Erro de comunicação ao mover agendamento.');
-                renderScheduler(); // Redesenha para reverter o movimento visual
-            }
+            localAppt.technician = newTech;
+            localAppt.appointmentDate = newDateSheetFormat;
+            
+            console.log(`[API CALL SIMULADA] ID: ${localAppt.id} movido para Tech: ${newTech}, Horário: ${newDateSheetFormat}`);
+             renderScheduler();
         }
     });
 
