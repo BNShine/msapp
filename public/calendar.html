@@ -7,6 +7,7 @@
     <link href="output.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/lucide-static@latest/dist/umd/lucide.js"></script>
+    
     <style>
         .scheduler-grid {
             display: grid;
@@ -46,9 +47,16 @@
         .bg-green-600 { background-color: rgb(22 163 74); }
         /* NOVO: Cherry Red para Canceled (HSL 0 84% 45%) */
         .bg-cherry-red { background-color: hsl(0 84% 45%); }
+        
+        /* SOLUÇÃO DEFINITIVA: Desativa a rolagem da página quando o modal está aberto */
+        body.modal-open {
+            overflow: hidden !important; 
+        }
     </style>
 </head>
-<body class="bg-background"> <header class="bg-card shadow-large border-b border-border">
+<body class="bg-background">
+
+    <header class="bg-card shadow-large border-b border-border">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <div class="flex items-center gap-4">
@@ -62,7 +70,8 @@
       </div>
     </header>
 
-    <main class="p-8"> <div class="max-w-[86rem] mx-auto space-y-8">
+    <main class="p-8">
+        <div class="max-w-[86rem] mx-auto space-y-8">
 
             <section class="rounded-lg border bg-card text-card-foreground shadow-large">
                 <div class="p-6 border-b border-border flex justify-between items-center flex-wrap gap-4">
