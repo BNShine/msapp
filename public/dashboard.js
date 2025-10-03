@@ -232,7 +232,10 @@ async function fetchAndRenderDashboardData() {
 async function handleFormSubmission(event) {
     event.preventDefault();
 
+    // *** CORREÇÃO CRÍTICA AQUI: Define 'form' corretamente para o target do evento ***
     const form = event.target;
+    console.log("Submit Event Fired. Starting API call..."); 
+
     const formData = new FormData(form);
     const data = {};
     formData.forEach((value, key) => {
@@ -265,7 +268,7 @@ async function handleFormSubmission(event) {
         value: '', 
         code: document.getElementById('codePass').value,
         reminderDate: document.getElementById('reminderDate').value,
-        // *** CORREÇÃO APLICADA: Adiciona o campo 'verification' com o valor padrão "Scheduled" ***
+        // CORREÇÃO ANTERIOR MANTIDA
         verification: 'Scheduled' 
     };
 
@@ -279,13 +282,18 @@ async function handleFormSubmission(event) {
         });
 
         const result = await response.json();
+        console.log("API Response:", result);
 
         if (result.success) {
-            form.reset();
-            fetchAndRenderDashboardData(); // Update all metrics after a successful registration
+            form.reset(); // Usa o 'form' capturado
+            fetchAndRenderDashboardData(); 
+            alert('Agendamento registrado com sucesso!'); 
+        } else {
+            alert('Erro ao registrar agendamento: ' + result.message); 
         }
     } catch (error) {
         console.error('Erro ao registrar agendamento:', error);
+        alert('Erro de rede ou servidor ao registrar agendamento.');
     }
 }
 
@@ -313,6 +321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('scheduleForm').appendChild(reminderDateInput);
 
     // Add event listeners
+    // Garante que o evento de submissão do formulário seja capturado pelo handler
     document.getElementById('scheduleForm').addEventListener('submit', handleFormSubmission);
 
     appointmentDateInput.addEventListener('input', (event) => {
