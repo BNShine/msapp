@@ -21,15 +21,14 @@ export default async function handler(req, res) {
     }
 
     try {
-        // *** CORREÇÃO APLICADA AQUI: Adicionado 'verification' à desestruturação ***
-        const { type, data, pets, closer1, closer2, customers, phone, oldNew, appointmentDate, serviceValue, franchise, city, source, week, month, year, code, reminderDate, verification } = req.body;
+        // *** CORREÇÃO APLICADA AQUI: Adicionado 'verification' e 'zipCode' à desestruturação ***
+        const { type, data, pets, closer1, closer2, customers, phone, oldNew, appointmentDate, serviceValue, franchise, city, source, week, month, year, code, reminderDate, verification, zipCode } = req.body;
 
         // Validação de dados de entrada
         if (!type || !data || !customers || !phone || !appointmentDate || !serviceValue || !franchise || !city || !source) {
             return res.status(400).json({ success: false, message: 'Todos os campos obrigatórios precisam ser preenchidos.' });
         }
         
-        // Adicionando validação para o novo campo
         if (!verification) {
              return res.status(400).json({ success: false, message: 'O campo de verificação está faltando.' });
         }
@@ -59,7 +58,8 @@ export default async function handler(req, res) {
             'Year': year,
             'Code': code,
             'Reminder Date': reminderDate,
-            'Verification': verification, // <--- CAMPO MAPEADO CORRETAMENTE
+            'Verification': verification, 
+            'Zip Code': zipCode, // <--- CAMPO MAPEADO CORRETAMENTE PARA A PLANILHA
         };
 
         await sheet.addRow(newRow);
@@ -67,7 +67,6 @@ export default async function handler(req, res) {
         return res.status(201).json({ success: true, message: 'Agendamento registrado com sucesso!' });
     } catch (error) {
         console.error('Erro ao registrar agendamento:', error);
-        // Adicionando detalhes do erro na resposta para facilitar o debug
         return res.status(500).json({ success: false, message: `Ocorreu um erro no servidor. Detalhes: ${error.message}` });
     }
 }
