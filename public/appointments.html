@@ -252,15 +252,21 @@
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
                         <div class="space-y-2">
                             <label for="codePassDisplay" class="block text-sm font-semibold text-foreground">Confirmation Code (Generated)</label>
                             <div id="codePassDisplay" class="h-12 flex items-center input-display-style">--/--/----</div>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <label for="statusDisplay" class="block text-sm font-semibold text-foreground">Status</label>
+                            <div id="statusDisplay" class="h-12 flex items-center input-display-style text-green-600 font-bold">Scheduled</div>
                         </div>
                         <div class="space-y-2">
                             <label for="reminderDateDisplay" class="block text-sm font-semibold text-foreground">Reminder Date (5 Months)</label>
                             <div id="reminderDateDisplay" class="h-12 flex items-center input-display-style">--/--/----</div>
                         </div>
+                        
                         <div class="space-y-2 hidden">
                             <label for="data" class="block text-sm font-semibold text-foreground">Creation Date (Auto)</label>
                             <input type="date" id="data" name="data" class="input-style">
