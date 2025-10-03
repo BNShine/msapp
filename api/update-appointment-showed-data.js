@@ -34,14 +34,14 @@ function formatToSheetDate(isoDate) {
     return isoDate.replace('T', ' ').replace(/-/g, '/');
 }
 
-// NOVO: Helper para garantir que valores numéricos/de quantidade vazios sejam salvos como '0'
+// Helper para garantir que valores numéricos/de quantidade vazios sejam salvos como '0'
 const ensureNumericString = (value) => {
     // Se o valor for uma string vazia, null, ou undefined, retorna '0'. Caso contrário, retorna o valor como string.
     if (value === '' || value === undefined || value === null) return '0';
     return String(value);
 };
 
-// NOVO: Helper para garantir que o valor de porcentagem vazio seja salvo como '0%'
+// Helper para garantir que o valor de porcentagem vazio seja salvo como '0%'
 const ensurePercentageString = (value) => {
     // Se o valor for uma string vazia, null, ou undefined, retorna '0%'. Caso contrário, retorna o valor como string.
     if (value === '' || value === undefined || value === null) return '0%';
@@ -120,7 +120,7 @@ export default async function handler(req, res) {
         if (appointmentDateCell) appointmentDateCell.value = formatToSheetDate(appointmentDate);
         if (technicianCell) technicianCell.value = technician;
         
-        // CORREÇÃO APLICADA AQUI: Garantir que campos numéricos sejam salvos como '0' se vazios
+        // CORREÇÃO MANTIDA: Garantir que campos numéricos sejam salvos como '0' se vazios
         if (petShowedCell) petShowedCell.value = ensureNumericString(petShowed);
         if (serviceShowedCell) serviceShowedCell.value = ensureNumericString(serviceShowed);
         if (tipsCell) tipsCell.value = ensureNumericString(tips);
@@ -141,7 +141,10 @@ export default async function handler(req, res) {
         console.log('--- Fim do Processo de Atualização (Versão Final) ---');
         return res.status(200).json({ success: true, message: 'Dados e cálculo de "To Pay" atualizados com sucesso!' });
     } catch (error) {
-        console.error('Erro geral ao atualizar agendamento:', error);
+        // NOVO LOG DETALHADO ADICIONADO AQUI
+        console.error('ERRO CRÍTICO ao atualizar agendamento no Sheets. Stack Trace:', error.stack);
+        console.error('Objeto de Erro Completo:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        
         return res.status(500).json({ success: false, message: 'Ocorreu um erro no servidor. Por favor, tente novamente.' });
     }
 }
