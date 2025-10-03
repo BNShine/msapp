@@ -46,6 +46,10 @@
         .bg-green-600 { background-color: rgb(22 163 74); }
         /* NOVO: Cherry Red para Canceled (HSL 0 84% 45%) */
         .bg-cherry-red { background-color: hsl(0 84% 45%); }
+        /* Estilo de input compartilhado */
+        .input-style {
+            @apply w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-background flex flex-col">
@@ -66,7 +70,33 @@
 
     <main class="flex-1 p-8 overflow-y-auto">
         <div class="max-w-[86rem] mx-auto space-y-8">
-
+        
+            <section class="rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle p-6">
+                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">Search Appointment</h2>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div class="space-y-2">
+                        <label for="searchCustomer" class="block text-sm font-semibold text-foreground">Customer</label>
+                        <input type="text" id="searchCustomer" placeholder="Name" class="input-style">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="searchDate" class="block text-sm font-semibold text-foreground">Date (Appointment)</label>
+                        <input type="date" id="searchDate" class="input-style">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="searchCode" class="block text-sm font-semibold text-foreground">Code</label>
+                        <input type="text" id="searchCode" placeholder="Code" class="input-style">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="searchTechnician" class="block text-sm font-semibold text-foreground">Technician</label>
+                        <input type="text" id="searchTechnician" placeholder="Technician Name" class="input-style">
+                    </div>
+                    <div class="space-y-2 self-end">
+                        <button id="searchBtn" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
+                            Search
+                        </button>
+                    </div>
+                </div>
+            </section>
             <section class="rounded-lg border bg-card text-card-foreground shadow-large">
                 <div class="p-6 border-b border-border flex justify-between items-center flex-wrap gap-4">
                     <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">Weekly Schedule</h2>
