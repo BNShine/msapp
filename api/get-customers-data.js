@@ -2,7 +2,7 @@
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 import dotenv from 'dotenv';
-import { excelDateToYYYYMMDD } from './utils.js';
+import { excelDateToYYYYMMDD, excelDateToDateTime } from './utils.js';
 import { SHEET_NAME_APPOINTMENTS } from './configs/sheets-config.js';
 
 dotenv.config();
@@ -66,7 +66,7 @@ export default async function handler(req, res) {
                 customers: getCellValue('Customers'),
                 phone: getCellValue('Phone'),
                 oldNew: getCellValue('Old/New'),
-                appointmentDate: excelDateToYYYYMMDD(getCellValue('Date (Appointment)')),
+                appointmentDate: excelDateToDateTime(getCellValue('Date (Appointment)')),
                 serviceValue: getCellValue('Service Value'),
                 franchise: getCellValue('Franchise'),
                 city: getCellValue('City'),
