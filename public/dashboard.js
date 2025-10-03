@@ -46,8 +46,8 @@ function populateDropdowns(selectElement, items) {
 
 // >>> INÍCIO DA NOVA FUNÇÃO PARA CÓDIGO ALFANUMÉRICO (8 CARACTERES)
 function generateAlphanumericCode(length = 8) {
-    // Caracteres alfanuméricos (letras maiúsculas e minúsculas, e números)
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    // Caracteres alfanuméricos (letras maiúsculas e números)
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
     const charactersLength = characters.length;
     for (let i = 0; i < length; i++) {
@@ -422,7 +422,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     customersInput.addEventListener('input', () => {
         const value = customersInput.value.trim();
         if (value.length > 0) {
-            // CÓDIGO ATUALIZADO (5 caracteres alfanuméricos):
+            // CÓDIGO ATUALIZADO (10 caracteres alfanuméricos):
             const generatedCode = generateAlphanumericCode(5);
             codePassDisplay.textContent = generatedCode;
             codePassInput.value = generatedCode;
