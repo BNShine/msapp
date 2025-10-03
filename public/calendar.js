@@ -27,6 +27,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalPercentage = document.getElementById('modal-percentage');
     const modalPaymentMethod = document.getElementById('modal-payment-method');
 
+    // Modal Selectors (New)
+    const editModal = document.getElementById('edit-appointment-modal');
+    const modalSaveBtn = document.getElementById('modal-save-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const modalVerificationSelect = document.getElementById('modal-verification');
+    const modalApptId = document.getElementById('modal-appt-id');
+    const modalDate = document.getElementById('modal-date');
+    const modalServiceValue = document.getElementById('modal-service-value');
+    const modalOriginalTechnician = document.getElementById('modal-original-technician');
+    const modalPetShowed = document.getElementById('modal-pet-showed');
+    const modalTips = document.getElementById('modal-tips');
+    const modalPercentage = document.getElementById('modal-percentage');
+    const modalPaymentMethod = document.getElementById('modal-payment-method');
+
 
 
     let allAppointments = []; 
