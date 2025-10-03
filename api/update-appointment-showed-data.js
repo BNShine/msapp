@@ -64,7 +64,7 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, message: 'O índice da linha é inválido.' });
         }
         
-        // 1. Calculate 'To Pay' - Baseado nos valores ANTES de garantir a string '0' para o Sheet.
+        // 1. Calculate 'To Pay'
         const serviceValue = parseToNumeric(serviceShowed); 
         const percentageValue = parseToNumeric(percentage) / 100;
         const tipsValue = parseToNumeric(tips);
@@ -74,7 +74,6 @@ export default async function handler(req, res) {
             commissionValue = serviceValue * percentageValue;
         }
         
-        // NOVO CÁLCULO: To Pay = Comissão (Service * Percentage) + Tips
         let toPayValue = commissionValue + tipsValue;
 
         const doc = new GoogleSpreadsheet(SPREADSHEET_ID_APPOINTMENTS, serviceAccountAuth);
@@ -88,13 +87,9 @@ export default async function handler(req, res) {
         
         await sheet.loadHeaderRow();
 
-        // CORREÇÃO CRÍTICA AQUI: Carregar uma faixa de linhas para evitar o erro "This cell has not been loaded yet"
-        // Carrega a linha anterior (ou linha 1) e a linha seguinte.
-        const startRowForLoad = Math.max(rowIndex - 1, 1); 
-        const endRowForLoad = rowIndex + 1; 
-        
-        // Carrega um intervalo maior para garantir que a linha do índice (rowIndex) esteja carregada no cache.
-        await sheet.loadCells(`A${startRowForLoad}:Z${endRowForLoad}`);
+        // CORREÇÃO CRÍTICA AQUI: Carregar APENAS a linha de destino.
+        const rowToLoad = rowIndex;
+        await sheet.loadCells(`A${rowToLoad}:Z${rowToLoad}`);
         
         // Mapeamento dos nomes de cabeçalho para os índices de coluna.
         const headerRow = sheet.headerValues;
@@ -127,7 +122,7 @@ export default async function handler(req, res) {
         if (appointmentDateCell) appointmentDateCell.value = formatToSheetDate(appointmentDate);
         if (technicianCell) technicianCell.value = technician;
         
-        // CORREÇÃO MANTIDA: Garantir que campos numéricos sejam salvos como '0' se vazios
+        // Garantir que campos numéricos sejam salvos como '0' se vazios
         if (petShowedCell) petShowedCell.value = ensureNumericString(petShowed);
         if (serviceShowedCell) serviceShowedCell.value = ensureNumericString(serviceShowed);
         if (tipsCell) tipsCell.value = ensureNumericString(tips);
@@ -148,7 +143,6 @@ export default async function handler(req, res) {
         console.log('--- Fim do Processo de Atualização (Versão Final) ---');
         return res.status(200).json({ success: true, message: 'Dados e cálculo de "To Pay" atualizados com sucesso!' });
     } catch (error) {
-        // NOVO LOG DETALHADO ADICIONADO AQUI
         console.error('ERRO CRÍTICO ao atualizar agendamento no Sheets. Stack Trace:', error.stack);
         console.error('Objeto de Erro Completo:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
         
