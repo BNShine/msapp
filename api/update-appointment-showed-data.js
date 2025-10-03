@@ -20,30 +20,25 @@ function parseToNumeric(value) {
     if (typeof value !== 'string') {
         value = String(value);
     }
-    // Remove R$, %, pontos (separador de milhar), e substitui a vírgula por ponto (separador decimal)
     const cleanedValue = value.replace(/R\$/, '').replace(/%/g, '').replace(/\./g, '').replace(/,/g, '.').trim();
     const parsed = parseFloat(cleanedValue);
-    // Retorna 0 se for NaN, caso contrário retorna o valor
     return isNaN(parsed) ? 0 : parsed;
 }
 
 // Função auxiliar para converter YYYY-MM-DDTHH:MM (de input HTML type=datetime-local) para YYYY/MM/DD HH:MM (para consistência na planilha)
 function formatToSheetDate(isoDate) {
     if (!isoDate) return '';
-    // Converte YYYY-MM-DDTHH:MM (datetime-local format) para YYYY/MM/DD HH:MM
     return isoDate.replace('T', ' ').replace(/-/g, '/');
 }
 
 // Helper para garantir que valores numéricos/de quantidade vazios sejam salvos como '0'
 const ensureNumericString = (value) => {
-    // Se o valor for uma string vazia, null, ou undefined, retorna '0'. Caso contrário, retorna o valor como string.
     if (value === '' || value === undefined || value === null) return '0';
     return String(value);
 };
 
 // Helper para garantir que o valor de porcentagem vazio seja salvo como '0%'
 const ensurePercentageString = (value) => {
-    // Se o valor for uma string vazia, null, ou undefined, retorna '0%'. Caso contrário, retorna o valor como string.
     if (value === '' || value === undefined || value === null) return '0%';
     return String(value);
 };
@@ -59,7 +54,7 @@ export default async function handler(req, res) {
         console.log('--- Início do Processo de Atualização (Versão Final) ---');
         console.log('Dados recebidos do frontend para atualização:', { rowIndex, technician, petShowed, serviceShowed, tips, percentage, paymentMethod, verification, appointmentDate });
 
-        if (rowIndex === undefined || rowIndex < 0) {
+        if (rowIndex === undefined || rowIndex < 2) { 
             console.error('Validation Error: O índice da linha é inválido. Valor recebido:', rowIndex);
             return res.status(400).json({ success: false, message: 'O índice da linha é inválido.' });
         }
@@ -85,58 +80,32 @@ export default async function handler(req, res) {
             return res.status(500).json({ success: false, message: `Planilha "${SHEET_NAME_APPOINTMENTS}" não encontrada.` });
         }
         
-        await sheet.loadHeaderRow();
-
-        // CORREÇÃO CRÍTICA AQUI: Carregar APENAS a linha de destino.
-        const rowToLoad = rowIndex;
-        await sheet.loadCells(`A${rowToLoad}:Z${rowToLoad}`);
+        // 2. Carrega todas as linhas e encontra a linha alvo por 'rowNumber'
+        const rows = await sheet.getRows();
         
-        // Mapeamento dos nomes de cabeçalho para os índices de coluna.
-        const headerRow = sheet.headerValues;
-        const headersToIndex = {};
-        headerRow.forEach((header, index) => {
-            headersToIndex[header] = index;
-        });
+        const targetRow = rows.find(row => row.rowNumber === rowIndex);
 
-        const getCell = (header) => {
-             const colIndex = headersToIndex[header];
-             if (colIndex === undefined) {
-                 console.warn(`Header not found: ${header}. This field will not be updated.`);
-                 return null;
-             }
-             // getCell espera rowNumber 0-indexed. rowIndex é 1-indexed.
-             return sheet.getCell(rowIndex - 1, colIndex);
+        if (!targetRow) {
+            console.error(`Row Not Found Error: A linha com rowIndex ${rowIndex} não foi encontrada.`);
+             return res.status(404).json({ success: false, message: 'Agendamento não encontrado para atualização.' });
         }
-
-        // Obtém e atualiza as células.
-        const appointmentDateCell = getCell('Date (Appointment)');
-        const technicianCell = getCell('Technician');
-        const petShowedCell = getCell('Pet Showed');
-        const serviceShowedCell = getCell('Service Showed');
-        const tipsCell = getCell('Tips');
-        const percentageCell = getCell('Percentage');
-        const toPayCell = getCell('To Pay');
-        const methodCell = getCell('Method');
-        const verificationCell = getCell('Verification');
-
-        if (appointmentDateCell) appointmentDateCell.value = formatToSheetDate(appointmentDate);
-        if (technicianCell) technicianCell.value = technician;
         
-        // Garantir que campos numéricos sejam salvos como '0' se vazios
-        if (petShowedCell) petShowedCell.value = ensureNumericString(petShowed);
-        if (serviceShowedCell) serviceShowedCell.value = ensureNumericString(serviceShowed);
-        if (tipsCell) tipsCell.value = ensureNumericString(tips);
-        if (percentageCell) percentageCell.value = ensurePercentageString(percentage); // '0%' se vazio
+        // 3. Atualiza as propriedades do objeto da linha (usando nomes de cabeçalho)
+        // Isso resolve o problema "This cell has not been loaded yet"
+        targetRow['Date (Appointment)'] = formatToSheetDate(appointmentDate);
+        targetRow['Technician'] = technician;
+        // Campos que não podem ser vazios no Sheets
+        targetRow['Pet Showed'] = ensureNumericString(petShowed);
+        targetRow['Service Showed'] = ensureNumericString(serviceShowed);
+        targetRow['Tips'] = ensureNumericString(tips);
+        targetRow['Percentage'] = ensurePercentageString(percentage);
+        // Outros campos
+        targetRow['Method'] = paymentMethod;
+        targetRow['Verification'] = verification;
+        targetRow['To Pay'] = toPayValue.toFixed(2);
         
-        if (methodCell) methodCell.value = paymentMethod;
-        if (verificationCell) verificationCell.value = verification;
-        
-        // Salva o resultado do cálculo na coluna 'To Pay'
-        if (toPayCell) toPayCell.value = toPayValue.toFixed(2);
-
-
-        // Salva todas as células atualizadas em uma única requisição.
-        await sheet.saveUpdatedCells();
+        // 4. Salva a linha atualizada
+        await targetRow.save();
 
         console.log('Dados atualizados com sucesso na planilha para o índice:', rowIndex);
         console.log(`Valor de 'To Pay' calculado e salvo: ${toPayValue.toFixed(2)}`);
