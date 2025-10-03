@@ -23,11 +23,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const paymentOptions = ["Check", "American Express", "Apple Pay", "Discover", "Master Card", "Visa", "Zelle", "Cash", "Invoice"];
     const verificationOptions = ["Showed", "Canceled"];
     
+    // Helper para formatar YYYY/MM/DD HH:MM (do backend) para YYYY-MM-DDTHH:MM (para input HTML type=datetime-local)
+    function formatDateTimeForInput(dateTimeStr) {
+        if (!dateTimeStr) return '';
+        // Substitui '/' por '-', e insere 'T' (ex: 2025/10/01 10:30 -> 2025-10-01T10:30)
+        return dateTimeStr.replace(/\//g, '-').replace(' ', 'T'); 
+    }
+
     // Helper para formatar YYYY/MM/DD (do backend) para YYYY-MM-DD (para input HTML type=date)
     function formatDateForInput(dateStr) {
         if (!dateStr) return '';
-        // Se o formato for YYYY/MM/DD, substitui '/' por '-'
-        return dateStr.replace(/\//g, '-'); 
+        // Se o formato for YYYY/MM/DD, substitui '/' por '-' (e ignora a hora se houver)
+        return dateStr.split(' ')[0].replace(/\//g, '-'); 
     }
 
     // Função auxiliar para popular dropdowns
@@ -103,7 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `;
 
                 row.innerHTML = `
-                    <td class="p-4"><input type="date" value="${formatDateForInput(appointment.appointmentDate)}" style="width: 130px;" class="bg-transparent border border-border rounded-md px-2 date-input"></td>
+                    <td class="p-4"><input type="datetime-local" value="${formatDateTimeForInput(appointment.appointmentDate)}" style="width: 160px;" class="bg-transparent border border-border rounded-md px-2 datetime-local-input"></td>
                     <td class="p-4">${truncatedCustomers}</td>
                     <td class="p-4 code-cell">${appointment.code}</td>
                     <td class="p-4">${technicianDropdown}</td>
@@ -159,8 +166,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const selectedVerification = verificationFilter.value.toLowerCase();
 
         const filteredData = allAppointmentsData.filter(appointment => {
-            // Usa a data do agendamento para filtros de data
-            const appointmentDate = new Date(appointment.appointmentDate.split('/').reverse().join('-'));
+            // A data do agendamento agora inclui a hora. A comparação de data precisa considerar apenas a parte da data.
+            const appointmentDatePart = appointment.appointmentDate.split(' ')[0]; // YYYY/MM/DD
+            const appointmentDate = new Date(appointmentDatePart.split('/').reverse().join('-')); // Converte para Date object
 
             const matchesCustomers = searchTermCustomers === '' || 
                                      (appointment.customers && appointment.customers.toLowerCase().includes(searchTermCustomers));
@@ -237,21 +245,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             const row = event.target.closest('tr');
             const sheetRowNumber = event.target.dataset.rowNumber;
 
-            const inputs = row.querySelectorAll('input');
+            // Encontra o input de datetime-local
+            const appointmentDateInput = row.querySelector('.datetime-local-input');
+            
+            // Encontra os inputs de texto e os selects
+            const textInputs = row.querySelectorAll('input:not(.datetime-local-input)');
             const selects = row.querySelectorAll('select');
             
             // Mapeamento dos elementos de entrada e seleção:
-            // inputs: [0] appointmentDate (Date), [1] serviceShowed (Text), [2] tips (Text)
+            // textInputs: [0] serviceShowed (Text), [1] tips (Text)
             // selects: [0] technician (Dropdown), [1] petShowed (Dropdown), [2] percentage (Dropdown), [3] paymentMethod (Dropdown), [4] verification (Dropdown)
 
             const rowData = {
                 rowIndex: parseInt(sheetRowNumber, 10),
-                appointmentDate: inputs[0].value, 
+                appointmentDate: appointmentDateInput.value, // YYYY-MM-DDTHH:MM is passed to the API
                 // customers é ignorado
                 technician: selects[0].value, // Technician é o primeiro select
                 petShowed: selects[1].value,
-                serviceShowed: inputs[1].value, 
-                tips: inputs[2].value, 
+                serviceShowed: textInputs[0].value, 
+                tips: textInputs[1].value, 
                 percentage: selects[2].value, 
                 paymentMethod: selects[3].value,
                 verification: selects[4].value,
