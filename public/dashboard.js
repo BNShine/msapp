@@ -44,10 +44,10 @@ function populateDropdowns(selectElement, items) {
     }
 }
 
-// >>> INÍCIO DA NOVA FUNÇÃO PARA CÓDIGO ALFANUMÉRICO (8 CARACTERES)
+// >>> INÍCIO DA NOVA FUNÇÃO PARA CÓDIGO ALFANUMÉRICO (5 CARACTERES, UPPERCASE)
 function generateAlphanumericCode(length = 8) {
-    // Caracteres alfanuméricos (letras maiúsculas e minúsculas, e números)
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    // Caracteres alfanuméricos (letras maiúsculas e números)
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
     const charactersLength = characters.length;
     for (let i = 0; i < length; i++) {
@@ -80,6 +80,79 @@ async function getCityFromZip(zipCode) {
     }
 }
 // *** FIM DA FUNÇÃO DE BUSCA ***
+
+// *** LÓGICA PARA SUGERIR TÉCNICO ***
+async function updateSuggestedTechnician(customerState, suggestedTechDisplay) {
+    // Estilos padrão para display/dropdown
+    const inputStyleClasses = 'mt-1 block w-full h-12 rounded-xl border-2 border-foreground/80 hover:border-brand-primary transition-colors bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground/80';
+    const displayStyleClasses = 'mt-1 w-full rounded-xl border-2 border-foreground/80 bg-muted/50 px-3 py-2 text-sm font-mono flex items-center';
+
+    suggestedTechDisplay.classList.remove('text-green-600', 'text-red-600');
+    suggestedTechDisplay.classList.add(...displayStyleClasses.split(' ').filter(c => c !== 'flex' && c !== 'items-center'));
+    suggestedTechDisplay.innerHTML = 'Procurando técnicos...'; // Loading state
+
+    if (!customerState) {
+        suggestedTechDisplay.textContent = '--/--/----';
+        return;
+    }
+    
+    try {
+        // 1. Fetch Technician Coverage Data
+        const response = await fetch('/api/get-tech-coverage');
+        if (!response.ok) throw new Error('Falha ao buscar dados de cobertura.');
+        const techCoverageData = await response.json();
+
+        // 2. Filter by Category "Central"
+        const centralTechs = techCoverageData.filter(tech => 
+            tech.categoria && tech.categoria.toLowerCase() === 'central'
+        );
+        
+        // Prepare an array of promises to resolve the state for each central technician
+        const techsWithStatePromises = centralTechs.map(async tech => {
+            if (tech.zip_code && tech.zip_code.length === 5) {
+                const techLocation = await getCityFromZip(tech.zip_code);
+                if (techLocation && techLocation.state) {
+                    return { name: tech.nome, state: techLocation.state };
+                }
+            }
+            return null; 
+        });
+
+        const techsWithState = (await Promise.all(techsWithStatePromises)).filter(t => t !== null);
+
+        // 3. Filter by Same State
+        const suggestedTechs = techsWithState.filter(tech => 
+            tech.state === customerState
+        ).map(tech => tech.name); // Get only the names
+        
+        // 4. Render Dropdown or Message
+        if (suggestedTechs.length > 0) {
+            
+            let dropdownHTML = `<select id="suggestedTechSelect" name="technician" class="${inputStyleClasses} w-full">`;
+            
+            // Add a default empty option and the suggested technicians
+            dropdownHTML += `<option value="">Selecione um técnico (Central)</option>`;
+            suggestedTechs.forEach((name) => {
+                dropdownHTML += `<option value="${name}">${name}</option>`;
+            });
+
+            dropdownHTML += `</select>`;
+            // Remove the placeholder classes from the display div and inject the select
+            suggestedTechDisplay.classList.remove('input-display-style', 'font-medium', 'text-muted-foreground');
+            suggestedTechDisplay.innerHTML = dropdownHTML;
+        } else {
+            // Fallback message
+            suggestedTechDisplay.classList.add('input-display-style', 'font-medium', 'text-red-600');
+            suggestedTechDisplay.textContent = 'Nenhum técnico Central disponível neste estado.';
+        }
+
+    } catch (error) {
+        console.error('Erro na lógica do técnico sugerido:', error);
+        suggestedTechDisplay.classList.add('input-display-style', 'font-medium', 'text-red-600');
+        suggestedTechDisplay.textContent = 'Erro ao buscar técnicos.';
+    }
+}
+// *** FIM DA LÓGICA PARA SUGERIR TÉCNICO ***
 
 
 // Main function to fetch and update all dashboard data
@@ -265,6 +338,8 @@ async function handleFormSubmission(event) {
     formData.forEach((value, key) => {
         data[key] = value;
     });
+    
+    // NOTE: The suggested technician is now passed as `data.technician` if the select element exists.
 
     // 1. FORMAT APPOINTMENT DATE/TIME: Convert YYYY-MM-DDTHH:MM (datetime-local format) to YYYY/MM/DD HH:MM
     let formattedAppointmentDate = data.appointmentDate;
@@ -293,7 +368,9 @@ async function handleFormSubmission(event) {
         code: document.getElementById('codePass').value,
         reminderDate: document.getElementById('reminderDate').value,
         verification: 'Scheduled',
-        zipCode: data.zipCode // Valor do campo Zip Code
+        zipCode: data.zipCode, // Valor do campo Zip Code
+        // NEW: Include the selected technician from the dropdown in the payload
+        technician: data.technician || '', 
     };
 
     try {
@@ -353,9 +430,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     zipCodeInput.addEventListener('input', async () => {
         const zipCode = zipCodeInput.value.trim();
         cityInput.value = ''; // Limpa a cidade ao digitar
-        suggestedTechDisplay.textContent = '--/--/----'; // Limpa o sugerido
-        suggestedTechDisplay.classList.remove('text-green-600');
-        suggestedTechDisplay.classList.add('text-muted-foreground');
+        
+        // Reset suggested technician display to default loading style
+        suggestedTechDisplay.innerHTML = 'Procurando...'; 
+        suggestedTechDisplay.classList.add('input-display-style', 'font-medium', 'text-muted-foreground');
+        suggestedTechDisplay.classList.remove('text-green-600', 'text-red-600');
 
 
         if (zipCode.length === 5) {
@@ -371,26 +450,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (locationData && locationData.city) {
                 cityInput.value = locationData.city;
                 
-                // *** Lógica para Sugerir Técnico (AQUI VOCÊ DEVERIA CHAMAR UMA API/FUNÇÃO DE BUSCA AVANÇADA) ***
-                // SIMULAÇÃO: Preenche com um valor genérico que será substituído
-                suggestedTechDisplay.textContent = 'Procurando...'; 
-                
-                // Exemplo simplificado (substitua esta lógica pela busca real em sua base de técnicos):
-                setTimeout(() => {
-                    suggestedTechDisplay.textContent = 'Alan S.'; // Exemplo de técnico sugerido
-                    suggestedTechDisplay.classList.remove('text-muted-foreground');
-                    suggestedTechDisplay.classList.add('text-green-600');
-                }, 500); 
-                // *** FIM DA LÓGICA DE SIMULAÇÃO ***
+                // *** CALL NEW LOGIC ***
+                await updateSuggestedTechnician(locationData.state, suggestedTechDisplay); 
+                // *** END NEW LOGIC ***
 
                 const addressInput = document.getElementById('address');
                 if (addressInput && !addressInput.value) {
                     addressInput.focus();
                 }
             } else {
+                // Fallback if city not found
                 cityInput.focus();
                 cityInput.placeholder = 'Zip Code não encontrado. Digite a cidade.';
+                suggestedTechDisplay.textContent = '--/--/----';
             }
+        } else {
+             // Reset if zip code is incomplete
+             suggestedTechDisplay.textContent = '--/--/----';
         }
     });
     // *** FIM NOVO EVENT LISTENER ***
