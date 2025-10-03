@@ -288,7 +288,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             let bgColor = 'bg-custom-primary'; 
             
             if (appt.verification === 'Canceled') {
-                bgColor = 'bg-destructive/80'; 
+                // NOVO: Usando a classe Cherry Red
+                bgColor = 'bg-cherry-red'; 
             } else if (appt.verification === 'Showed') {
                 bgColor = 'bg-green-600'; 
             }
@@ -301,7 +302,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             if (overlappingAppts.length > 0) {
-                // VISUAL CORRIGIDO: Borda amarela para sobreposição (#ffda2d)
+                // Borda amarela para sobreposição (#ffda2d)
                 block.style.borderColor = '#ffda2d'; 
                 block.style.borderWidth = '2px';
                 block.style.borderStyle = 'solid'; 
