@@ -27,22 +27,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalPercentage = document.getElementById('modal-percentage');
     const modalPaymentMethod = document.getElementById('modal-payment-method');
 
-    // Modal Selectors (New)
-    const editModal = document.getElementById('edit-appointment-modal');
-    const modalSaveBtn = document.getElementById('modal-save-btn');
-    const modalCancelBtn = document.getElementById('modal-cancel-btn');
-    const modalVerificationSelect = document.getElementById('modal-verification');
-    const modalApptId = document.getElementById('modal-appt-id');
-    const modalDate = document.getElementById('modal-date');
-    const modalServiceValue = document.getElementById('modal-service-value');
-    const modalOriginalTechnician = document.getElementById('modal-original-technician');
-    const modalPetShowed = document.getElementById('modal-pet-showed');
-    const modalTips = document.getElementById('modal-tips');
-    const modalPercentage = document.getElementById('modal-percentage');
-    const modalPaymentMethod = document.getElementById('modal-payment-method');
-
-
-
     let allAppointments = []; 
     let allTechnicians = [];
     let selectedTechnician = ''; 
@@ -55,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const TIME_SLOTS = Array.from({ length: 11 }, (_, i) => `${(8 + i).toString().padStart(2, '0')}:00`);
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const VISIBLE_DAY_INDICES = [1, 2, 3, 4, 5, 6]; // Mon a Sat
+    const VERIFICATION_OPTIONS = ["Scheduled", "Showed", "Canceled"];
 
     // --- Helper Functions ---
 
@@ -90,29 +75,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${hours}:${minutes}`;
     }
     
+    function formatDateTimeForInput(dateTimeStr) {
+        if (!dateTimeStr) return '';
+        // Converte YYYY/MM/DD HH:MM para YYYY-MM-DDTHH:MM (datetime-local format)
+        return dateTimeStr.replace(/\//g, '-').replace(' ', 'T'); 
+    }
+
     function parseTime(timeStr) {
         const [hours, minutes] = timeStr.split(':').map(Number);
         return hours * 60 + minutes;
     }
 
-    // LÓGICA DE CONFLITO REMOVIDA: function isValidAppointmentTime(newDate, technician, currentApptId) {
-    // LÓGICA DE CONFLITO REMOVIDA A PEDIDO DO CLIENTE: Horários flexíveis e sobreposição são permitidos.
-    return true;
-});
-
-        if (conflictingAppts.length > 0) {
-            console.warn(`Conflito com o agendamento: ${conflictingAppts[0].customers}`);
-            return false;
-        }
-        
-        // Validação de horário de trabalho (simplificada para o escopo)
-        if (date.getDay() === 0) return false; // Domingo
-        
-        const startHour = date.getHours();
-        if (startHour < 8 || startHour > 16) return false; // Início entre 8h e 16h para bloco de 2h
-        
+    function isValidAppointmentTime(newDate, technician, appointmentsToConsider) {
+        // LÓGICA DE CONFLITO REMOVIDA A PEDIDO DO CLIENTE: Horários flexíveis e sobreposição são permitidos.
         return true;
     }
+    
+    function openEditModal(appt) {
+        // Populate static data needed for save payload (read from cache/local appt object)
+        modalApptId.value = appt.id;
+        modalOriginalTechnician.value = appt.technician;
+        modalPetShowed.value = appt.petShowed || '';
+        modalTips.value = appt.tips || '';
+        modalPercentage.value = appt.percentage || '';
+        modalPaymentMethod.value = appt.paymentMethod || '';
+
+        // Populate editable fields
+        modalDate.value = formatDateTimeForInput(appt.appointmentDate);
+        modalServiceValue.value = appt.serviceShowed || '';
+
+        // Populate Verification dropdown
+        modalVerificationSelect.innerHTML = VERIFICATION_OPTIONS.map(opt => 
+            `<option value="${opt}" ${appt.verification === opt ? 'selected' : ''}>${opt}</option>`
+        ).join('');
+
+        editModal.classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+        editModal.classList.add('hidden');
+    }
+
 
     // --- Data Load and Setup ---
 
@@ -140,6 +143,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function populateTechSelects() {
+        if (!techSelectDropdown) return; // Defensive check for stability
+
         techSelectDropdown.innerHTML = '<option value="">Select Technician...</option>';
         allTechnicians.forEach(tech => {
             const option = document.createElement('option');
@@ -148,8 +153,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             techSelectDropdown.appendChild(option);
         });
         
-        techConfigSelect.innerHTML = '<option value="">Select Technician</option>' + 
-            allTechnicians.map(tech => `<option value="${tech}">${tech}</option>`).join('');
+        if (techConfigSelect) {
+            techConfigSelect.innerHTML = '<option value="">Select Technician</option>' + 
+                allTechnicians.map(tech => `<option value="${tech}">${tech}</option>`).join('');
+        }
 
         techSelectDropdown.addEventListener('change', handleTechSelectionChange);
     }
@@ -268,10 +275,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 bgColor = 'bg-green-600'; 
             }
 
-            block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-move transition-colors hover:shadow-lg`;
+            block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
             block.dataset.id = appt.id;
             block.dataset.technician = appt.technician;
             block.dataset.date = appt.appointmentDate; 
+            block.dataset.serviceshowed = appt.serviceShowed || ''; // USANDO SERVICE SHOWED (CORREÇÃO DE MODELO)
+            block.dataset.verification = appt.verification; // Para o modal
             block.draggable = true;
             
             // POSICIONAMENTO: Restrito à Coluna do Dia (colIndex)
@@ -284,19 +293,109 @@ document.addEventListener('DOMContentLoaded', async () => {
             const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
 
             block.innerHTML = `
-                <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p>
-                <p class="text-sm font-bold truncate">${appt.customers}</p>
-                <p class="text-xs font-medium text-white/80">${appt.verification}</p>
+                <div data-view-content>
+                    <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p>
+                    <p class="text-sm font-bold truncate">${appt.customers}</p>
+                    <p class="text-xs font-medium text-white/80">${appt.verification}</p>
+                    <p class="text-xs font-medium text-white/80">R$${appt.serviceShowed || '0.00'}</p>
+                </div>
             `;
             
             schedulerBody.appendChild(block);
             
             addDragAndDropListeners(block);
+            block.addEventListener('click', handleEditAppointmentClick);
         });
     }
 
-    // [Funções de Navegação e Drag and Drop omitidas por brevidade, mas incluídas no código final.]
-    // ...
+    // --- Nova Função para Editar/Salvar o Agendamento (Modal Logic) ---
+
+    function handleEditAppointmentClick(event) {
+        const block = event.currentTarget;
+        
+        const apptId = block.dataset.id;
+        const localAppt = allAppointments.find(a => String(a.id) === apptId);
+        
+        if (localAppt) {
+            openEditModal(localAppt);
+        } else {
+            alert('Erro: Agendamento não encontrado.');
+        }
+    }
+
+    async function handleSaveAppointment(event) {
+        event.stopPropagation();
+        
+        const apptId = modalApptId.value;
+        
+        // Coleta os novos dados do modal
+        const newDateLocal = modalDate.value;
+        const newVerification = modalVerificationSelect.value;
+        const newServiceShowed = modalServiceValue.value; 
+        
+        // Validação básica do formulário modal
+        if (!newDateLocal || !newVerification) {
+             alert("Data e Status são campos obrigatórios.");
+             return;
+        }
+
+        // Converte a data para o formato aceito pela API (YYYY/MM/DD HH:MM)
+        const newAppointmentDateSheetFormat = newDateLocal.replace('T', ' ').replace(/-/g, '/');
+
+        // Encontra o agendamento na lista local (a fonte de verdade)
+        const localAppt = allAppointments.find(a => String(a.id) === apptId);
+        
+        if (!localAppt) {
+            alert('Erro: Agendamento não encontrado localmente.');
+            return;
+        }
+
+        // Usa os valores do cache local (localAppt) como base para os campos não editáveis no modal,
+        // garantindo que o payload da API esteja completo, mesmo que o modal não tenha todos os campos.
+        const dataToUpdate = {
+            rowIndex: parseInt(apptId, 10), // ID é o rowNumber
+            // Campos editados/do modal
+            appointmentDate: newDateLocal, 
+            verification: newVerification,
+            serviceShowed: newServiceShowed, 
+            
+            // Campos obrigatórios da API (do cache local)
+            technician: localAppt.technician,
+            petShowed: localAppt.petShowed || '',
+            tips: localAppt.tips || '',
+            percentage: localAppt.percentage || '',
+            paymentMethod: localAppt.paymentMethod || '',
+        };
+
+        try {
+            const response = await fetch('/api/update-appointment-showed-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataToUpdate),
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                // Atualiza o registro localmente (para a próxima renderização)
+                localAppt.appointmentDate = newAppointmentDateSheetFormat;
+                localAppt.verification = newVerification;
+                localAppt.serviceShowed = newServiceShowed; 
+                
+                alert('Agendamento atualizado com sucesso!');
+                closeEditModal();
+                renderScheduler(); 
+            } else {
+                alert(`Erro ao salvar: ${result.message}`);
+            }
+        } catch (error) {
+            console.error('Erro na requisição da API:', error);
+            alert('Erro de comunicação com o servidor. Tente novamente.');
+        }
+    }
+
+
+    // [Funções de Navegação e Drag and Drop]
 
     function updateWeekDisplay() {
         const endOfWeek = new Date(currentWeekStart);
@@ -311,12 +410,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentWeekDisplay.textContent = `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
     }
     
-    prevWeekBtn.addEventListener('click', () => {
+    if (prevWeekBtn) prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
         renderScheduler();
     });
 
-    nextWeekBtn.addEventListener('click', () => {
+    if (nextWeekBtn) nextWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
         renderScheduler();
     });
@@ -332,6 +431,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 originalDate: element.dataset.date,
                 originalTop: element.style.top,
                 originalColumn: element.style.gridColumn,
+                serviceShowed: element.dataset.serviceshowed, // USANDO SERVICE SHOWED (CORREÇÃO)
             };
             e.dataTransfer.effectAllowed = 'move';
             setTimeout(() => element.style.display = 'none', 0);
@@ -343,81 +443,105 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    schedulerBody.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-    });
+    if (schedulerBody) {
+        schedulerBody.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
 
-    schedulerBody.addEventListener('drop', (e) => {
-        e.preventDefault();
-        
-        if (!draggedAppointment || !selectedTechnician) {
-             draggedAppointment.element.style.display = 'block';
-             return;
-        }
-
-        const target = e.target.closest('.time-slot'); 
-        if (!target) {
-             draggedAppointment.element.style.display = 'block';
-             return;
-        }
-        
-        const newTech = selectedTechnician; 
-        const targetDateKey = target.dataset.datekey; 
-
-        if (!targetDateKey) {
-             draggedAppointment.element.style.display = 'block';
-             return;
-        }
-
-        const rect = target.getBoundingClientRect();
-        const dropY = e.clientY - rect.top; 
-        
-        const minuteUnit = 15; 
-        const pixelsPerMinute = SLOT_HEIGHT_PX / 60; 
-        const snappedMinutes = Math.round(dropY / (minuteUnit * pixelsPerMinute)) * minuteUnit;
-        
-        const slotHour = parseTime(target.dataset.time) / 60; 
-        
-        const newHour = slotHour + Math.floor(snappedMinutes / 60);
-        const newMinute = (snappedMinutes % 60);
-
-        const newDate = parseSheetDate(`${targetDateKey} 00:00`); 
-        newDate.setHours(newHour, newMinute, 0, 0);
-
-        if (newHour < 8 || newHour > 16) {
-             alert('Horário fora da faixa de agendamento permitida (8:00 - 16:00 para agendamentos de 2 horas).');
-             draggedAppointment.element.style.display = 'block';
-             return;
-        }
-
-        const appointmentsExcludingSelf = allAppointments.filter(appt => appt.id !== draggedAppointment.id);
-
-        if (!isValidAppointmentTime(newTech, newDate, appointmentsExcludingSelf)) {
-            alert('Conflito: Este horário se sobrepõe a um agendamento de 2h existente ou está fora da disponibilidade do técnico.');
+        schedulerBody.addEventListener('drop', async (e) => {
+            e.preventDefault();
             
+            if (!draggedAppointment || !selectedTechnician) {
+                 if (draggedAppointment) draggedAppointment.element.style.display = 'block';
+                 return;
+            }
+
+            const target = e.target.closest('.time-slot'); 
+            if (!target) {
+                 draggedAppointment.element.style.display = 'block';
+                 return;
+            }
+            
+            const newTech = selectedTechnician; 
+            const targetDateKey = target.dataset.datekey; 
+
+            if (!targetDateKey) {
+                 draggedAppointment.element.style.display = 'block';
+                 return;
+            }
+
+            const rect = target.getBoundingClientRect();
+            const dropY = e.clientY - rect.top; 
+            
+            const minuteUnit = 15; 
+            const pixelsPerMinute = SLOT_HEIGHT_PX / 60; 
+            const snappedMinutes = Math.round(dropY / (minuteUnit * pixelsPerMinute)) * minuteUnit;
+            
+            const slotHour = parseTime(target.dataset.time) / 60; 
+            
+            const newHour = slotHour + Math.floor(snappedMinutes / 60);
+            const newMinute = (snappedMinutes % 60);
+
+            const newDate = parseSheetDate(`${targetDateKey} 00:00`); 
+            newDate.setHours(newHour, newMinute, 0, 0);
+
+            // Validação removida. Permite qualquer horário.
+
+            const snapOffsetTop = (newHour - 8) * SLOT_HEIGHT_PX + newMinute; 
+            const targetCol = target.style.gridColumn;
+
+            draggedAppointment.element.style.top = `${snapOffsetTop}px`;
+            draggedAppointment.element.style.gridColumn = targetCol;
             draggedAppointment.element.style.display = 'block';
-            return;
-        }
-        
-        const snapOffsetTop = (newHour - 8) * SLOT_HEIGHT_PX + newMinute; 
-        const targetCol = target.style.gridColumn;
-
-        draggedAppointment.element.style.top = `${snapOffsetTop}px`;
-        draggedAppointment.element.style.gridColumn = targetCol;
-        draggedAppointment.element.style.display = 'block';
-        
-        const newDateSheetFormat = formatDateToYYYYMMDD(newDate) + ' ' + getTimeHHMM(newDate);
-        
-        const localAppt = allAppointments.find(a => String(a.id) === draggedAppointment.id);
-        if (localAppt) {
-            localAppt.technician = newTech;
-            localAppt.appointmentDate = newDateSheetFormat;
             
-            console.log(`[API CALL SIMULADA] ID: ${localAppt.id} movido para Tech: ${newTech}, Horário: ${newDateSheetFormat}`);
-             renderScheduler();
-        }
-    });
+            const newDateSheetFormat = formatDateToYYYYMMDD(newDate) + ' ' + getTimeHHMM(newDate);
+            const newDateLocalFormat = formatDateTimeForInput(newDateSheetFormat); // Para API
+
+            const localAppt = allAppointments.find(a => String(a.id) === draggedAppointment.id);
+            
+            if (localAppt) {
+                // Prepara o payload para a API de atualização (usando a mesma estrutura de manage-showed)
+                const dataToUpdate = {
+                    rowIndex: parseInt(draggedAppointment.id, 10),
+                    appointmentDate: newDateLocalFormat, 
+                    technician: newTech,
+                    // Campos que precisam ser passados para o cálculo de To Pay na API (agora com cache)
+                    verification: localAppt.verification || '', 
+                    serviceShowed: localAppt.serviceShowed || '', 
+                    petShowed: localAppt.petShowed || '',
+                    tips: localAppt.tips || '',
+                    percentage: localAppt.percentage || '',
+                    paymentMethod: localAppt.paymentMethod || '',
+                };
+
+                try {
+                    const response = await fetch('/api/update-appointment-showed-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataToUpdate),
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        // Atualiza o registro local
+                        localAppt.technician = newTech;
+                        localAppt.appointmentDate = newDateSheetFormat;
+                        
+                        console.log(`[API CALL SUCESSO] ID: ${localAppt.id} movido para Tech: ${newTech}, Horário: ${newDateSheetFormat}`);
+                        renderScheduler();
+                    } else {
+                        alert(`Erro ao mover agendamento: ${result.message}`);
+                        renderScheduler(); // Redesenha para reverter o movimento visual
+                    }
+                } catch (error) {
+                    alert('Erro de comunicação ao mover agendamento.');
+                    renderScheduler(); // Redesenha para reverter o movimento visual
+                }
+            }
+        });
+    }
+
 
     function initializeAvailability() {
         const savedConfig = localStorage.getItem('techAvailability');
@@ -501,7 +625,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderAvailabilityForm(technician);
     }
 
-    saveAvailabilityBtn.addEventListener('click', () => {
+    if (saveAvailabilityBtn) saveAvailabilityBtn.addEventListener('click', () => {
         if (!techConfigSelect.value) {
             alert('Please select a technician before saving.');
             return;
@@ -511,13 +635,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderScheduler(); 
     });
 
-    techConfigSelect.addEventListener('change', handleTechConfigSelectChange);
+    if (techConfigSelect) techConfigSelect.addEventListener('change', handleTechConfigSelectChange);
+
+    // Attach listeners for modal buttons (Defensive Check)
+    if (modalSaveBtn) modalSaveBtn.addEventListener('click', handleSaveAppointment);
+    if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal);
 
     // --- Initialization ---
     loadInitialData();
-
-    // Attach listeners for modal buttons
-    modalSaveBtn.addEventListener('click', handleSaveAppointment);
-    modalCancelBtn.addEventListener('click', closeEditModal);
-
 });
