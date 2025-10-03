@@ -736,7 +736,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (modalSaveBtn) modalSaveBtn.addEventListener('click', handleSaveAppointment);
     
-    // O modalCancelBtn tem um onclick no HTML, mas aqui está a função de fechar para o JS
     if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal); 
     
     if (saveAvailabilityBtn) saveAvailabilityBtn.addEventListener('click', () => {
