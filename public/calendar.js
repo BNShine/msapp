@@ -33,6 +33,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentWeekStart = getStartOfWeek(new Date()); 
     
     let techAvailability = {}; 
+    
+    // CORRIGIDO: 2 horas de duração (120px)
     const SCHEDULE_DURATION_HOURS = 2; 
     const SLOT_HEIGHT_PX = 60; // 1 hora = 60px
 
@@ -86,15 +88,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         return hours * 60 + minutes;
     }
 
-    function isValidAppointmentTime(newDate, technician, appointmentsToConsider) {
-        // LÓGICA DE CONFLITO REMOVIDA A PEDIDO DO CLIENTE: Horários flexíveis e sobreposição são permitidos.
-        return true;
+    // FUNÇÃO PARA CALCULAR SOBREPOSIÇÃO (2 horas de duração)
+    function calculateOverlap(apptA, apptB) {
+        const dateA = parseSheetDate(apptA.appointmentDate);
+        const dateB = parseSheetDate(apptB.appointmentDate);
+
+        if (!dateA || !dateB || formatDateToYYYYMMDD(dateA) !== formatDateToYYYYMMDD(dateB)) return false;
+
+        const durationMs = SCHEDULE_DURATION_HOURS * 60 * 60 * 1000;
+        
+        const startA = dateA.getTime();
+        const endA = startA + durationMs;
+        
+        const startB = dateB.getTime();
+        const endB = startB + durationMs;
+
+        // Verifica se os intervalos de tempo se sobrepõem
+        return (startA < endB) && (endA > startB);
     }
     
     function openEditModal(appt) {
         // Populate static data needed for save payload (read from cache/local appt object)
         modalApptId.value = appt.id;
         modalOriginalTechnician.value = appt.technician;
+        // Campos de cache (passados via hidden inputs)
         modalPetShowed.value = appt.petShowed || '';
         modalTips.value = appt.tips || '';
         modalPercentage.value = appt.percentage || '';
@@ -143,7 +160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function populateTechSelects() {
-        if (!techSelectDropdown) return; // Defensive check for stability
+        if (!techSelectDropdown) return; 
 
         techSelectDropdown.innerHTML = '<option value="">Select Technician...</option>';
         allTechnicians.forEach(tech => {
@@ -174,7 +191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
 
-    // --- UI Logic: Scheduler Rendering (CORRIGIDO) ---
+    // --- UI Logic: Scheduler Rendering ---
 
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
@@ -267,20 +284,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             const block = document.createElement('div');
             
-            // CORREÇÃO: Cor de Fundo
-            let bgColor = 'bg-custom-primary'; // Cor Primária
+            // Cor de Fundo
+            let bgColor = 'bg-custom-primary'; 
+            
             if (appt.verification === 'Canceled') {
                 bgColor = 'bg-destructive/80'; 
             } else if (appt.verification === 'Showed') {
                 bgColor = 'bg-green-600'; 
             }
+            
+            // Lógica de Overlap: Verifica se há outro agendamento no mesmo dia que se sobrepõe
+            const overlappingAppts = filteredAppointments.filter(otherAppt => {
+                if (otherAppt.id === appt.id) return false;
+                
+                return calculateOverlap(appt, otherAppt);
+            });
 
+            if (overlappingAppts.length > 0) {
+                // VISUAL CORRIGIDO: Borda amarela para sobreposição (#ffda2d)
+                block.style.borderColor = '#ffda2d'; 
+                block.style.borderWidth = '2px';
+                block.style.borderStyle = 'solid'; 
+            }
+
+            // A classe 'appointment-block' já define a altura de 120px no HTML
             block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
             block.dataset.id = appt.id;
             block.dataset.technician = appt.technician;
             block.dataset.date = appt.appointmentDate; 
-            block.dataset.serviceshowed = appt.serviceShowed || ''; // USANDO SERVICE SHOWED (CORREÇÃO DE MODELO)
-            block.dataset.verification = appt.verification; // Para o modal
+            block.dataset.serviceshowed = appt.serviceShowed || ''; 
+            block.dataset.verification = appt.verification; 
             block.draggable = true;
             
             // POSICIONAMENTO: Restrito à Coluna do Dia (colIndex)
@@ -350,8 +383,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // Usa os valores do cache local (localAppt) como base para os campos não editáveis no modal,
-        // garantindo que o payload da API esteja completo, mesmo que o modal não tenha todos os campos.
+        // Usa os valores dos campos ocultos e dos campos editáveis para o payload
         const dataToUpdate = {
             rowIndex: parseInt(apptId, 10), // ID é o rowNumber
             // Campos editados/do modal
@@ -359,12 +391,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             verification: newVerification,
             serviceShowed: newServiceShowed, 
             
-            // Campos obrigatórios da API (do cache local)
+            // Campos obrigatórios da API (do cache local ou hidden inputs)
             technician: localAppt.technician,
-            petShowed: localAppt.petShowed || '',
-            tips: localAppt.tips || '',
-            percentage: localAppt.percentage || '',
-            paymentMethod: localAppt.paymentMethod || '',
+            petShowed: modalPetShowed.value || '',
+            tips: modalTips.value || '',
+            percentage: modalPercentage.value || '',
+            paymentMethod: modalPaymentMethod.value || '',
         };
 
         try {
@@ -377,10 +409,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await response.json();
             
             if (result.success) {
-                // Atualiza o registro localmente (para a próxima renderização)
+                // CORREÇÃO: Atualiza o registro localmente com TODOS os valores enviados para a API
                 localAppt.appointmentDate = newAppointmentDateSheetFormat;
                 localAppt.verification = newVerification;
-                localAppt.serviceShowed = newServiceShowed; 
+                localAppt.serviceShowed = newServiceShowed;
+                localAppt.petShowed = dataToUpdate.petShowed;
+                localAppt.tips = dataToUpdate.tips;
+                localAppt.percentage = dataToUpdate.percentage;
+                localAppt.paymentMethod = dataToUpdate.paymentMethod;
                 
                 alert('Agendamento atualizado com sucesso!');
                 closeEditModal();
@@ -424,14 +460,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function addDragAndDropListeners(element) {
         element.addEventListener('dragstart', (e) => {
+            const id = element.dataset.id;
+            const localAppt = allAppointments.find(a => String(a.id) === id);
+
             draggedAppointment = {
                 element: element,
-                id: element.dataset.id,
+                id: id,
                 technician: element.dataset.technician,
                 originalDate: element.dataset.date,
-                originalTop: element.style.top,
-                originalColumn: element.style.gridColumn,
-                serviceShowed: element.dataset.serviceshowed, // USANDO SERVICE SHOWED (CORREÇÃO)
+                // Adiciona campos de cache para o payload do drag&drop
+                verification: localAppt.verification || '',
+                serviceShowed: localAppt.serviceShowed || '', 
+                petShowed: localAppt.petShowed || '',
+                tips: localAppt.tips || '',
+                percentage: localAppt.percentage || '',
+                paymentMethod: localAppt.paymentMethod || '',
             };
             e.dataTransfer.effectAllowed = 'move';
             setTimeout(() => element.style.display = 'none', 0);
@@ -486,8 +529,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const newDate = parseSheetDate(`${targetDateKey} 00:00`); 
             newDate.setHours(newHour, newMinute, 0, 0);
 
-            // Validação removida. Permite qualquer horário.
-
             const snapOffsetTop = (newHour - 8) * SLOT_HEIGHT_PX + newMinute; 
             const targetCol = target.style.gridColumn;
 
@@ -512,18 +553,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             
             if (localAppt) {
-                // Prepara o payload para a API de atualização (usando a mesma estrutura de manage-showed)
+                // Prepara o payload para a API de atualização (usando dados de cache do dragstart)
                 const dataToUpdate = {
                     rowIndex: parseInt(draggedAppointment.id, 10),
                     appointmentDate: newDateLocalFormat, 
                     technician: newTech,
-                    // Campos que precisam ser passados para o cálculo de To Pay na API (agora com cache)
-                    verification: localAppt.verification || '', 
-                    serviceShowed: localAppt.serviceShowed || '', 
-                    petShowed: localAppt.petShowed || '',
-                    tips: localAppt.tips || '',
-                    percentage: localAppt.percentage || '',
-                    paymentMethod: localAppt.paymentMethod || '',
+                    verification: draggedAppointment.verification, 
+                    serviceShowed: draggedAppointment.serviceShowed, 
+                    petShowed: draggedAppointment.petShowed,
+                    tips: draggedAppointment.tips,
+                    percentage: draggedAppointment.percentage,
+                    paymentMethod: draggedAppointment.paymentMethod,
                 };
 
                 try {
