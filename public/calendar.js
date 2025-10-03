@@ -136,6 +136,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         ).join('');
 
         editModal.classList.remove('hidden');
+        
+        // CORREÇÃO DE SCROLL: Garante que o modal fixo seja visível
+        // Move o topo da página para 0, revelando o modal.
+        window.scrollTo(0, 0); 
     }
 
     function closeEditModal() {
