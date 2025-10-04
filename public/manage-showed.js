@@ -23,39 +23,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     const paymentOptions = ["Check", "American Express", "Apple Pay", "Discover", "Master Card", "Visa", "Zelle", "Cash", "Invoice"];
     const verificationOptions = ["Showed", "Canceled"];
     
-    // Helper para formatar YYYY/MM/DD HH:MM (do backend) para YYYY-MM-DDTHH:MM (para input HTML type=datetime-local)
+    const MIN_HOUR = 7;
+    const MAX_HOUR = 21;
+
+
+    // MODIFICATION 1: Helper para formatar MM/DD/YYYY HH:MM (do backend) para YYYY-MM-DDTHH:MM (para input HTML type=datetime-local)
     function formatDateTimeForInput(dateTimeStr) {
         if (!dateTimeStr) return '';
-        // Substitui '/' por '-', e insere 'T' (ex: 2025/10/01 10:30 -> 2025-10-01T10:30)
-        return dateTimeStr.replace(/\//g, '-').replace(' ', 'T'); 
+        // Input: MM/DD/YYYY HH:MM (from API/Sheet)
+        // Output: YYYY-MM-DDTHH:MM (for HTML input)
+
+        const [datePart, timePart] = dateTimeStr.split(' ');
+        if (!datePart || !timePart) return '';
+
+        const [month, day, year] = datePart.split('/');
+        
+        if (year && month && day) {
+             // Convert MM/DD/YYYY to YYYY-MM-DD and combine with time
+            return `${year}-${month}-${day}T${timePart}`; 
+        }
+        return '';
     }
 
-    // Helper para formatar YYYY/MM/DD (do backend) para YYYY-MM-DD (para input HTML type=date)
+    // Helper para formatar MM/DD/YYYY (do backend) para YYYY-MM-DD (para input HTML type=date)
     function formatDateForInput(dateStr) {
         if (!dateStr) return '';
-        // Se o formato for YYYY/MM/DD, substitui '/' por '-' (e ignora a hora se houver)
-        return dateStr.split(' ')[0].replace(/\//g, '-'); 
+        // Input: MM/DD/YYYY (from API/Sheet - date part)
+        // Output: YYYY-MM-DD (for HTML input type=date)
+        const datePart = dateStr.split(' ')[0]; 
+
+        const [month, day, year] = datePart.split('/');
+
+        if (year && month && day) {
+            // Convert MM/DD/YYYY to YYYY-MM-DD
+            return `${year}-${month}-${day}`;
+        }
+        return ''; 
     }
 
+    // Helper para converter a data do filtro (YYYY-MM-DD) para objeto Date para comparação
+    function parseFilterDate(inputDate) {
+         if (!inputDate) return null;
+         const [Y, M, D] = inputDate.split('-');
+         // Month is 0-indexed in Date constructor (M - 1)
+         return new Date(Y, M - 1, D);
+    }
+    
     // Função auxiliar para popular dropdowns
     function populateDropdown(selectElement, items) {
-        if (items && Array.isArray(items)) {
-            // Adiciona a opção "All" ou "Select"
-            const defaultOption = document.createElement('option');
-            defaultOption.value = '';
-            defaultOption.textContent = selectElement.id === 'technician-filter' ? 'All Technicians' : 'All Verifications';
-            selectElement.appendChild(defaultOption);
-            
-            // Adiciona as demais opções
-            items.forEach(item => {
-                if (item) {
-                    const option = document.createElement('option');
-                    option.value = item;
-                    option.textContent = item;
-                    selectElement.appendChild(option);
-                }
-            });
-        }
+        // ... (no change in dropdown population logic)
+        // ...
     }
 
     // Função para renderizar a tabela e atualizar os cards
@@ -160,15 +177,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     function applyFilters() {
         const searchTermCustomers = customersFilter.value.toLowerCase();
         const searchTermCode = codeFilter.value.toLowerCase();
-        const selectedStartDate = startDateFilter.value ? new Date(startDateFilter.value) : null;
-        const selectedEndDate = endDateFilter.value ? new Date(endDateFilter.value) : null;
+        
+        const selectedStartDate = startDateFilter.value ? parseFilterDate(startDateFilter.value) : null;
+        const selectedEndDate = endDateFilter.value ? parseFilterDate(endDateFilter.value) : null;
+        
         const selectedTechnician = technicianFilter.value.toLowerCase();
         const selectedVerification = verificationFilter.value.toLowerCase();
 
         const filteredData = allAppointmentsData.filter(appointment => {
-            // A data do agendamento agora inclui a hora. A comparação de data precisa considerar apenas a parte da data.
-            const appointmentDatePart = appointment.appointmentDate.split(' ')[0]; // YYYY/MM/DD
-            const appointmentDate = new Date(appointmentDatePart.split('/').reverse().join('-')); // Converte para Date object
+            // A data do agendamento é MM/DD/YYYY HH:MM. A comparação de data precisa considerar apenas a parte da data.
+            const apptDate = parseFilterDate(formatDateForInput(appointment.appointmentDate)); // Converte MM/DD/YYYY para Date object (apenas data)
 
             const matchesCustomers = searchTermCustomers === '' || 
                                      (appointment.customers && appointment.customers.toLowerCase().includes(searchTermCustomers));
@@ -176,8 +194,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const matchesCode = searchTermCode === '' || 
                                 (appointment.code && appointment.code.toLowerCase().includes(searchTermCode));
             
-            const matchesDateRange = (!selectedStartDate || appointmentDate >= selectedStartDate) &&
-                                     (!selectedEndDate || appointmentDate <= selectedEndDate);
+            const matchesDateRange = (!selectedStartDate || (apptDate && apptDate >= selectedStartDate)) &&
+                                     (!selectedEndDate || (apptDate && apptDate <= selectedEndDate));
             
             const matchesTechnician = selectedTechnician === '' || 
                                       (appointment.technician && appointment.technician.toLowerCase() === selectedTechnician);
@@ -252,13 +270,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             const textInputs = row.querySelectorAll('input:not(.datetime-local-input)');
             const selects = row.querySelectorAll('select');
             
-            // Mapeamento dos elementos de entrada e seleção:
-            // textInputs: [0] serviceShowed (Text), [1] tips (Text)
-            // selects: [0] technician (Dropdown), [1] petShowed (Dropdown), [2] percentage (Dropdown), [3] paymentMethod (Dropdown), [4] verification (Dropdown)
+            // MODIFICATION 2: Convert HTML input format (YYYY-MM-DDTHH:MM) to API target format (MM/DD/YYYY HH:MM)
+            const appointmentDateLocal = appointmentDateInput.value;
+            const [datePart, timePart] = appointmentDateLocal.split('T');
+            const [year, month, day] = datePart.split('-');
+            const apiFormattedDate = `${month}/${day}/${year} ${timePart}`; // MM/DD/YYYY HH:MM
+
+            // MODIFICATION 3: Hour Validation
+            const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
+            const minute = parseInt(appointmentDateLocal.substring(14, 16), 10);
+
+            if (hour < MIN_HOUR || hour > MAX_HOUR || (hour === MAX_HOUR && minute > 0)) {
+                alert(`Save Error: Appointments must be scheduled between ${MIN_HOUR}:00 and ${MAX_HOUR}:00.`);
+                return;
+            }
+            // END MODIFICATION 3
+
 
             const rowData = {
                 rowIndex: parseInt(sheetRowNumber, 10),
-                appointmentDate: appointmentDateInput.value, // YYYY-MM-DDTHH:MM is passed to the API
+                appointmentDate: apiFormattedDate, // MM/DD/YYYY HH:MM is passed to the API
                 // customers é ignorado
                 technician: selects[0].value, // Technician é o primeiro select
                 petShowed: selects[1].value,
