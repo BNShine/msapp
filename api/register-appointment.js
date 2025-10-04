@@ -1,4 +1,4 @@
-// bnshine/msapp/msapp-4e398247b5d633a2b21f3c69482e0291ce9a9fc9/api/register-appointment.js
+// api/register-appointment.js
 
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
@@ -22,7 +22,6 @@ export default async function handler(req, res) {
 
     try {
         const { type, data, pets, closer1, closer2, customers, phone, oldNew, appointmentDate, serviceValue, franchise, city, source, week, month, year, code, reminderDate, verification, zipCode, technician } = req.body;
-        // appointmentDate and reminderDate are now expected to be MM/DD/YYYY [HH:MM]
 
         // Validação de campos essenciais (inclusão de 'technician' aqui)
         if (!type || !data || !customers || !phone || !appointmentDate || !serviceValue || !franchise || !city || !source) {
@@ -47,6 +46,7 @@ export default async function handler(req, res) {
 
         const newRow = {
             'Type': type,
+            // 'Date' is YYYY-MM-DD from form; saving it directly to Sheets relies on Google's automatic format interpretation.
             'Date': data,
             'Pets': pets,
             'Closer (1)': closer1, 
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
             'Customers': customers,
             'Phone': phone,
             'Old/New': oldNew,
-            'Date (Appointment)': appointmentDate, // MM/DD/YYYY HH:MM
+            'Date (Appointment)': appointmentDate, // MM/DD/YYYY HH:MM (sent from frontend)
             'Service Value': serviceValue,
             'Franchise': franchise,
             'City': city,
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
             'Month': month,
             'Year': year,
             'Code': code,
-            'Reminder Date': reminderDate, // MM/DD/YYYY
+            'Reminder Date': reminderDate, // MM/DD/YYYY (sent from frontend)
             'Verification': verification, 
             'Zip Code': zipCode,
             'Technician': technician, // Campo salvo
