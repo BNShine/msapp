@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const SCHEDULE_DURATION_HOURS = 2; 
     const SLOT_HEIGHT_PX = 60; 
     
-    // ATUALIZADO (REQUISITO 3): Horário estendido de 8:00h até 22:00h (14 slots: 8 a 21)
+    // ATUALIZADO: Horário estendido de 8:00h até 22:00h (14 slots: 8 a 21)
     const TIME_SLOTS_START_HOUR = 8;
     const TIME_SLOTS_END_HOUR = 22; // Alterado para 22 para incluir o slot 21:00-22:00
     const NIGHT_SHIFT_HOUR = 18; // 18:00 onwards should be colored
@@ -63,7 +63,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let draggedAppointment = null;
     
     // --- Helper Functions ---
-    // (Restante das funções auxiliares de data e cálculo omitidas aqui para brevidade, mas estão no código submetido)
     
     function getStartOfWeek(date) {
         const d = new Date(date);
@@ -85,7 +84,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return dateTimeStr.replace(/\//g, '-').replace(' ', 'T'); 
     }
     
-    // ATUALIZADO (REQUISITO 2): Popula todos os campos, incluindo os escondidos para o payload do save
+    // ATUALIZADO: Popula todos os campos, incluindo os escondidos para o payload do save
     function openEditModal(appt) {
         modalApptId.value = appt.id;
         modalOriginalTechnician.value = appt.technician;
@@ -131,16 +130,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // NOVO/ATUALIZADO (REQUISITO 2): Lógica para salvar os dados modificados do modal
+    // Lógica para salvar os dados modificados do modal
     async function handleSaveAppointment(event) {
         event.preventDefault();
         
         const dataToSend = {
             rowIndex: parseInt(modalApptId.value, 10),
-            // Updated fields from the modal
-            appointmentDate: modalDate.value, // YYYY-MM-DDTHH:MM 
-            verification: modalVerificationSelect.value,
-            serviceShowed: modalServiceValue.value,
+            // Updated fields from the modal (Requisito 2)
+            appointmentDate: modalDate.value, // Atualiza 'Date (Appointment)'
+            verification: modalVerificationSelect.value, // Atualiza 'Verification'
+            serviceShowed: modalServiceValue.value, // Atualiza 'Service Showed'
             // Hidden fields needed by the API, using the original values
             technician: modalOriginalTechnician.value, 
             petShowed: modalPetShowed.value,
@@ -152,7 +151,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('[CALENDAR LOG] Sending update data:', dataToSend);
 
         try {
-            // Reusing the endpoint that handles all fields and 'To Pay' calculation
+            // Chama a API que atualiza a linha da planilha
             const response = await fetch('/api/update-appointment-showed-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -164,7 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (result.success) {
                 alert('Agendamento atualizado com sucesso!');
-                // Reload data and re-render scheduler
+                // Recarrega os dados e renderiza o scheduler para atualizar o card (Requisito 2)
                 await loadInitialData(true); 
             } else {
                 alert('Erro ao salvar agendamento: ' + (result.message || 'Erro desconhecido. Consulte o console para mais detalhes.'));
@@ -197,7 +196,7 @@ document.addEventListener('DOMContentLoaded', async () => {
          element.innerHTML = `<p class="text-green-600">Formulário de disponibilidade para ${technician} renderizado (Funcionalidade não implementada).</p>`;
     }
 
-    // --- NOVO: Função para popular os dropdowns de técnico ---
+    // --- Função para popular os dropdowns de técnico ---
     function populateTechSelects(technicians) {
         
         if (techSelectDropdown) {
@@ -235,7 +234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- RENDERING PRINCIPAL (Contém a lógica de agendamento e cor) ---
+    // --- RENDERING PRINCIPAL ---
 
     function renderScheduler() {
         
@@ -397,9 +396,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                  fetch('/api/get-dashboard-data'), 
                  fetch('/api/get-technician-appointments') 
             ]);
-
-            // --- DEBBUG CRÍTICO AQUI ---
-            console.log('[CALENDAR LOG - FETCH] Status API Dashboard:', techResponse.status);
             
             if (!techResponse.ok) {
                  const errorText = await techResponse.text();
@@ -408,18 +404,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const techData = await techResponse.json();
-            
-            if (!techData.technicians || techData.technicians.length === 0) {
-                 console.warn('[CALENDAR LOG - DATA] A API retornou 0 técnicos. Verifique a planilha Technicians (Coluna A) ou o log do servidor.');
-            }
-
             allTechnicians = techData.technicians || [];
-            console.log('[CALENDAR LOG - DATA] Total de técnicos carregados:', allTechnicians.length);
-            // ---------------------------
+            if (!isReload) console.log('[CALENDAR LOG - DATA] Total de técnicos carregados:', allTechnicians.length);
 
             // 2. Process Appointments
             const apptData = await apptResponse.json();
             allAppointments = apptData.appointments || [];
+            if (!isReload) console.log('[CALENDAR LOG - DATA] Total de agendamentos carregados:', allAppointments.length);
+
 
             // 3. Populate Dropdowns and Render
             populateTechSelects(allTechnicians.sort()); 
