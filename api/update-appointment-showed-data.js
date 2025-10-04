@@ -20,13 +20,12 @@ function parseToNumeric(value) {
     if (typeof value !== 'string') {
         value = String(value);
     }
-    // Remove R$, %, espaços, e substitui vírgula por ponto
-    const cleanedValue = value.replace(/R\$/, '').replace(/%/g, '').replace(/\./g, '').replace(/,/g, '.').trim();
+    const cleanedValue = value.replace(/R\$/, '').replace(/%/g, '').replace(/[.]/g, '').replace(/,/g, '.').trim();
     const parsed = parseFloat(cleanedValue);
     return isNaN(parsed) ? 0 : parsed;
 }
 
-// Função auxiliar para converter YYYY-MM-DDTHH:MM (de input HTML type=datetime-local) para YYYY/MM/DD HH:MM (para consistência na planilha)
+// Função auxiliar para converter YYYY-MM-DDTHH:MM para YYYY/MM/DD HH:MM
 function formatToSheetDate(isoDate) {
     if (!isoDate) return '';
     return isoDate.replace('T', ' ').replace(/-/g, '/');
@@ -35,7 +34,6 @@ function formatToSheetDate(isoDate) {
 // Helper para garantir que valores numéricos/de quantidade vazios sejam salvos como '0'
 const ensureNumericString = (value) => {
     if (value === '' || value === undefined || value === null) return '0';
-    // Remove qualquer formatação de moeda ou vírgulas
     const cleaned = String(value).replace(/[^0-9.-]/g, '');
     return cleaned === '' ? '0' : cleaned;
 };
@@ -44,7 +42,6 @@ const ensureNumericString = (value) => {
 const ensurePercentageString = (value) => {
     if (value === '' || value === undefined || value === null || String(value).toLowerCase() === 'select') return '0%';
     const stringValue = String(value);
-    // Se for um número puro (ex: '20' ou '25'), adiciona %
     if (!stringValue.includes('%')) return `${stringValue}%`;
     return stringValue;
 };
@@ -57,7 +54,7 @@ export default async function handler(req, res) {
     try {
         const { rowIndex, technician, petShowed, serviceShowed, tips, percentage, paymentMethod, verification, appointmentDate } = req.body;
         
-        console.log('--- Início do Processo de Atualização (Versão Final) ---');
+        console.log('--- Início do Processo de Atualização (Versão Final Reforçada) ---');
         console.log('Dados recebidos do frontend para atualização:', { rowIndex, technician, petShowed, serviceShowed, tips, percentage, paymentMethod, verification, appointmentDate });
 
         if (rowIndex === undefined || rowIndex < 2) { 
@@ -70,7 +67,7 @@ export default async function handler(req, res) {
         const percentageValueRaw = ensurePercentageString(percentage);
         const percentageValue = parseToNumeric(percentageValueRaw) / 100;
         const tipsValue = parseToNumeric(tips);
-
+        
         let commissionValue = 0;
         if (serviceValue > 0 && percentageValue > 0) {
             commissionValue = serviceValue * percentageValue;
@@ -87,49 +84,66 @@ export default async function handler(req, res) {
             return res.status(500).json({ success: false, message: `Planilha "${SHEET_NAME_APPOINTMENTS}" não encontrada.` });
         }
         
-        // 2. Carrega todas as linhas e encontra a linha alvo por 'rowNumber'
-        const rows = await sheet.getRows();
-        
-        const targetRow = rows.find(row => row.rowNumber === rowIndex);
+        // 2. Mapeamento de Cabeçalhos e Colunas (Mais Robusto)
+        await sheet.loadHeaderRow();
+        const headerMap = {};
+        sheet.headerValues.forEach((header, index) => {
+            headerMap[header] = index;
+        });
 
-        if (!targetRow) {
-            console.error(`Row Not Found Error: A linha com rowIndex ${rowIndex} não foi encontrada.`);
-             return res.status(404).json({ success: false, message: 'Agendamento não encontrado para atualização.' });
+        // Mapeia os dados de entrada para o nome da coluna no Sheets
+        const colsToUpdate = {
+            'Date (Appointment)': formatToSheetDate(appointmentDate),
+            'Verification': verification,
+            'Service Showed': ensureNumericString(serviceShowed),
+            'Technician': technician,
+            'Pet Showed': ensureNumericString(petShowed),
+            'Tips': ensureNumericString(tips),
+            'Percentage': percentageValueRaw, 
+            'Method': paymentMethod,
+            'To Pay': toPayValue.toFixed(2),
+        };
+        
+        // 3. Carrega e atualiza as células diretamente (MÉTODO REFORÇADO)
+        const rowNum = rowIndex; // Índice da linha baseado em 1
+
+        // Carrega todas as células da linha específica para garantir a atualização em lote.
+        const numCols = sheet.headerValues.length;
+        const range = `A${rowNum}:${String.fromCharCode(65 + numCols - 1)}${rowNum}`;
+        await sheet.loadCells(range); 
+        
+        let updateCount = 0;
+        
+        // Aplica os novos valores às células
+        for (const header in colsToUpdate) {
+            const colIndex = headerMap[header];
+            if (colIndex !== undefined) {
+                // sheet.getCell usa índice baseado em 0 para linha e coluna
+                const cell = sheet.getCell(rowNum - 1, colIndex); 
+                
+                // LOG DE DEBUG DO SERVIDOR
+                console.log(`[DEBUG UPDATE] Updating cell R${rowNum} C${colIndex + 1} (${header}): '${cell.value}' -> '${colsToUpdate[header]}'`);
+                
+                cell.value = colsToUpdate[header];
+                updateCount++;
+            } else {
+                console.warn(`[DEBUG WARNING] Header '${header}' not found in sheet. Skipping update for this column.`);
+            }
         }
         
-        // 3. Atualiza as propriedades do objeto da linha (usando nomes de cabeçalho)
-        targetRow['Date (Appointment)'] = formatToSheetDate(appointmentDate); // ATUALIZA DATA/HORA
-        targetRow['Verification'] = verification; // ATUALIZA STATUS
-        targetRow['Service Showed'] = ensureNumericString(serviceShowed); // ATUALIZA VALOR DO SERVIÇO
-        
-        // Outras colunas
-        targetRow['Technician'] = technician;
-        targetRow['Pet Showed'] = ensureNumericString(petShowed);
-        targetRow['Tips'] = ensureNumericString(tips);
-        targetRow['Percentage'] = percentageValueRaw;
-        targetRow['Method'] = paymentMethod;
-        
-        // Campo calculado:
-        targetRow['To Pay'] = toPayValue.toFixed(2);
-        
-        // DEBUG DE VALORES ANTES DE SALVAR (Verifique no seu terminal!)
-        console.log(`[DEBUG SAVE] Coluna Date (Appointment): ${targetRow['Date (Appointment)']}`);
-        console.log(`[DEBUG SAVE] Coluna Verification: ${targetRow['Verification']}`);
-        console.log(`[DEBUG SAVE] Coluna Service Showed: ${targetRow['Service Showed']}`);
-        console.log(`[DEBUG SAVE] Coluna To Pay (Calculado): ${targetRow['To Pay']}`);
-
-
-        // 4. Salva a linha atualizada (Ponto de falha mais provável)
-        await targetRow.save();
+        // 4. Salva todas as células modificadas de uma vez
+        if (updateCount > 0) {
+            await sheet.saveUpdatedCells();
+            console.log(`[DEBUG SUCCESS] Total de ${updateCount} células atualizadas em lote.`);
+        }
 
         console.log('Dados atualizados com sucesso na planilha para o índice:', rowIndex);
         console.log(`Valor de 'To Pay' calculado e salvo: ${toPayValue.toFixed(2)}`);
-        console.log('--- Fim do Processo de Atualização (Versão Final) ---');
+        console.log('--- Fim do Processo de Atualização (Versão Final Reforçada) ---');
         
-        // O sucesso foi registrado, agora o cliente deve recarregar.
+        // Retorna sucesso para o frontend recarregar.
         return res.status(200).json({ success: true, message: 'Dados e cálculo de "To Pay" atualizados com sucesso!' });
     } catch (error) {
-        // Se este bloco for alcançado, significa que houve um erro real na API.
         console.error('ERRO CRÍTICO ao atualizar agendamento no Sheets. Stack Trace:', error.stack);
         
         return res.status(500).json({ success: false, message: 'Ocorreu um erro no servidor. Por favor, tente novamente.' });
