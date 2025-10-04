@@ -1,6 +1,7 @@
 // public/calendar.js
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // --- ELEMENT SELECTORS ---
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
     const loadingOverlay = document.getElementById('loading-overlay');
     const schedulerHeader = document.getElementById('scheduler-header');
@@ -30,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalPercentage = document.getElementById('modal-percentage');
     const modalPaymentMethod = document.getElementById('modal-payment-method');
 
-    // Global state variables
+    // --- GLOBAL STATE & CONFIG ---
     let allAppointments = []; 
     let allTechnicians = [];
     let selectedTechnician = ''; 
@@ -38,7 +39,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const SCHEDULE_DURATION_HOURS = 2; 
     const SLOT_HEIGHT_PX = 60; 
-    
     const TIME_SLOTS_START_HOUR = 8;
     const TIME_SLOTS_END_HOUR = 22;
     const NIGHT_SHIFT_HOUR = 18;
@@ -50,13 +50,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const VISIBLE_DAY_INDICES = [1, 2, 3, 4, 5, 6]; 
     const VERIFICATION_OPTIONS = ["Scheduled", "Showed", "Canceled"];
     
-    // --- Helper Functions ---
+    // --- HELPER FUNCTIONS ---
     
     function getStartOfWeek(date) {
         const d = new Date(date);
         d.setHours(0, 0, 0, 0);
         const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+        const diff = d.getDate() - day + (day === 0 ? -7 : 0); // Adjust to Sunday as start of week
         return new Date(d.setDate(diff));
     }
     
@@ -74,53 +74,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         return dateTimeStr.replace(/\//g, '-').replace(' ', 'T'); 
     }
     
-    // CORRIGIDO: Lógica de abrir o modal e popular os campos.
+    // --- MODAL LOGIC ---
     function openEditModal(appt) {
         if (!appt) return;
 
-        // Preenche campos escondidos que a API precisa
-        modalApptId.value = appt.id; // sheetRowNumber
+        modalApptId.value = appt.id;
         modalOriginalTechnician.value = appt.technician;
         modalPetShowed.value = appt.petShowed || ''; 
         modalTips.value = appt.tips || '';
         modalPercentage.value = appt.percentage || '';
         modalPaymentMethod.value = appt.paymentMethod || '';
         
-        // Preenche campos visíveis e editáveis
         modalDate.value = formatDateTimeForInput(appt.appointmentDate);
         modalServiceValue.value = appt.serviceShowed || '';
         
-        // Popula o select de 'Verification'
         const currentVerification = appt.verification || "Scheduled";
         modalVerificationSelect.innerHTML = VERIFICATION_OPTIONS.map(opt => 
             `<option value="${opt}" ${opt === currentVerification ? 'selected' : ''}>${opt}</option>`
         ).join('');
 
-        // Mostra o modal e trava o scroll da página
         editModal.classList.remove('hidden');
         document.body.classList.add('modal-open');
     }
 
-    // CORRIGIDO: Lógica para fechar o modal.
     function closeEditModal() {
         if (editModal) editModal.classList.add('hidden');
         document.body.classList.remove('modal-open');
     }
     
-    function handleEditAppointmentClick(event) {
-        const block = event.currentTarget;
-        const apptId = block.dataset.id;
-        const localAppt = allAppointments.find(a => String(a.id) === apptId);
-        
-        if (localAppt) {
-            openEditModal(localAppt);
-        } else {
-            console.error('Appointment data not found for ID:', apptId);
-            alert('Error: Could not find appointment details.');
-        }
-    }
-
-    // CORRIGIDO: Lógica completa para salvar os dados do modal.
     async function handleSaveAppointment() {
         const dataToSend = {
             rowIndex: parseInt(modalApptId.value, 10),
@@ -134,8 +115,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             paymentMethod: modalPaymentMethod.value,
         };
 
-        console.log('[SAVING DATA]', dataToSend);
-
         try {
             const response = await fetch('/api/update-appointment-showed-data', {
                 method: 'POST',
@@ -147,7 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (result.success) {
                 alert('Appointment updated successfully!');
-                await loadInitialData(true); // Recarrega os dados para refletir a mudança
+                await loadInitialData(true);
             } else {
                 throw new Error(result.message || 'Unknown error occurred.');
             }
@@ -158,9 +137,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             closeEditModal();
         }
     }
-    
+
+    // --- RENDER FUNCTIONS ---
     function populateTechSelects(technicians) {
-        const createOptions = (techList) => techList.map(tech => `<option value="${tech}">${tech}</option>`).join('');
+        const createOptions = (techList) => techList.sort().map(tech => `<option value="${tech}">${tech}</option>`).join('');
         
         if (techSelectDropdown) {
             techSelectDropdown.innerHTML = `<option value="">Select Technician</option>${createOptions(technicians)}`;
@@ -169,7 +149,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             techConfigSelect.innerHTML = `<option value="">Select Technician</option>${createOptions(technicians)}`;
         }
         
-        // Mantém a seleção do técnico após o reload
         if (selectedTechnician && technicians.includes(selectedTechnician)) {
             techSelectDropdown.value = selectedTechnician;
         }
@@ -178,15 +157,145 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
         
-        for (let i of VISIBLE_DAY_INDICES) {
+        VISIBLE_DAY_INDICES.forEach(dayIndex => {
             const date = new Date(currentWeekStart);
-            date.setDate(currentWeekStart.getDate() + i - 1); // Ajusta para o dia correto (segunda a sábado)
+            date.setDate(date.getDate() + dayIndex);
             const header = document.createElement('div');
             header.className = 'day-column-header p-2 font-semibold border-r border-border';
-            header.textContent = `${DAY_NAMES[i]} (${date.getDate()}/${date.getMonth() + 1})`;
+            header.textContent = `${DAY_NAMES[dayIndex]} (${date.getDate()}/${date.getMonth() + 1})`;
             schedulerHeader.appendChild(header);
-        }
+        });
 
         schedulerBody.innerHTML = '';
         
-        TIME_SLOTS.
+        TIME_SLOTS.forEach((time, rowIndex) => {
+            const hour = parseInt(time.split(':')[0], 10);
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'time-slot timeline-header p-2 text-sm font-medium border-b border-border';
+            timeDiv.textContent = time;
+            schedulerBody.appendChild(timeDiv);
+
+            VISIBLE_DAY_INDICES.forEach(dayIndex => {
+                const emptySlot = document.createElement('div');
+                emptySlot.className = 'time-slot border-t border-r border-border hover:bg-muted/10';
+                if (hour >= NIGHT_SHIFT_HOUR) emptySlot.classList.add('night-shift');
+                emptySlot.style.gridRow = `${rowIndex + 1}`;
+                emptySlot.style.gridColumn = `${dayIndex + 1}`;
+                schedulerBody.appendChild(emptySlot);
+            });
+        });
+        
+        renderAppointments();
+        
+        const weekEnd = new Date(currentWeekStart);
+        weekEnd.setDate(currentWeekStart.getDate() + 6);
+        currentWeekDisplay.textContent = `${currentWeekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`;
+
+        loadingOverlay.classList.toggle('hidden', !!selectedTechnician);
+        if(!selectedTechnician) {
+            loadingOverlay.querySelector('p').textContent = 'Select a technician to view schedule.';
+        }
+    }
+    
+    function renderAppointments() {
+        if (!selectedTechnician) return;
+        
+        const weekEnd = new Date(currentWeekStart);
+        weekEnd.setDate(currentWeekStart.getDate() + 7);
+        const codeFilterTerm = searchCode ? searchCode.value.toLowerCase().trim() : '';
+
+        const appointmentsToRender = allAppointments.filter(appt => {
+            if (appt.technician !== selectedTechnician) return false;
+            const apptDate = parseSheetDate(appt.appointmentDate);
+            if (!apptDate || apptDate < currentWeekStart || apptDate >= weekEnd) return false;
+            if (codeFilterTerm && (!appt.code || !appt.code.toLowerCase().includes(codeFilterTerm))) return false;
+            return VISIBLE_DAY_INDICES.includes(apptDate.getDay());
+        });
+
+        appointmentsToRender.forEach(appt => {
+            const apptDate = parseSheetDate(appt.appointmentDate);
+            if (!apptDate) return;
+
+            const startHour = apptDate.getHours();
+            if (startHour < TIME_SLOTS_START_HOUR || startHour >= TIME_SLOTS_END_HOUR) return;
+
+            const topOffset = ((startHour - TIME_SLOTS_START_HOUR) * 60 + apptDate.getMinutes()) / 60 * SLOT_HEIGHT_PX;
+            
+            let bgColor = 'bg-custom-primary';
+            if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
+            else if (appt.verification === 'Showed') bgColor = 'bg-green-600';
+            
+            const block = document.createElement('div');
+            block.className = `appointment-block ${bgColor} text-white rounded-md shadow-md border`;
+            block.dataset.id = appt.id;
+            block.style.top = `${topOffset}px`;
+            block.style.gridColumn = apptDate.getDay() + 1;
+
+            block.innerHTML = `
+                <div class="text-xs font-semibold overflow-hidden text-ellipsis">${appt.customers || 'N/A'}</div>
+                <div class="text-xs mt-1">Code: ${appt.code || 'N/A'}</div>
+                <div class="text-xs mt-1 font-medium">${startHour.toString().padStart(2,'0')}:${apptDate.getMinutes().toString().padStart(2,'0')}</div>
+                <div class="text-xs mt-1 font-bold">${appt.verification || 'Scheduled'}</div>
+            `;
+            
+            block.addEventListener('click', handleEditAppointmentClick);
+            schedulerBody.appendChild(block);
+        });
+    }
+
+    // --- DATA FETCHING ---
+    async function loadInitialData(isReload = false) {
+        if (!isReload) {
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.querySelector('p').textContent = 'Loading initial data...';
+        }
+
+        try {
+            const [techResponse, apptResponse] = await Promise.all([
+                 fetch('/api/get-dashboard-data', { cache: 'no-store' }), 
+                 fetch('/api/get-technician-appointments', { cache: 'no-store' }) 
+            ]);
+            
+            if (!techResponse.ok || !apptResponse.ok) throw new Error('Failed to load data from the server.');
+
+            const techData = await techResponse.json();
+            allTechnicians = techData.technicians || [];
+
+            const apptData = await apptResponse.json();
+            allAppointments = apptData.appointments || [];
+            
+            populateTechSelects(allTechnicians); 
+            renderScheduler();
+        } catch (error) {
+            console.error('Critical Error on loadInitialData:', error);
+            loadingOverlay.querySelector('p').textContent = `ERROR: ${error.message}`;
+            loadingOverlay.classList.remove('hidden');
+        }
+    }
+
+    // --- EVENT LISTENERS ---
+    prevWeekBtn.addEventListener('click', () => {
+         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+         renderScheduler();
+    });
+
+    nextWeekBtn.addEventListener('click', () => {
+         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+         renderScheduler();
+    });
+
+    if (techSelectDropdown) {
+        techSelectDropdown.addEventListener('change', (e) => {
+            selectedTechnician = e.target.value;
+            renderScheduler();
+        });
+    }
+    
+    if (searchCode) searchCode.addEventListener('input', renderScheduler);
+    if (modalSaveBtn) modalSaveBtn.addEventListener('click', handleSaveAppointment);
+    if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal); 
+    if (modalCloseXBtn) modalCloseXBtn.addEventListener('click', closeEditModal);
+    
+    // --- INITIALIZATION ---
+    loadInitialData();
+}); // Fim do DOMContentLoaded
