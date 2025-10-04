@@ -314,7 +314,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         weekEnd.setDate(currentWeekStart.getDate() + 7);
 
         techAvailabilityBlocks.forEach(block => {
+            // CORREÇÃO APLICADA AQUI
+            if (!block || !block.date) {
+                return; // Pula este item se o bloco ou a data forem indefinidos
+            }
             const blockDate = new Date(block.date.replace(/\//g, '-') + 'T00:00:00');
+            
             if (blockDate < currentWeekStart || blockDate >= weekEnd) return;
 
             const dateKey = formatDateToYYYYMMDD(blockDate);
