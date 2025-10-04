@@ -1,4 +1,4 @@
-// alansalviano/myshineapp/myshineapp-3c231631ee8b9a88345f9ab58661b08728579037/api/get-dashboard-data.js
+// api/get-dashboard-data.js
 
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
@@ -34,12 +34,12 @@ export default async function handler(req, res) {
 
         if (!sheetAppointments || !sheetEmployees || !sheetTechnicians || !sheetFranchises) {
             console.error('One or more sheets were not found.');
-            // NOVO LOG: Verifica se a planilha de Técnicos foi encontrada
+            // LOG: Verifica se a planilha de Técnicos foi encontrada
             console.error(`[API LOG] sheetTechnicians found: ${!!sheetTechnicians}`);
             return res.status(404).json({ error: 'Uma ou mais planilhas não foram encontradas.' });
         }
 
-        // Fetch Appointments (no change)
+        // Fetch Appointments (mantido)
         await sheetAppointments.loadCells('B1:E' + sheetAppointments.rowCount);
         const appointments = [];
         for (let i = 1; i < sheetAppointments.rowCount; i++) {
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
             }
         }
 
-        // Fetch Employees (Used for Closer 1 & 2 in Appointment Dashboard)
+        // Fetch Employees (Closers)
         await sheetEmployees.loadCells('A1:A' + sheetEmployees.rowCount);
         const employees = [];
         for (let i = 1; i < sheetEmployees.rowCount; i++) {
@@ -69,25 +69,25 @@ export default async function handler(req, res) {
             }
         }
 
-        // Fetch Technicians (Used for Technician dropdown in Manage Showed)
+        // Fetch Technicians (CRITICAL SECTION FOR THE DROPDOWN)
         await sheetTechnicians.loadCells('A1:A' + sheetTechnicians.rowCount);
         
-        // NOVO LOG: Mostra quantas linhas existem na planilha de Técnicos
+        // LOG: Mostra quantas linhas existem na planilha de Técnicos
         console.log(`[API LOG] Sheet Technicians Row Count: ${sheetTechnicians.rowCount}`);
         
         const technicians = [];
-        for (let i = 1; i < sheetTechnicians.rowCount; i++) {
+        for (let i = 1; i < sheetTechnicians.rowCount; i++) { // Starts from row 1 (index 0 is header)
             const cell = sheetTechnicians.getCell(i, 0);
             if (cell.value) {
                 technicians.push(cell.value);
             }
         }
         
-        // NOVO LOG: Mostra quantos técnicos foram realmente carregados
+        // LOG: Mostra quantos técnicos foram realmente carregados
         console.log(`[API LOG] Technicians loaded: ${technicians.length}`);
 
 
-        // Fetch Franchises (no change)
+        // Fetch Franchises (mantido)
         await sheetFranchises.loadCells('A1:A' + sheetFranchises.rowCount);
         const franchises = [];
         for (let i = 1; i < sheetFranchises.rowCount; i++) {
