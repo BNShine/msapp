@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technician Scheduler</title>
+    <link href="output.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide-static@latest/dist/umd/lucide.js"></script>
+    
+    <style>
+        .scheduler-grid {
+            display: grid;
+            /* Atualizado para 7 dias (domingo a sábado) + coluna de tempo */
+            grid-template-columns: 80px repeat(7, minmax(150px, 1fr)); 
+            grid-auto-rows: minmax(60px, auto); 
+            overflow-x: auto;
+            min-width: 100%;
+        }
+        .time-slot {
+            height: 60px;
+            position: relative;
+        }
+        .appointment-block {
+            height: 120px; 
+            position: absolute;
+            width: 100%;
+            left: 0;
+            top: 0; 
+            padding: 8px; 
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        .timeline-header {
+            grid-column: 1;
+            position: sticky;
+            left: 0;
+            background-color: hsl(var(--card));
+            z-index: 20;
+        }
+        .day-column-header {
+            text-align: center;
+        }
+        .bg-custom-primary { background-color: hsl(337 100% 67%); }
+        .bg-green-600 { background-color: rgb(22 163 74); }
+        .bg-cherry-red { background-color: hsl(0 84% 45%); }
+        
+        .modal-overlay-fixed {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 1000;
+        }
+
+        body.modal-open {
+            overflow: hidden !important; 
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+
+        /* Estilos para feedback de salvamento na tabela */
+        tr.is-saving {
+            background-color: hsl(var(--secondary) / 0.1);
+            transition: background-color 0.3s;
+        }
+        tr.is-success {
+            background-color: hsl(142.1 76.2% 36.3% / 0.15);
+            transition: background-color 0.3s;
+        }
+        tr.is-error {
+            background-color: hsl(0 84.2% 60.2% / 0.15);
+            transition: background-color 0.3s;
+        }
+    </style>
+</head>
+<body class="bg-background">
+
+    <header class="bg-card shadow-large border-b border-border">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center gap-4">
+            <h1 class="text-xl font-bold text-foreground">Technician Scheduler</h1>
+          </div>
+          <a href="appointments.html" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
+             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-4 h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+             New Appointment
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="p-8">
+        <div class="max-w-[98rem] mx-auto space-y-8">
+
+            <section class="rounded-lg border bg-card text-card-foreground shadow-large">
+                <div class="p-6 border-b border-border flex justify-between items-center flex-wrap gap-4">
+                    <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">Weekly Schedule</h2>
+                    <div class="flex items-center gap-4">
+                        <button id="prev-week" class="p-2 border rounded-md hover:bg-muted">Prev</button>
+                        <span id="current-week-display" class="font-bold text-lg flex items-center">Loading...</span>
+                        <button id="next-week" class="p-2 border rounded-md hover:bg-muted">Next</button>
+                    </div>
+                </div>
+                
+                <div class="flex">
+                    <div id="tech-filter-panel" class="w-64 border-r border-border p-4 space-y-4 flex-shrink-0">
+                        <h3 class="text-lg font-semibold">Select Technician</h3>
+                        <select id="tech-select-dropdown" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                             <option value="">Loading Technicians...</option>
+                        </select>
+                        <p id="selected-tech-display" class="text-sm font-bold text-brand-primary">No Technician Selected</p>
+                    </div>
+                    
+                    <div class="flex-1 overflow-x-auto">
+                        <div id="scheduler-header" class="scheduler-grid border-b border-border">
+                            <div class="timeline-header p-2 font-semibold">Time</div>
+                        </div>
+                        <div id="scheduler-body-wrapper" class="relative">
+                            <div id="scheduler-body" class="scheduler-grid relative min-w-full">
+                                </div>
+                            <div id="loading-overlay" class="absolute inset-0 bg-white/70 flex items-center justify-center hidden z-30">
+                                <p class="text-xl font-semibold text-muted-foreground">Please select a technician.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-lg border bg-card text-card-foreground shadow-large">
+                <div class="flex flex-col space-y-1.5 p-6 pb-8">
+                    <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                        Manage Showed Appointments (Current Week)
+                    </h2>
+                </div>
+                <div class="p-6 pt-0 overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-muted text-muted-foreground uppercase text-xs font-semibold">
+                            <tr>
+                                <th class="p-4 border-b border-border">Appointment Date</th>
+                                <th class="p-4 border-b border-border">Customers</th>
+                                <th class="p-4 border-b border-border">Code</th>
+                                <th class="p-4 border-b border-border">Technician</th>
+                                <th class="p-4 border-b border-border">Pet Showed</th>
+                                <th class="p-4 border-b border-border">Service Showed</th>
+                                <th class="p-4 border-b border-border">Tips</th>
+                                <th class="p-4 border-b border-border">Percentage</th>
+                                <th class="p-4 border-b border-border">Method</th>
+                                <th class="p-4 border-b border-border">Verification</th>
+                            </tr>
+                        </thead>
+                        <tbody id="showed-appointments-table-body" class="text-foreground text-sm">
+                            <tr>
+                                <td colspan="10" class="p-4 text-center">Select a technician to see appointments for the current week.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="rounded-lg border bg-card text-card-foreground shadow-large p-6">
+                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">Technician Availability Configuration</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="space-y-2 col-span-2">
+                        <label for="tech-config-select" class="block text-sm font-semibold text-foreground">Select Technician to Configure</label>
+                        <select id="tech-config-select" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <option value="">Select Technician</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="save-availability-btn" class="block text-sm font-semibold text-foreground opacity-0">Action</label>
+                        <button id="save-availability-btn" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
+                            Save Availability
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="availability-form-container" class="mt-6 space-y-4">
+                    <p class="text-muted-foreground p-4 border rounded-lg bg-muted/10">Select a technician above to manage their weekly working hours (8:00 to 18:00 range).</p>
+                </div>
+            </section>
+        </div>
+    </main>
+    
+    <script src="calendar.js"></script>
+<div id="edit-appointment-modal" class="modal-overlay-fixed hidden">
+    <div class="bg-card p-6 rounded-lg shadow-2xl w-2/5 relative" style="z-index: 1001;">
+        <button type="button" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800" id="modal-close-x-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+        
+        <h3 class="text-xl font-bold text-foreground mb-4">Edit Appointment Details</h3>
+        
+        <form id="appointment-edit-form" class="space-y-4">
+            <input type="hidden" id="modal-appt-id" name="id">
+            <input type="hidden" id="modal-original-technician" name="technician">
+            <input type="hidden" id="modal-pet-showed" name="petShowed">
+            <input type="hidden" id="modal-percentage" name="percentage">
+            <input type="hidden" id="modal-payment-method" name="paymentMethod">
+
+            <div class="space-y-2">
+                <label for="modal-date" class="block text-sm font-semibold text-foreground">Date and Time</label>
+                <input type="datetime-local" id="modal-date" name="appointmentDate" required
+                       class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            </div>
+
+            <div class="space-y-2">
+                <label for="modal-verification" class="block text-sm font-semibold text-foreground">Status</label>
+                <select id="modal-verification" name="verification"
+                        class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    </select>
+            </div>
+
+            <div class="space-y-2">
+                <label for="modal-service-value" class="block text-sm font-semibold text-foreground">Service Value</label>
+                <input type="text" id="modal-service-value" name="serviceShowed" placeholder="Ex: 150.00"
+                       class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            </div>
+            
+            <div class="space-y-2">
+                <label for="modal-tips" class="block text-sm font-semibold text-foreground">Tips</label>
+                <input type="text" id="modal-tips" name="tips" placeholder="Ex: 20.00"
+                       class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            </div>
+        </form>
+
+        <div class="mt-6 flex justify-end gap-3">
+            <button id="modal-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
+                Save Changes
+            </button>
+            <button id="modal-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+</body>
+</html>
