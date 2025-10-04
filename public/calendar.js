@@ -642,7 +642,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function runItineraryOptimization(appointments, isReversed = false) {
         if (!directionsService || !directionsRenderer) {
-            alert('Google Maps Service is not initialized. Please ensure the API key is loaded.');
+            // Se o serviço não estiver pronto, a API Key ou o script do Maps não carregaram
+            itineraryResultsList.innerHTML = '<p class="text-red-600">Google Maps Service is not initialized. Please ensure the API key is loaded and check console errors.</p>';
             return;
         }
         
@@ -653,7 +654,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const originZip = selectedTechObj?.zip_code;
 
         if (!originZip) {
-            alert('Technician origin Zip Code not found. Please register it in the Technician Registration section.');
+            itineraryResultsList.innerHTML = '<p class="text-red-600">Technician origin Zip Code not found. Please register it in the Technician Registration section.</p>';
             return;
         }
 
@@ -684,41 +685,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 2. Get Origin Coords
         const [originLat, originLon] = await getLatLon(originZip);
         if (originLat === null) {
-            alert('Error: Could not get coordinates for technician origin Zip Code.');
+            itineraryResultsList.innerHTML = '<p class="text-red-600">Error: Could not get coordinates for technician origin Zip Code.</p>';
             optimizeItineraryBtn.disabled = false;
             itineraryReverserBtn.disabled = false;
             return;
         }
 
-        // 3. Nearest Neighbor Approximation Algorithm
+        // 3. Nearest Neighbor Approximation Algorithm (Correctly sets starting point)
         let currentLat = originLat;
         let currentLon = originLon;
 
         let unvisited = [...validAppointments];
         let optimizedItinerary = [];
         
-        // Find the closest appointment to the starting point (tech's zip)
-        let closestClient = null;
-        let minDistance = Infinity;
-        for (const client of unvisited) {
-            const distance = calculateDistance(currentLat, currentLon, client.lat, client.lon);
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestClient = client;
-            }
-        }
-        
-        if (closestClient) {
-            optimizedItinerary.push(closestClient);
-            unvisited = unvisited.filter(c => c !== closestClient);
-            currentLat = closestClient.lat;
-            currentLon = closestClient.lon;
-        }
-
-        // Subsequent steps: build the rest of the route
+        // Start the Nearest Neighbor search from the Technician's origin.
         while (unvisited.length > 0) {
-            closestClient = null;
-            minDistance = Infinity;
+            let closestClient = null;
+            let minDistance = Infinity;
 
             for (const client of unvisited) {
                 const distance = calculateDistance(currentLat, currentLon, client.lat, client.lon);
@@ -728,6 +711,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             optimizedItinerary.push(closestClient);
+            // Move current position to the new client's location
             currentLat = closestClient.lat;
             currentLon = closestClient.lon;
             unvisited = unvisited.filter(c => c !== closestClient);
@@ -807,7 +791,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-lg text-brand-primary">Total Round Trip: ${Math.round(totalDuration / 60)} min / ${(totalDistance / 1000).toFixed(2)} km</div>`;
                 
             } else {
-                itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}</p>`;
+                itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}. Verifique o console para mais detalhes.</p>`;
             }
         });
     }
