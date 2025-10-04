@@ -34,19 +34,26 @@ export function excelDateToDateTime(excelSerialDate) {
     if (typeof excelSerialDate === 'string') {
         const dateParts = excelSerialDate.split(' ');
         
-        // Handle incoming YYYY/MM/DD HH:MM (old internal format) and convert to MM/DD/YYYY HH:MM
         if (dateParts.length === 2 && dateParts[0].includes('/') && dateParts[1].includes(':')) {
              const parts = dateParts[0].split('/');
-             if (parts.length === 3 && parts[0].length === 4) { // YYYY/MM/DD
+             const timeParts = dateParts[1].split(':');
+
+             // Handle incoming YYYY/MM/DD HH:MM (old internal format) and convert to MM/DD/YYYY HH:MM
+             if (parts.length === 3 && parts[0].length === 4) { 
                  const [Y, M, D] = parts;
                  return `${M}/${D}/${Y} ${dateParts[1]}`;
              }
-        }
-        
-        // If it's already in MM/DD/YYYY HH:MM or another non-Y/M/D format, return as is
-        if (dateParts.length === 2 && dateParts[0].includes('/') && dateParts[1].includes(':') && dateParts[0].split('/')[0].length === 2) {
-             // Heuristic check: if the first part is 2 digits, assume MM/DD/YYYY
-             return excelSerialDate;
+            
+             // If it's already in MM/DD/YYYY (unpadded or padded) format, ensure time is padded (CRITICAL FIX)
+             if (parts.length === 3 && parts[0].length < 4) {
+                 const month = String(Number(parts[0])).padStart(2, '0');
+                 const day = String(Number(parts[1])).padStart(2, '0');
+                 const year = parts[2];
+                 const hour = String(Number(timeParts[0])).padStart(2, '0');
+                 const minute = String(Number(timeParts[1])).padStart(2, '0');
+
+                 return `${month}/${day}/${year} ${hour}:${minute}`;
+             }
         }
     }
     
@@ -81,6 +88,13 @@ export function excelDateToYYYYMMDD(excelSerialDate) {
              if (parts[0].length === 4) { // YYYY/MM/DD
                  const [Y, M, D] = parts;
                  return `${M}/${D}/${Y}`;
+             }
+             // If it's MM/DD/YYYY (unpadded), pad it for consistency
+             if (parts[0].length < 3) {
+                 const month = String(Number(parts[0])).padStart(2, '0');
+                 const day = String(Number(parts[1])).padStart(2, '0');
+                 const year = parts[2];
+                 return `${month}/${day}/${year}`;
              }
         }
         
