@@ -151,35 +151,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (localAppt) {
             openEditModal(localAppt);
         } else {
-            alert('Erro: Agendamento não encontrado.');
+            console.error('Erro: Agendamento não encontrado para o ID:', apptId);
         }
     }
-
+    
+    // =================================================================
+    // NOVA FUNÇÃO OTIMIZADA PARA SALVAR AGENDAMENTO
+    // =================================================================
     async function handleSaveAppointment(event) {
         event.stopPropagation();
         
+        // 1. Feedback visual de "Salvando..."
+        const originalButtonText = modalSaveBtn.textContent;
+        modalSaveBtn.textContent = 'Salvando...';
+        modalSaveBtn.disabled = true;
+
         const apptId = modalApptId.value;
         const newDateLocal = modalDate.value;
         const newVerification = modalVerificationSelect.value;
-        const newServiceShowed = modalServiceValue.value; 
+        const newServiceShowed = modalServiceValue.value;
         const newTips = modalTips.value;
-        
+
         if (!newDateLocal || !newVerification) {
-             alert("Data e Status são campos obrigatórios.");
-             return;
+            alert("Data e Status são campos obrigatórios.");
+            modalSaveBtn.textContent = originalButtonText;
+            modalSaveBtn.disabled = false;
+            return;
         }
 
         const newAppointmentDateSheetFormat = newDateLocal.replace('T', ' ').replace(/-/g, '/');
         const localAppt = allAppointments.find(a => String(a.id) === apptId);
-        
+        const originalData = { ...localAppt }; // Guarda o estado original para reverter em caso de erro
+
         if (!localAppt) {
-            alert('Erro: Agendamento não encontrado localmente.');
+            console.error('Erro: Agendamento não encontrado localmente.');
+            closeEditModal();
             return;
         }
 
         const dataToUpdate = {
-            rowIndex: parseInt(apptId, 10), 
-            appointmentDate: newDateLocal, 
+            rowIndex: parseInt(apptId, 10),
+            appointmentDate: newDateLocal,
             verification: newVerification,
             serviceShowed: newServiceShowed,
             tips: newTips,
@@ -188,6 +200,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             percentage: modalPercentage.value || '',
             paymentMethod: modalPaymentMethod.value || '',
         };
+        
+        // 2. Atualização otimista da UI
+        localAppt.appointmentDate = newAppointmentDateSheetFormat;
+        localAppt.verification = newVerification;
+        localAppt.serviceShowed = newServiceShowed;
+        localAppt.tips = newTips;
+        updateAppointmentInDOM(apptId); // Atualiza apenas o card afetado
 
         try {
             const response = await fetch('/api/update-appointment-showed-data', {
@@ -197,25 +216,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             const result = await response.json();
-            
-            if (result.success) {
-                localAppt.appointmentDate = newAppointmentDateSheetFormat;
-                localAppt.verification = newVerification;
-                localAppt.serviceShowed = newServiceShowed;
-                localAppt.tips = newTips;
-                localAppt.petShowed = dataToUpdate.petShowed;
-                localAppt.percentage = dataToUpdate.percentage;
-                localAppt.paymentMethod = dataToUpdate.paymentMethod;
-                
-                alert('Agendamento atualizado com sucesso!');
-                closeEditModal();
-                renderScheduler(); 
-            } else {
-                alert(`Erro ao salvar: ${result.message}`);
+
+            if (!result.success) {
+                throw new Error(result.message);
             }
+
+            // 3. Feedback de sucesso e fecha o modal
+            modalSaveBtn.textContent = 'Salvo!';
+            setTimeout(() => {
+                closeEditModal();
+                modalSaveBtn.textContent = originalButtonText;
+                modalSaveBtn.disabled = false;
+            }, 1000);
+
         } catch (error) {
-            console.error('Erro na requisição da API:', error);
-            alert('Erro de comunicação com o servidor. Tente novamente.');
+            // 4. Reverte a UI em caso de erro e notifica
+            console.error('Erro na API ao salvar:', error);
+            Object.assign(localAppt, originalData); // Restaura os dados locais
+            updateAppointmentInDOM(apptId); // Reverte a UI para o estado original
+            
+            modalSaveBtn.textContent = 'Erro!';
+            modalSaveBtn.style.backgroundColor = 'hsl(0 84.2% 60.2%)'; // Cor de erro
+            setTimeout(() => {
+                modalSaveBtn.textContent = originalButtonText;
+                modalSaveBtn.disabled = false;
+                modalSaveBtn.style.backgroundColor = ''; // Restaura a cor original
+            }, 2500);
         }
     }
 
@@ -292,15 +318,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const snapOffsetTop = (newHour - 8) * SLOT_HEIGHT_PX + newMinute; 
 
             const localAppt = allAppointments.find(a => String(a.id) === draggedAppointment.id);
-            const newDateDisplay = newDate.toLocaleDateString() + ' ' + newHour.toString().padStart(2, '0') + ':' + newMinute.toString().padStart(2, '0');
-
-            const confirmation = confirm(`Tem certeza que deseja mover o agendamento de ${localAppt.customers} para o dia ${newDateDisplay}?`);
             
-            if (!confirmation) {
-                draggedAppointment.element.style.display = 'block';
-                return;
-            }
-
+            // REMOVIDO: Alerta de confirmação desnecessário
+            
             draggedAppointment.element.style.top = `${snapOffsetTop}px`;
             draggedAppointment.element.style.display = 'block';
             
@@ -332,19 +352,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (result.success) {
                         localAppt.technician = newTech;
                         localAppt.appointmentDate = newDateSheetFormat;
-                        renderScheduler();
+                        renderScheduler(); // Re-renderiza para mover o item entre técnicos se necessário
                     } else {
-                        alert(`Erro ao mover agendamento: ${result.message}`);
-                        renderScheduler(); 
+                        console.error(`Erro ao mover agendamento: ${result.message}`);
+                        renderScheduler(); // Re-renderiza para reverter a posição visual
                     }
                 } catch (error) {
-                    alert('Erro de comunicação ao mover agendamento.');
-                    renderScheduler(); 
+                    console.error('Erro de comunicação ao mover agendamento:', error);
+                    renderScheduler(); // Re-renderiza para reverter a posição visual
                 }
             }
         });
     }
 
+    // --- Data Load e Rendering ---
+    
     function updateWeekDisplay() {
         const endOfWeek = new Date(currentWeekStart);
         endOfWeek.setDate(currentWeekStart.getDate() + 6);
@@ -415,8 +437,69 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateWeekDisplay();
     }
     
-    function renderAppointments(columnMap) {
+    // =================================================================
+    // NOVA FUNÇÃO PARA ATUALIZAR UM ÚNICO AGENDAMENTO NO DOM
+    // =================================================================
+    function updateAppointmentInDOM(apptId) {
+        const block = schedulerBody.querySelector(`.appointment-block[data-id="${apptId}"]`);
+        if (!block) {
+            renderScheduler(); // Fallback para redesenhar tudo se o elemento não for encontrado
+            return;
+        }
+
+        const appt = allAppointments.find(a => String(a.id) === String(apptId));
+        if (!appt) return;
+
+        // Atualiza a cor de fundo
+        let bgColor = 'bg-custom-primary';
+        if (appt.verification === 'Canceled') {
+            bgColor = 'bg-cherry-red';
+        } else if (appt.verification === 'Showed') {
+            bgColor = 'bg-green-600';
+        }
+        block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
         
+        // Atualiza a posição (data e hora)
+        const apptDate = parseSheetDate(appt.appointmentDate);
+        if (apptDate) {
+            const dateKey = formatDateToYYYYMMDD(apptDate);
+            const weekStartKey = formatDateToYYYYMMDD(currentWeekStart);
+
+            // Encontra a coluna correta para a nova data
+            const date = new Date(currentWeekStart);
+            let colIndex = -1;
+            for(let i=0; i < 7; i++) {
+                if (formatDateToYYYYMMDD(date) === dateKey) {
+                    colIndex = i + 1; // +1 porque a primeira coluna é 'Time'
+                    break;
+                }
+                date.setDate(date.getDate() + 1);
+            }
+
+            // Se o agendamento foi movido para fora da semana atual, remove-o
+            if (colIndex === -1) {
+                block.remove();
+                return;
+            }
+
+            block.style.gridColumnStart = colIndex + 1;
+            const topOffset = (apptDate.getHours() - 8) * SLOT_HEIGHT_PX + apptDate.getMinutes();
+            block.style.top = `${topOffset}px`;
+
+            // Atualiza o conteúdo interno
+            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
+            block.querySelector('[data-view-content]').innerHTML = `
+                <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p>
+                <p class="text-sm font-bold truncate">${appt.customers}</p>
+                <p class="text-xs font-medium text-white/80">${appt.verification}</p>
+                <p class="text-xs font-medium text-white/80">Service: $${appt.serviceShowed || '0.00'}</p>
+                <p class="text-xs font-medium text-white/80">Tips: $${appt.tips || '0.00'}</p>
+            `;
+        }
+    }
+
+
+    function renderAppointments(columnMap) {
         const weekEnd = new Date(currentWeekStart);
         weekEnd.setDate(currentWeekStart.getDate() + 7);
         
@@ -553,7 +636,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('CRITICAL ERROR during loadInitialData:', error);
             
             const userMessage = `Falha ao carregar dados iniciais. ${error.message || 'Erro desconhecido.'} Verifique a API e as variáveis de ambiente.`;
-            alert(userMessage);
+            // Removido o alert para uma experiência mais limpa
+            console.error(userMessage);
 
             if (techSelectDropdown) {
                 const displayError = (error.message || 'Erro de API').substring(0, 40) + '...';
@@ -603,9 +687,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const techTerm = searchTechnician.value.toLowerCase().trim();
 
         if (!customerTerm && !dateTerm && !codeTerm && !techTerm) {
-            alert("Please enter at least one search criterion.");
-            activeSearchApptId = null;
-            renderScheduler();
+            // Removido o alert
             return;
         }
 
@@ -626,10 +708,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             selectedTechDisplay.textContent = foundAppt.technician;
             activeSearchApptId = foundAppt.id;
             
-            alert(`Appointment found for: ${foundAppt.customers}. Loading week of ${apptDateStr.split(' ')[0]}.`);
             renderScheduler();
         } else {
-            alert("No appointment found matching the criteria.");
+            // Removido o alert
             activeSearchApptId = null;
             renderScheduler();
         }
@@ -735,11 +816,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (saveAvailabilityBtn) saveAvailabilityBtn.addEventListener('click', () => {
         if (!techConfigSelect.value) {
-            alert('Please select a technician before saving.');
+            // Removido alert
             return;
         }
         localStorage.setItem('techAvailability', JSON.stringify(techAvailability));
-        alert('Availability saved successfully!');
+        // Removido alert
         renderScheduler(); 
     });
 
@@ -747,4 +828,3 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     loadInitialData();
 });
-
