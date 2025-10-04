@@ -109,7 +109,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                             fullscreenControl: false,
                         });
                         directionsService = new google.maps.DirectionsService();
-                        directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
+                        // Hiding the default markers to use custom ones
+                        directionsRenderer = new google.maps.DirectionsRenderer({ 
+                            map: map,
+                            suppressMarkers: true // Suppress default A, B, C markers
+                        });
                         console.log('Google Maps services initialized.');
                     }
                 }
@@ -584,9 +588,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         dayItineraryTableBody.innerHTML = '';
         itineraryResultsList.innerHTML = 'No route calculated.';
         
-        // Clear previous map route
+        // Clear previous map route and markers
         if (directionsRenderer) directionsRenderer.setDirections({ routes: [] });
-        clearCustomMarkers(); // Clear custom markers
+        clearCustomMarkers(); 
         
         if (map) {
              // Center map to US default view
@@ -595,7 +599,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const selectedDayOfWeek = dayFilter.value;
-        // MODIFICATION 8: Read selectedTechName directly from DOM for robustness
         const selectedTechName = techSelectDropdown.value; 
 
         optimizeItineraryBtn.disabled = true;
@@ -608,7 +611,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const targetDate = getDayOfWeekDate(currentWeekStart, parseInt(selectedDayOfWeek, 10));
-        // MODIFICATION 9: Comparing internal YYYY/MM/DD date keys (correct for filtering by date)
         const dateKey = formatDateToYYYYMMDD(targetDate); 
 
         // Filter appointments for the selected day and technician
@@ -657,6 +659,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- NEW: Itinerary Optimization Logic ---
+
     function clearCustomMarkers() {
         for (let i = 0; i < currentMapMarkers.length; i++) {
             currentMapMarkers[i].setMap(null);
@@ -666,12 +669,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function runItineraryOptimization(appointments, isReversed = false) {
         if (!directionsService || !directionsRenderer) {
-            // Se o serviço não estiver pronto, a API Key ou o script do Maps não carregaram
             itineraryResultsList.innerHTML = '<p class="text-red-600">Google Maps Service is not initialized. Please ensure the API key is loaded and check console errors.</p>';
             return;
         }
         
-        // Fetch tech coverage data (needs technician's origin zip)
         const techCoverageResponse = await fetch('/api/get-tech-coverage');
         const techCoverageData = techCoverageResponse.ok ? await techCoverageResponse.json() : [];
         const selectedTechObj = techCoverageData.find(t => t.nome === selectedTechnician);
@@ -716,7 +717,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // 3. Nearest Neighbor Approximation Algorithm (Correctly sets starting point)
+        // 3. Nearest Neighbor Approximation Algorithm (Builds the shortest path from origin)
         let currentLat = originLat;
         let currentLon = originLon;
 
@@ -742,7 +743,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             unvisited = unvisited.filter(c => c !== closestClient);
         }
         
-        // 4. Reverse the route if needed (Farthest First - still an approximation)
+        // 4. Handle Routing Logic:
+        // Nearest Optimizer (false): Starts nearest to home -> ends farthest from home (in the optimal path sequence)
+        // Reverser (true): Inverts the entire calculated path, starting farthest -> ending nearest to home (still the optimal nearest neighbor path reversed)
         if (isReversed) {
             optimizedItinerary.reverse();
         }
@@ -772,7 +775,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             optimizeItineraryBtn.disabled = false;
             itineraryReverserBtn.disabled = false;
 
-            if (status === 'OK' && response && response.routes && response.routes.length > 0) {
+            // CRITICAL FIX: Check for the existence of waypoint_order which confirms a valid route was found
+            if (status === 'OK' && response && response.routes && response.routes.length > 0 && response.routes[0].waypoint_order) {
                 directionsRenderer.setDirections(response);
 
                 let totalDistance = 0;
@@ -783,7 +787,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (Starting from ${isReversed ? 'Farthest' : 'Nearest'}):</p>`;
                 
                 // Map the Directions API order back to our optimized list for correct time display
-                // Note: route.waypoint_order holds the indices of the original 'waypoints' array that Google found optimal.
                 const orderedSequenceIndices = route.waypoint_order.map(i => i);
 
                 const finalOrderedStops = orderedSequenceIndices.map(i => optimizedItinerary[i]);
