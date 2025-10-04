@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let GOOGLE_MAPS_API_KEY = null;
     let map, directionsService, directionsRenderer;
     let dayAppointments = []; // Appointments for the selected day/tech
+    let currentMapMarkers = []; // Array to track custom markers for clearing
 
     const SCHEDULE_DURATION_HOURS = 2; // CORRECT CONSTANT NAME
     const SLOT_HEIGHT_PX = 60;
@@ -208,6 +209,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             return `${year}-${month}-${day}T${paddedHour}:${paddedMinute}`; 
         }
         return '';
+    }
+
+    // --- Marker Management Helper ---
+    function clearCustomMarkers() {
+        for (let i = 0; i < currentMapMarkers.length; i++) {
+            currentMapMarkers[i].setMap(null);
+        }
+        currentMapMarkers = [];
     }
 
     // --- Funções do Modal de Edição de Agendamento ---
@@ -448,7 +457,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             block.style.gridColumnStart = colIndex;
             block.style.top = `${topOffset}px`;
 
-            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000); // FIXED CONSTANT
+            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000); // FIXED CONSTANT NAME
             block.innerHTML = `<div data-view-content>
                 <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p>
                 <p class="text-sm font-bold truncate">${appt.customers}</p>
@@ -577,6 +586,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Clear previous map route
         if (directionsRenderer) directionsRenderer.setDirections({ routes: [] });
+        clearCustomMarkers(); // Clear custom markers
+        
         if (map) {
              // Center map to US default view
             map.setCenter({ lat: 39.8283, lng: -98.5795 });
@@ -646,6 +657,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- NEW: Itinerary Optimization Logic ---
+    function clearCustomMarkers() {
+        for (let i = 0; i < currentMapMarkers.length; i++) {
+            currentMapMarkers[i].setMap(null);
+        }
+        currentMapMarkers = [];
+    }
 
     async function runItineraryOptimization(appointments, isReversed = false) {
         if (!directionsService || !directionsRenderer) {
@@ -690,7 +707,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // 2. Get Origin Coords
-        const [originLat, originLon] = await getLatLon(originZip);
+        const originCoords = await getLatLon(originZip);
+        const [originLat, originLon] = originCoords;
         if (originLat === null) {
             itineraryResultsList.innerHTML = '<p class="text-red-600">Error: Could not get coordinates for technician origin Zip Code.</p>';
             optimizeItineraryBtn.disabled = false;
@@ -728,6 +746,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isReversed) {
             optimizedItinerary.reverse();
         }
+        
+        // Clear previous route and markers
+        directionsRenderer.setDirections({ routes: [] });
+        clearCustomMarkers();
 
         // 5. Google Maps Directions Request
         const origin = originZip;
@@ -750,7 +772,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             optimizeItineraryBtn.disabled = false;
             itineraryReverserBtn.disabled = false;
 
-            if (status === 'OK' && response && response.routes && response.routes.length > 0 && response.routes[0].waypoint_order) {
+            if (status === 'OK' && response && response.routes && response.routes.length > 0) {
                 directionsRenderer.setDirections(response);
 
                 let totalDistance = 0;
@@ -761,19 +783,65 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (Starting from ${isReversed ? 'Farthest' : 'Nearest'}):</p>`;
                 
                 // Map the Directions API order back to our optimized list for correct time display
-                const orderedSequence = [
-                    ...route.waypoint_order.map((i) => optimizedItinerary[i]), // Use map over waypoint_order
-                ];
+                // Note: route.waypoint_order holds the indices of the original 'waypoints' array that Google found optimal.
+                const orderedSequenceIndices = route.waypoint_order.map(i => i);
+
+                const finalOrderedStops = orderedSequenceIndices.map(i => optimizedItinerary[i]);
                 
-                // The full sequence: Tech Base -> Waypoints (Ordered) -> Tech Base
+                // Add the stops in their final order to the full sequence, including origin/destination markers.
                 const fullSequence = [
-                    { name: 'Start (Tech Base)', zipCode: originZip, apptTime: 'N/A' },
-                    ...orderedSequence.map(appt => ({ 
+                    { name: 'HOME (Start)', zipCode: originZip, lat: originLat, lng: originLon, apptTime: 'N/A' },
+                    ...finalOrderedStops.map(appt => ({ 
                         name: appt.customers, 
                         zipCode: appt.zipCode, 
+                        lat: appt.lat, 
+                        lng: appt.lon, 
                         apptTime: getTimeHHMM(parseSheetDate(appt.appointmentDate)) 
-                    }))
+                    })),
+                    { name: 'HOME (End)', zipCode: originZip, lat: originLat, lng: originLon, apptTime: 'N/A' }
                 ];
+                
+                // --- CUSTOM MARKER RENDERING ---
+                
+                // A. Add Origin Marker (HOME START)
+                currentMapMarkers.push(new google.maps.Marker({
+                    position: { lat: originLat, lng: originLon },
+                    map: map,
+                    label: { text: 'S', color: 'white' },
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        fillColor: '#007bff',
+                        fillOpacity: 1,
+                        strokeWeight: 0,
+                        scale: 8,
+                    },
+                    title: 'Início da Rota (Base do Técnico)'
+                }));
+
+                // B. Add Stop Markers (A, B, C...)
+                finalOrderedStops.forEach((appt, index) => {
+                    const markerLabel = String.fromCharCode(65 + index); // A, B, C...
+                    
+                    currentMapMarkers.push(new google.maps.Marker({
+                        position: { lat: appt.lat, lng: appt.lon },
+                        map: map,
+                        label: { text: markerLabel, color: 'white' },
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            fillColor: '#ff5a96', // brand-primary color
+                            fillOpacity: 1,
+                            strokeWeight: 1,
+                            strokeColor: '#FFFFFF',
+                            scale: 6,
+                        },
+                        title: `${markerLabel}: ${appt.customers}`
+                    }));
+                });
+                
+                // C. Zoom the map to fit the route
+                map.fitBounds(route.bounds);
+                
+                // --- END CUSTOM MARKER RENDERING ---
 
                 const legs = route.legs;
 
@@ -781,8 +849,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     totalDistance += leg.distance.value;
                     totalDuration += leg.duration.value;
                     
-                    const destinationName = (i === legs.length - 1) ? 'End (Tech Base)' : fullSequence[i + 1].name;
-                    const destinationTime = (i === legs.length - 1) ? 'N/A' : fullSequence[i + 1].apptTime;
+                    const destinationName = fullSequence[i + 1].name;
+                    const destinationTime = fullSequence[i + 1].apptTime;
                     const destinationIndex = i + 1;
 
 
@@ -798,7 +866,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-lg text-brand-primary">Total Round Trip: ${Math.round(totalDuration / 60)} min / ${(totalDistance / 1000).toFixed(2)} km</div>`;
                 
             } else {
-                itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}. Verifique o console para mais detalhes.</p>`;
+                // Reinicia os marcadores em caso de falha para garantir que não haja sobras
+                clearCustomMarkers();
+                itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}. Motivo: O Google Maps não conseguiu traçar a rota com os Zips fornecidos, ou o Zip de Origem é inválido.</p>`;
             }
         });
     }
@@ -816,6 +886,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     function handleDayFilterChange() {
         // Clear previous route data whenever day or technician changes
         if (directionsRenderer) directionsRenderer.setDirections({ routes: [] });
+        clearCustomMarkers();
+        
         if (map) {
              // Center map to US default view
             map.setCenter({ lat: 39.8283, lng: -98.5795 });
