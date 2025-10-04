@@ -347,7 +347,24 @@ async function handleFormSubmission(event) {
     const technician = data.technician || '';
     const appointmentDateLocal = data.appointmentDate; // YYYY-MM-DDTHH:MM
 
-    // Validação de horário de slot e conflito removida.
+    // START MODIFICATION 7: Add Hour Validation
+    const MIN_HOUR = 7;
+    const MAX_HOUR = 21;
+
+    // 1. Validate Hour Range
+    const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
+    const minute = parseInt(appointmentDateLocal.substring(14, 16), 10);
+
+    if (hour < MIN_HOUR || hour > MAX_HOUR) {
+        alert(`Registration Error: Appointments must be scheduled between ${MIN_HOUR}:00 and ${MAX_HOUR}:00.`);
+        return; // Prevent form submission
+    }
+    // 21:00 is the last valid start time, so if hour is 21, minutes must be 00.
+    if (hour === MAX_HOUR && minute > 0) {
+        alert(`Registration Error: The last valid time slot is ${MAX_HOUR}:00.`);
+        return; // Prevent form submission
+    }
+    // END MODIFICATION 7
 
     // Convert to YYYY/MM/DD HH:MM format for API payload
     const formattedAppointmentDate = appointmentDateLocal.replace('T', ' ').replace(/-/g, '/');
