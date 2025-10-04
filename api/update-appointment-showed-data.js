@@ -20,6 +20,7 @@ function parseToNumeric(value) {
     if (typeof value !== 'string') {
         value = String(value);
     }
+    // Remove R$, %, espaços, e substitui vírgula por ponto (caso frontend envie R$1,00)
     const cleanedValue = value.replace(/R\$/, '').replace(/%/g, '').replace(/\./g, '').replace(/,/g, '.').trim();
     const parsed = parseFloat(cleanedValue);
     return isNaN(parsed) ? 0 : parsed;
@@ -41,10 +42,11 @@ const ensureNumericString = (value) => {
 
 // Helper para garantir que o valor de porcentagem vazio seja salvo como '0%'
 const ensurePercentageString = (value) => {
-    if (value === '' || value === undefined || value === null) return '0%';
+    if (value === '' || value === undefined || value === null || String(value).toLowerCase() === 'select') return '0%';
     const stringValue = String(value);
-    if (stringValue.includes('%')) return stringValue;
-    return `${stringValue}%`;
+    // Se for um número puro (ex: '20' ou '25'), adiciona %
+    if (!stringValue.includes('%')) return `${stringValue}%`;
+    return stringValue;
 };
 
 export default async function handler(req, res) {
@@ -65,8 +67,13 @@ export default async function handler(req, res) {
         
         // 1. Calculate 'To Pay'
         const serviceValue = parseToNumeric(serviceShowed); 
-        const percentageValue = parseToNumeric(percentage) / 100;
+        const percentageValueRaw = ensurePercentageString(percentage); // Garante '20%' ou '0%'
+        const percentageValue = parseToNumeric(percentageValueRaw) / 100; // Converte '20%' -> 0.20
         const tipsValue = parseToNumeric(tips);
+
+        // LOG DE DEBUG DO CÁLCULO
+        console.log(`[DEBUG CALC] Service Value: ${serviceValue}, Percentage Raw: ${percentageValueRaw}, Percentage Decimal: ${percentageValue}, Tips: ${tipsValue}`);
+
 
         let commissionValue = 0;
         if (serviceValue > 0 && percentageValue > 0) {
@@ -85,6 +92,7 @@ export default async function handler(req, res) {
         }
         
         // 2. Carrega todas as linhas e encontra a linha alvo por 'rowNumber'
+        // NOTA: Para aumentar a resiliência, vamos buscar as linhas mais frescas.
         const rows = await sheet.getRows();
         
         const targetRow = rows.find(row => row.rowNumber === rowIndex);
@@ -95,17 +103,18 @@ export default async function handler(req, res) {
         }
         
         // 3. Atualiza as propriedades do objeto da linha (usando nomes de cabeçalho)
-        targetRow['Date (Appointment)'] = formatToSheetDate(appointmentDate);
-        targetRow['Technician'] = technician;
-
-        // Garante formatação correta para o Sheets
-        targetRow['Pet Showed'] = ensureNumericString(petShowed);
-        targetRow['Service Showed'] = ensureNumericString(serviceShowed);
-        targetRow['Tips'] = ensureNumericString(tips);
-        targetRow['Percentage'] = ensurePercentageString(percentage);
+        targetRow['Date (Appointment)'] = formatToSheetDate(appointmentDate); // ATUALIZA DATA/HORA
+        targetRow['Verification'] = verification; // ATUALIZA STATUS
+        targetRow['Service Showed'] = ensureNumericString(serviceShowed); // ATUALIZA VALOR DO SERVIÇO
         
+        // Campos que não deveriam ter mudado no modal, mas devem ser salvos de volta:
+        targetRow['Technician'] = technician;
+        targetRow['Pet Showed'] = ensureNumericString(petShowed);
+        targetRow['Tips'] = ensureNumericString(tips);
+        targetRow['Percentage'] = percentageValueRaw; // Salva o valor com % para uso futuro (se o campo estava vazio antes, pode ter sido salvo 0%)
         targetRow['Method'] = paymentMethod;
-        targetRow['Verification'] = verification;
+        
+        // Campo calculado:
         targetRow['To Pay'] = toPayValue.toFixed(2);
         
         // 4. Salva a linha atualizada
