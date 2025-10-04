@@ -154,14 +154,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${year}/${month}/${day}`;
     }
     
-    // MODIFICATION 2: Correct parsing for MM/DD/YYYY HH:MM format from API
+    // MODIFICATION 2: Correct parsing for MM/DD/YYYY HH:MM format from API (now tolerates unpadded strings)
     function parseSheetDate(dateStr) {
-        if (!dateStr || dateStr.length < 16) return null;
+        if (!dateStr) return null; // <-- Removed length check
         const [datePart, timePart] = dateStr.split(' ');
         
-        // Expected Input: MM/DD/YYYY HH:MM
-        const [month, day, year] = datePart.split('/').map(Number);
-        const [hour, minute] = timePart.split(':').map(Number);
+        if (!datePart || !timePart) return null; // Fails if no space/time part
+
+        // Expected Input: MM/DD/YYYY HH:MM (or M/D/YYYY H:MM)
+        const dateParts = datePart.split('/');
+        const timeParts = timePart.split(':');
+
+        if (dateParts.length !== 3 || timeParts.length < 2) return null;
+        
+        const month = Number(dateParts[0]);
+        const day = Number(dateParts[1]);
+        const year = Number(dateParts[2]);
+        const hour = Number(timeParts[0]);
+        const minute = Number(timeParts[1]);
         
         if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
 
