@@ -30,7 +30,7 @@ export function excelDateToDateTime(excelSerialDate) {
         return `${month}/${day}/${year} ${hours}:${minutes}`;
     }
 
-    // Se for uma string (e.g., do formulário frontend ou Sheets string), tenta converter para MM/DD/YYYY HH:MM
+    // Se for uma string (e.g., do formulário frontend YYYY/MM/DD HH:MM), tenta converter para MM/DD/YYYY HH:MM
     if (typeof excelSerialDate === 'string') {
         const dateParts = excelSerialDate.split(' ');
         
