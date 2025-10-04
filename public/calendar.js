@@ -143,7 +143,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await response.json();
             if (!result.success) throw new Error(result.message);
 
-            // Atualiza os dados locais
             const localAppt = allAppointments.find(a => String(a.id) === modalApptId.value);
             if(localAppt) {
                 localAppt.appointmentDate = dataToUpdate.appointmentDate.replace('T', ' ').replace(/-/g, '/');
@@ -157,7 +156,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 closeEditModal();
                 modalSaveBtn.textContent = 'Save Changes';
                 modalSaveBtn.disabled = false;
-                renderScheduler(); // Re-renderiza o calendário para refletir a mudança
+                renderScheduler();
             }, 1000);
 
         } catch (error) {
@@ -187,18 +186,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function handleSaveTimeBlock() {
-        const data = {
-            technicianName: selectedTechnician,
-            date: document.getElementById('block-date').value.replace(/-/g, '/'),
-            startHour: document.getElementById('block-start-hour').value,
-            endHour: document.getElementById('block-end-hour').value,
-            notes: document.getElementById('block-notes').value,
-        };
+        const dateValue = document.getElementById('block-date').value;
+        const startHourValue = document.getElementById('block-start-hour').value;
+        const endHourValue = document.getElementById('block-end-hour').value;
 
-        if (!data.date || !data.startHour || !data.endHour) {
+        if (!dateValue || !startHourValue || !endHourValue) {
             alert('Date, Start Time, and End Time are required.');
             return;
         }
+
+        const data = {
+            technicianName: selectedTechnician,
+            date: dateValue.replace(/-/g, '/'),
+            startHour: startHourValue,
+            endHour: endHourValue,
+            notes: document.getElementById('block-notes').value,
+        };
 
         try {
             const response = await fetch('/api/manage-technician-availability', {
@@ -467,7 +470,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     modalCancelBtn.addEventListener('click', closeEditModal); 
     modalCloseXBtn.addEventListener('click', closeEditModal);
 
-    // Listeners do Modal de Time Block
     addTimeBlockBtn.addEventListener('click', openTimeBlockModal);
     blockSaveBtn.addEventListener('click', handleSaveTimeBlock);
     blockCancelBtn.addEventListener('click', closeTimeBlockModal);
