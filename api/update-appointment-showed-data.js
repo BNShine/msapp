@@ -20,6 +20,7 @@ function parseToNumeric(value) {
     if (typeof value !== 'string') {
         value = String(value);
     }
+    // Remove R$, %, espaços, e substitui vírgula por ponto (para formatos brasileiros)
     const cleanedValue = value.replace(/R\$/, '').replace(/%/g, '').replace(/[.]/g, '').replace(/,/g, '.').trim();
     const parsed = parseFloat(cleanedValue);
     return isNaN(parsed) ? 0 : parsed;
@@ -54,7 +55,7 @@ export default async function handler(req, res) {
     try {
         const { rowIndex, technician, petShowed, serviceShowed, tips, percentage, paymentMethod, verification, appointmentDate } = req.body;
         
-        console.log('--- Início do Processo de Atualização (Versão Final Reforçada) ---');
+        console.log('--- Início do Processo de Atualização (Versão Final Reforçada - REVERTIDO) ---');
         console.log('Dados recebidos do frontend para atualização:', { rowIndex, technician, petShowed, serviceShowed, tips, percentage, paymentMethod, verification, appointmentDate });
 
         if (rowIndex === undefined || rowIndex < 2) { 
@@ -84,68 +85,46 @@ export default async function handler(req, res) {
             return res.status(500).json({ success: false, message: `Planilha "${SHEET_NAME_APPOINTMENTS}" não encontrada.` });
         }
         
-        // 2. Mapeamento de Cabeçalhos e Colunas (Mais Robusto)
-        await sheet.loadHeaderRow();
-        const headerMap = {};
-        sheet.headerValues.forEach((header, index) => {
-            headerMap[header] = index;
-        });
+        // 2. Carrega todas as linhas e encontra a linha alvo por 'rowNumber' (MÉTODO ROBUSTO)
+        const rows = await sheet.getRows();
+        
+        const targetRow = rows.find(row => row.rowNumber === rowIndex);
 
-        // Mapeia os dados de entrada para o nome da coluna no Sheets
-        const colsToUpdate = {
-            'Date (Appointment)': formatToSheetDate(appointmentDate),
-            'Verification': verification,
-            'Service Showed': ensureNumericString(serviceShowed),
-            'Technician': technician,
-            'Pet Showed': ensureNumericString(petShowed),
-            'Tips': ensureNumericString(tips),
-            'Percentage': percentageValueRaw, 
-            'Method': paymentMethod,
-            'To Pay': toPayValue.toFixed(2),
-        };
-        
-        // 3. Carrega e atualiza as células diretamente (MÉTODO REFORÇADO)
-        const rowNum = rowIndex; // Índice da linha baseado em 1
-
-        // Carrega todas as células da linha específica para garantir a atualização em lote.
-        const numCols = sheet.headerValues.length;
-        const range = `A${rowNum}:${String.fromCharCode(65 + numCols - 1)}${rowNum}`;
-        await sheet.loadCells(range); 
-        
-        let updateCount = 0;
-        
-        // Aplica os novos valores às células
-        for (const header in colsToUpdate) {
-            const colIndex = headerMap[header];
-            if (colIndex !== undefined) {
-                // sheet.getCell usa índice baseado em 0 para linha e coluna
-                const cell = sheet.getCell(rowNum - 1, colIndex); 
-                
-                // LOG DE DEBUG DO SERVIDOR
-                console.log(`[DEBUG UPDATE] Updating cell R${rowNum} C${colIndex + 1} (${header}): '${cell.value}' -> '${colsToUpdate[header]}'`);
-                
-                cell.value = colsToUpdate[header];
-                updateCount++;
-            } else {
-                console.warn(`[DEBUG WARNING] Header '${header}' not found in sheet. Skipping update for this column.`);
-            }
+        if (!targetRow) {
+            console.error(`Row Not Found Error: A linha com rowIndex ${rowIndex} não foi encontrada.`);
+             return res.status(404).json({ success: false, message: 'Agendamento não encontrado para atualização.' });
         }
         
-        // 4. Salva todas as células modificadas de uma vez
-        if (updateCount > 0) {
-            await sheet.saveUpdatedCells();
-            console.log(`[DEBUG SUCCESS] Total de ${updateCount} células atualizadas em lote.`);
-        }
+        // 3. Atualiza as propriedades do objeto da linha (usando nomes de cabeçalho)
+        // ESSAS TRÊS ATUALIZAÇÕES ERAM O FOCO (Requisito anterior)
+        targetRow['Date (Appointment)'] = formatToSheetDate(appointmentDate);
+        targetRow['Verification'] = verification;
+        targetRow['Service Showed'] = ensureNumericString(serviceShowed);
+        
+        // ATUALIZAÇÃO DE TODOS OS CAMPOS DE DADOS DO MODAL (Para evitar conflitos de salvamento)
+        targetRow['Technician'] = technician;
+        targetRow['Pet Showed'] = ensureNumericString(petShowed);
+        targetRow['Tips'] = ensureNumericString(tips);
+        targetRow['Percentage'] = percentageValueRaw;
+        targetRow['Method'] = paymentMethod;
+        
+        // Campo calculado:
+        targetRow['To Pay'] = toPayValue.toFixed(2);
+        
+        // 4. Salva a linha atualizada (Utilizando o método row.save() mais seguro)
+        await targetRow.save();
 
         console.log('Dados atualizados com sucesso na planilha para o índice:', rowIndex);
         console.log(`Valor de 'To Pay' calculado e salvo: ${toPayValue.toFixed(2)}`);
-        console.log('--- Fim do Processo de Atualização (Versão Final Reforçada) ---');
+        console.log('--- Fim do Processo de Atualização (Versão Final Reforçada - REVERTIDO) ---');
         
         // Retorna sucesso para o frontend recarregar.
         return res.status(200).json({ success: true, message: 'Dados e cálculo de "To Pay" atualizados com sucesso!' });
     } catch (error) {
+        // Se este bloco for alcançado, significa que houve um erro real na API.
         console.error('ERRO CRÍTICO ao atualizar agendamento no Sheets. Stack Trace:', error.stack);
         
+        // Retornamos 500 para garantir que o Vercel registre a falha.
         return res.status(500).json({ success: false, message: 'Ocorreu um erro no servidor. Por favor, tente novamente.' });
     }
 }
