@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const SCHEDULE_DURATION_HOURS = 2;
     const SLOT_HEIGHT_PX = 60;
 
+    // MODIFICATION 1: Change TIME_SLOTS to 07:00 - 21:00 (15 slots: 7, 8, ..., 21)
     const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => `${(7 + i).toString().padStart(2, '0')}:00`); // 07:00 to 21:00
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const VISIBLE_DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
@@ -188,20 +189,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${hours}:${minutes}`;
     }
     
-    // MODIFICATION 3: Correct formatting from MM/DD/YYYY HH:MM to YYYY-MM-DDTHH:MM for input fields
+    // MODIFICATION 3 (CRITICAL FIX): Format from MM/DD/YYYY HH:MM to YYYY-MM-DDTHH:MM (ensuring 2 digits for hours/minutes)
     function formatDateTimeForInput(dateTimeStr) {
         if (!dateTimeStr) return '';
         // Input: MM/DD/YYYY HH:MM (from API/Sheet)
-        // Output: YYYY-MM-DDTHH:MM (for HTML input)
+        // Output: YYYY-MM-DDThh:mm (for HTML input)
 
         const [datePart, timePart] = dateTimeStr.split(' ');
         if (!datePart || !timePart) return '';
 
         const [month, day, year] = datePart.split('/');
+        const [hour, minute] = timePart.split(':').map(Number);
         
         if (year && month && day) {
-             // Convert MM/DD/YYYY to YYYY-MM-DD and combine with time
-            return `${year}-${month}-${day}T${timePart}`; 
+             const paddedHour = String(hour).padStart(2, '0'); // CRITICAL: Pad hour
+             const paddedMinute = String(minute).padStart(2, '0'); // CRITICAL: Pad minute
+             
+             // Convert MM/DD/YYYY to YYYY-MM-DD and combine with padded time
+            return `${year}-${month}-${day}T${paddedHour}:${paddedMinute}`; 
         }
         return '';
     }
@@ -444,7 +449,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             block.style.gridColumnStart = colIndex;
             block.style.top = `${topOffset}px`;
 
-            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
+            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_DURATION_HOURS * 60 * 60 * 1000);
             block.innerHTML = `<div data-view-content>
                 <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p>
                 <p class="text-sm font-bold truncate">${appt.customers}</p>
