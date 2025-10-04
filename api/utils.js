@@ -11,7 +11,6 @@ export function excelDateToDateTime(excelSerialDate) {
     // Se a conversão for bem-sucedida e for um número válido
     if (!isNaN(numericDate) && numericDate > 0) {
         // Lógica de conversão de data serial do Excel/Sheets (base 1900, offset -2)
-        // Cria uma data baseada em 1899-12-30 (base correta do Sheets) + dias em UTC.
         const days = Math.floor(numericDate);
         const timeFraction = numericDate - days;
         const msInDay = 24 * 60 * 60 * 1000;
@@ -26,7 +25,6 @@ export function excelDateToDateTime(excelSerialDate) {
         const hours = String(dateObj.getUTCHours()).padStart(2, '0');
         const minutes = String(dateObj.getUTCMinutes()).padStart(2, '0');
         
-        // MODIFICATION: Changed format to MM/DD/YYYY HH:MM
         return `${month}/${day}/${year} ${hours}:${minutes}`;
     }
 
