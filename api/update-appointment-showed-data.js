@@ -15,17 +15,12 @@ const serviceAccountAuth = new JWT({
 
 const SPREADSHEET_ID_APPOINTMENTS = process.env.SHEET_ID_APPOINTMENTS;
 
-// Função auxiliar para limpar e analisar strings para um número puro (float ou int)
+// Função auxiliar para analisar strings para um número puro (float ou int)
 function parseToNumeric(value) {
-    // Retorna 0 se o valor for nulo, indefinido ou uma string vazia.
     if (value === null || value === undefined || value === '') return 0;
-    // Se já for um número, retorna ele mesmo.
     if (typeof value === 'number') return value;
-    // Remove símbolos de moeda (R$ ou $), vírgulas de milhares e espaços.
-    const cleanedValue = String(value).replace(/[R$$,]/g, '').trim();
-    // Converte para float.
+    const cleanedValue = String(value).replace(/[R$$,%]/g, '').trim();
     const parsed = parseFloat(cleanedValue);
-    // Retorna o número ou 0 se a conversão falhar.
     return isNaN(parsed) ? 0 : parsed;
 }
 
@@ -33,13 +28,6 @@ function formatToSheetDate(isoDate) {
     if (!isoDate) return '';
     return isoDate.replace('T', ' ').replace(/-/g, '/');
 }
-
-const ensurePercentageString = (value) => {
-    if (value === '' || value === undefined || value === null || String(value).toLowerCase() === 'select') return '0%';
-    const stringValue = String(value);
-    if (!stringValue.includes('%')) return `${stringValue}%`;
-    return stringValue;
-};
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
@@ -53,13 +41,16 @@ export default async function handler(req, res) {
             return res.status(400).json({ success: false, message: `O índice da linha é inválido: ${rowIndex}` });
         }
         
-        // Converte os valores para NÚMEROS antes de qualquer cálculo ou salvamento.
+        // Converte todos os valores para os tipos corretos
         const serviceValue = parseToNumeric(serviceShowed);
         const tipsValue = parseToNumeric(tips);
         const petShowedValue = parseToNumeric(petShowed);
         
-        const percentageValueRaw = ensurePercentageString(percentage);
-        const percentageValue = parseToNumeric(percentageValueRaw) / 100;
+        // --- CORREÇÃO APLICADA AQUI ---
+        // Converte a porcentagem para um decimal (ex: "20%" -> 0.2) para salvar na planilha
+        const percentageValue = parseToNumeric(percentage) / 100;
+        
+        // Calcula o 'To Pay' com o valor decimal
         const toPayValue = (serviceValue * percentageValue) + tipsValue;
 
         const doc = new GoogleSpreadsheet(SPREADSHEET_ID_APPOINTMENTS, serviceAccountAuth);
@@ -77,16 +68,18 @@ export default async function handler(req, res) {
             return res.status(404).json({ success: false, message: 'Agendamento não encontrado para atualização.' });
         }
         
-        // Define os valores na linha. A biblioteca enviará os tipos corretos (número, string) para a planilha.
+        // Define os valores na linha. A biblioteca enviará os tipos corretos para a planilha.
         targetRow.set('Date (Appointment)', formatToSheetDate(appointmentDate));
         targetRow.set('Verification', verification);
         targetRow.set('Technician', technician);
         targetRow.set('Method', paymentMethod);
-        targetRow.set('Percentage', percentageValueRaw);
-        targetRow.set('Service Showed', serviceValue); // Salvo como número
-        targetRow.set('Tips', tipsValue); // Salvo como número
-        targetRow.set('Pet Showed', petShowedValue); // Salvo como número
+        targetRow.set('Service Showed', serviceValue);
+        targetRow.set('Tips', tipsValue);
+        targetRow.set('Pet Showed', petShowedValue);
         targetRow.set('To Pay', toPayValue);
+        
+        // Salva o valor da porcentagem como um número decimal
+        targetRow.set('Percentage', percentageValue);
         
         await targetRow.save();
         
@@ -97,4 +90,3 @@ export default async function handler(req, res) {
         return res.status(500).json({ success: false, message: 'Ocorreu um erro no servidor. Verifique os logs.' });
     }
 }
-
