@@ -50,6 +50,7 @@ export default async function handler(req, res) {
             const appointmentDateRaw = getCellValue('Date (Appointment)');
             const technician = getCellValue('Technician');
             
+            // Só retorna se tiver técnico e data preenchidos (evitando quebra de código no frontend)
             if (!technician || !appointmentDateRaw) {
                 return null;
             }
@@ -57,7 +58,7 @@ export default async function handler(req, res) {
             return {
                 id: row.rowNumber,
                 technician: technician,
-                appointmentDate: excelDateToDateTime(appointmentDateRaw), // MM/DD/YYYY HH:MM
+                appointmentDate: excelDateToDateTime(appointmentDateRaw), // **CORRIGIDO: Retorna MM/DD/YYYY HH:MM**
                 customers: getCellValue('Customers'),
                 code: getCellValue('Code'),
                 verification: getCellValue('Verification') || 'Scheduled', 
@@ -69,7 +70,7 @@ export default async function handler(req, res) {
                 paymentMethod: getCellValue('Method'),
                 zipCode: getCellValue('Zip Code'), // Adicionado Zip Code
             };
-        }).filter(a => a !== null);
+        }).filter(a => a !== null); // Filtra quaisquer linhas nulas
 
         return res.status(200).json({ appointments });
 
