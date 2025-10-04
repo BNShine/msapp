@@ -45,7 +45,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const SCHEDULE_DURATION_HOURS = 2;
     const SLOT_HEIGHT_PX = 60;
 
-    const TIME_SLOTS = Array.from({ length: 11 }, (_, i) => `${(8 + i).toString().padStart(2, '0')}:00`);
+    // MODIFICATION 1: Change TIME_SLOTS to 07:00 - 21:00 (15 slots: 7, 8, ..., 21)
+    const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => `${(7 + i).toString().padStart(2, '0')}:00`);
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const VISIBLE_DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
     const VERIFICATION_OPTIONS = ["Scheduled", "Showed", "Canceled"];
@@ -54,6 +55,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const percentageOptions = ["20%", "25%"];
     const paymentOptions = ["Check", "American Express", "Apple Pay", "Discover", "Master Card", "Visa", "Zelle", "Cash", "Invoice"];
     
+    // START CONSTANTS FOR HOUR RANGE
+    const MIN_HOUR = 7;
+    const MAX_HOUR = 21;
+    // END CONSTANTS FOR HOUR RANGE
+
     // --- Funções Auxiliares ---
     function getStartOfWeek(date) {
         const d = new Date(date);
@@ -133,6 +139,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             percentage: modalPercentage.value || '',
             paymentMethod: modalPaymentMethod.value || '',
         };
+        
+        // MODIFICATION 2: Add Hour Validation to Modal Save
+        const appointmentDateLocal = dataToUpdate.appointmentDate;
+        const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
+        const minute = parseInt(appointmentDateLocal.substring(14, 16), 10);
+        
+        if (hour < MIN_HOUR || hour > MAX_HOUR || (hour === MAX_HOUR && minute > 0)) {
+            alert(`Save Error: Appointments must be scheduled between ${MIN_HOUR}:00 and ${MAX_HOUR}:00.`);
+            modalSaveBtn.textContent = 'Save Changes';
+            modalSaveBtn.disabled = false;
+            return;
+        }
+        // END MODIFICATION 2
 
         try {
             const response = await fetch('/api/update-appointment-showed-data', {
@@ -284,7 +303,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const colIndex = columnMap[dateKey];
             if (!colIndex) return;
 
-            const topOffset = (apptDate.getHours() - 8) * SLOT_HEIGHT_PX + apptDate.getMinutes(); 
+            // MODIFICATION 3: Change start hour check and offset
+            const startHour = apptDate.getHours();
+            if (startHour < MIN_HOUR || startHour > MAX_HOUR) return;
+
+            const topOffset = (apptDate.getHours() - MIN_HOUR) * SLOT_HEIGHT_PX + apptDate.getMinutes(); 
+            // END MODIFICATION 3
+
             const block = document.createElement('div');
             let bgColor = 'bg-custom-primary';
             if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
@@ -330,7 +355,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const [startH, startM] = block.startHour.split(':').map(Number);
             const [endH, endM] = block.endHour.split(':').map(Number);
             
-            const topOffset = ((startH - 8) * SLOT_HEIGHT_PX) + (startM / 60 * SLOT_HEIGHT_PX);
+            // MODIFICATION 4: Change offset for Time Blocks
+            const topOffset = ((startH - MIN_HOUR) * SLOT_HEIGHT_PX) + (startM / 60 * SLOT_HEIGHT_PX);
+            // END MODIFICATION 4
+
             const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
             const height = (durationMinutes / 60) * SLOT_HEIGHT_PX;
 
@@ -504,6 +532,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                     verification: row.querySelector('[data-key="verification"]').value,
                 };
                 
+                // MODIFICATION 5: Add Hour Validation to Table Change
+                const appointmentDateLocal = dataToUpdate.appointmentDate;
+                const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
+                const minute = parseInt(appointmentDateLocal.substring(14, 16), 10);
+                
+                if (hour < MIN_HOUR || hour > MAX_HOUR || (hour === MAX_HOUR && minute > 0)) {
+                    alert(`Save Error: Appointments must be scheduled between ${MIN_HOUR}:00 and ${MAX_HOUR}:00.`);
+                    row.classList.remove('is-saving');
+                    row.classList.add('is-error');
+                    setTimeout(() => {
+                        row.classList.remove('is-error');
+                        isSaving[apptId] = false;
+                    }, 2000);
+                    // Re-render the row/table to show original value
+                    renderScheduler(); 
+                    return;
+                }
+                // END MODIFICATION 5
+
                 try {
                     const response = await fetch('/api/update-appointment-showed-data', {
                         method: 'POST',
