@@ -34,6 +34,8 @@ export default async function handler(req, res) {
 
         if (!sheetAppointments || !sheetEmployees || !sheetTechnicians || !sheetFranchises) {
             console.error('One or more sheets were not found.');
+            // NOVO LOG: Verifica se a planilha de Técnicos foi encontrada
+            console.error(`[API LOG] sheetTechnicians found: ${!!sheetTechnicians}`);
             return res.status(404).json({ error: 'Uma ou mais planilhas não foram encontradas.' });
         }
 
@@ -69,6 +71,10 @@ export default async function handler(req, res) {
 
         // Fetch Technicians (Used for Technician dropdown in Manage Showed)
         await sheetTechnicians.loadCells('A1:A' + sheetTechnicians.rowCount);
+        
+        // NOVO LOG: Mostra quantas linhas existem na planilha de Técnicos
+        console.log(`[API LOG] Sheet Technicians Row Count: ${sheetTechnicians.rowCount}`);
+        
         const technicians = [];
         for (let i = 1; i < sheetTechnicians.rowCount; i++) {
             const cell = sheetTechnicians.getCell(i, 0);
@@ -76,6 +82,10 @@ export default async function handler(req, res) {
                 technicians.push(cell.value);
             }
         }
+        
+        // NOVO LOG: Mostra quantos técnicos foram realmente carregados
+        console.log(`[API LOG] Technicians loaded: ${technicians.length}`);
+
 
         // Fetch Franchises (no change)
         await sheetFranchises.loadCells('A1:A' + sheetFranchises.rowCount);
