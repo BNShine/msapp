@@ -11,7 +11,6 @@
     <style>
         .scheduler-grid {
             display: grid;
-            /* 80px para Time + 6 Colunas (Mon-Sat) */
             grid-template-columns: 80px repeat(6, minmax(150px, 1fr)); 
             grid-auto-rows: minmax(60px, auto); 
             overflow-x: auto;
@@ -19,13 +18,12 @@
         }
         .time-slot {
             height: 60px;
-            position: relative; /* Container para o appointment-block (absolute) */
+            position: relative;
         }
         .appointment-block {
-            /* Duração de 2 horas (2 * 60px de altura) = 120px */
             height: 120px; 
             position: absolute;
-            width: 100%; /* Garante a largura restrita à coluna */
+            width: 100%;
             left: 0;
             top: 0; 
             padding: 8px; 
@@ -42,10 +40,9 @@
         .day-column-header {
             text-align: center;
         }
-        /* Definição de cores para classes utilitárias no JS */
         .bg-custom-primary { background-color: hsl(337 100% 67%); }
         .bg-green-600 { background-color: rgb(22 163 74); }
-        .bg-cherry-red { background-color: hsl(0 84% 45%); } /* Vermelho para Canceled */
+        .bg-cherry-red { background-color: hsl(0 84% 45%); }
         
         .modal-overlay-fixed {
             position: fixed;
@@ -53,7 +50,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); /* Fundo preto transparente */
+            background-color: rgba(0, 0, 0, 0.7);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -201,4 +198,3 @@
 </div>
 </body>
 </html>
-
