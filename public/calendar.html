@@ -162,51 +162,52 @@
     </main>
     
     <script src="calendar.js"></script>
-<div id="edit-appointment-modal" class="modal-overlay-fixed hidden">
-    <div class="bg-card p-6 rounded-lg shadow-2xl relative" style="z-index: 1001; width: 40vw; max-width: 450px;">
-        <button type="button" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800" id="modal-close-x-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-        </button>
-        
-        <h3 class="text-xl font-bold text-foreground mb-4">Edit Appointment Details</h3>
-        
-        <form id="appointment-edit-form" class="space-y-4">
-            <input type="hidden" id="modal-appt-id" name="id">
-            <input type="hidden" id="modal-original-technician" name="technician">
-            <input type="hidden" id="modal-pet-showed" name="petShowed">
-            <input type="hidden" id="modal-tips" name="tips">
-            <input type="hidden" id="modal-percentage" name="percentage">
-            <input type="hidden" id="modal-payment-method" name="paymentMethod">
+    
+    <div id="edit-appointment-modal" class="modal-overlay-fixed hidden">
+        <div class="bg-card p-6 rounded-lg shadow-2xl relative" style="z-index: 1001; width: 40vw; max-width: 450px;">
+            <button type="button" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800" id="modal-close-x-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+            
+            <h3 class="text-xl font-bold text-foreground mb-4">Edit Appointment Details</h3>
+            
+            <form id="appointment-edit-form" class="space-y-4">
+                <input type="hidden" id="modal-appt-id" name="id">
+                <input type="hidden" id="modal-original-technician" name="technician">
+                <input type="hidden" id="modal-pet-showed" name="petShowed">
+                <input type="hidden" id="modal-tips" name="tips">
+                <input type="hidden" id="modal-percentage" name="percentage">
+                <input type="hidden" id="modal-payment-method" name="paymentMethod">
 
-            <div class="space-y-2">
-                <label for="modal-date" class="block text-sm font-semibold text-foreground">Date and Time</label>
-                <input type="datetime-local" id="modal-date" name="appointmentDate" required
-                       class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-            </div>
-
-            <div class="space-y-2">
-                <label for="modal-verification" class="block text-sm font-semibold text-foreground">Status</label>
-                <select id="modal-verification" name="verification"
+                <div class="space-y-2">
+                    <label for="modal-date" class="block text-sm font-semibold text-foreground">Date and Time</label>
+                    <input type="datetime-local" id="modal-date" name="appointmentDate" required
                         class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                </div>
+
+                <div class="space-y-2">
+                    <label for="modal-verification" class="block text-sm font-semibold text-foreground">Status</label>
+                    <select id="modal-verification" name="verification"
+                            class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                     </select>
-            </div>
+                </div>
 
-            <div class="space-y-2">
-                <label for="modal-service-value" class="block text-sm font-semibold text-foreground">Service Value</label>
-                <input type="text" id="modal-service-value" name="serviceShowed" placeholder="Ex: 150.00"
-                       class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-            </div>
-        </form>
+                <div class="space-y-2">
+                    <label for="modal-service-value" class="block text-sm font-semibold text-foreground">Service Value</label>
+                    <input type="text" id="modal-service-value" name="serviceShowed" placeholder="Ex: 150.00"
+                        class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                </div>
+            </form>
 
-        <div class="mt-6 flex justify-end gap-3">
-            <button id="modal-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
-                Save Changes
-            </button>
-            <button id="modal-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">
-                Cancel
-            </button>
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="modal-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
+                    Save Changes
+                </button>
+                <button id="modal-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">
+                    Cancel
+                </button>
+            </div>
         </div>
     </div>
-</div>
-</body>
+    </body>
 </html>
