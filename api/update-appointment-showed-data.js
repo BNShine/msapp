@@ -7,6 +7,7 @@ import { SHEET_NAME_APPOINTMENTS } from './configs/sheets-config.js';
 
 dotenv.config();
 
+// --- INÍCIO: Bloco de Configuração e Autenticação ---
 const serviceAccountAuth = new JWT({
     email: process.env.CLIENT_EMAIL,
     key: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),
@@ -14,109 +15,125 @@ const serviceAccountAuth = new JWT({
 });
 
 const SPREADSHEET_ID_APPOINTMENTS = process.env.SHEET_ID_APPOINTMENTS;
+// --- FIM: Bloco de Configuração e Autenticação ---
 
-// Função auxiliar para analisar strings monetárias/percentuais para um número
+
+// --- INÍCIO: Funções Auxiliares ---
 function parseToNumeric(value) {
-    if (value === null || value === undefined || value === '') {
-        return 0;
-    }
-    if (typeof value === 'number') {
-        return value;
-    }
-    // Remove R$, %, espaços, e substitui vírgula por ponto
-    const cleanedValue = String(value).replace(/R\$/, '').replace(/%/g, '').replace(/[.]/g, '').replace(/,/g, '.').trim();
+    if (value === null || value === undefined || value === '') return 0;
+    if (typeof value === 'number') return value;
+    const cleanedValue = String(value).replace(/[R$$,]/g, '').trim();
     const parsed = parseFloat(cleanedValue);
     return isNaN(parsed) ? 0 : parsed;
 }
 
-// Função auxiliar para converter YYYY-MM-DDTHH:MM para YYYY/MM/DD HH:MM
 function formatToSheetDate(isoDate) {
     if (!isoDate) return '';
     return isoDate.replace('T', ' ').replace(/-/g, '/');
 }
 
-// Helper para garantir que o valor de porcentagem tenha o formato de string correto
 const ensurePercentageString = (value) => {
     if (value === '' || value === undefined || value === null || String(value).toLowerCase() === 'select') return '0%';
     const stringValue = String(value);
     if (!stringValue.includes('%')) return `${stringValue}%`;
     return stringValue;
 };
+// --- FIM: Funções Auxiliares ---
+
 
 export default async function handler(req, res) {
+    console.log("=============================================");
+    console.log("====== INICIANDO PROCESSO DE ATUALIZAÇÃO =====");
+    console.log("=============================================");
+
     if (req.method !== 'POST') {
+        console.error('[LOG-ERROR] Método HTTP não permitido:', req.method);
         return res.status(405).json({ message: 'Método não permitido.' });
     }
 
     try {
         const { rowIndex, technician, petShowed, serviceShowed, tips, percentage, paymentMethod, verification, appointmentDate } = req.body;
         
-        console.log('[API LOG] Dados recebidos para atualização:', { rowIndex, technician, petShowed, serviceShowed, tips, percentage, paymentMethod, verification, appointmentDate });
+        // LOG 1: Dados brutos recebidos do frontend
+        console.log('[LOG 1] Dados recebidos do frontend:', JSON.stringify(req.body, null, 2));
 
         if (rowIndex === undefined || rowIndex < 2) { 
-            console.error('[API ERROR] Índice da linha é inválido:', rowIndex);
-            return res.status(400).json({ success: false, message: 'O índice da linha é inválido.' });
+            console.error(`[LOG-ERROR] RowIndex inválido recebido: ${rowIndex}`);
+            return res.status(400).json({ success: false, message: `O índice da linha é inválido: ${rowIndex}` });
         }
         
-        // 1. Converter e calcular valores numéricos PRIMEIRO
+        // LOG 2: Conversão e Cálculo de Valores
         const serviceValue = parseToNumeric(serviceShowed);
         const tipsValue = parseToNumeric(tips);
         const petShowedValue = parseToNumeric(petShowed);
         const percentageValueRaw = ensurePercentageString(percentage);
         const percentageValue = parseToNumeric(percentageValueRaw) / 100;
-        
-        let commissionValue = 0;
-        if (serviceValue > 0 && percentageValue > 0) {
-            commissionValue = serviceValue * percentageValue;
-        }
-        
-        let toPayValue = commissionValue + tipsValue;
+        const toPayValue = (serviceValue * percentageValue) + tipsValue;
 
+        console.log('[LOG 2] Valores numéricos calculados:', {
+            serviceValue,
+            tipsValue,
+            petShowedValue,
+            percentageValue,
+            toPayValue
+        });
+
+        // LOG 3: Conectando com a Planilha
+        console.log('[LOG 3] Conectando à planilha com ID:', SPREADSHEET_ID_APPOINTMENTS);
         const doc = new GoogleSpreadsheet(SPREADSHEET_ID_APPOINTMENTS, serviceAccountAuth);
         await doc.loadInfo();
         const sheet = doc.sheetsByTitle[SHEET_NAME_APPOINTMENTS];
 
         if (!sheet) {
-            console.error(`[API ERROR] Planilha "${SHEET_NAME_APPOINTMENTS}" não encontrada.`);
+            console.error(`[LOG-ERROR] A planilha com o título "${SHEET_NAME_APPOINTMENTS}" não foi encontrada.`);
             return res.status(500).json({ success: false, message: `Planilha "${SHEET_NAME_APPOINTMENTS}" não encontrada.` });
         }
-        
-        // 2. Carregar linhas e encontrar a linha alvo pelo 'rowNumber'
-        await sheet.loadCells(); // Carrega todas as células para garantir a consistência
+        console.log(`[LOG 3.1] Planilha "${sheet.title}" encontrada com sucesso.`);
+
+        // LOG 4: Buscando a linha para atualizar
+        console.log(`[LOG 4] Buscando pela linha com rowIndex: ${rowIndex}`);
         const rows = await sheet.getRows();
-        
         const targetRow = rows.find(row => row.rowNumber === rowIndex);
 
         if (!targetRow) {
-            console.error(`[API ERROR] A linha com rowIndex ${rowIndex} não foi encontrada.`);
+            console.error(`[LOG-ERROR] A linha com rowIndex ${rowIndex} não foi encontrada na planilha.`);
             return res.status(404).json({ success: false, message: 'Agendamento não encontrado para atualização.' });
         }
+        console.log(`[LOG 4.1] Linha ${rowIndex} encontrada. Cliente:`, targetRow.get('Customers'));
         
-        // 3. Atualizar as propriedades do objeto da linha com os TIPOS DE DADOS CORRETOS
-        console.log(`[API LOG] Atualizando linha ${rowIndex}...`);
+        // LOG 5: Preparando para salvar os dados
+        console.log('[LOG 5] Atualizando os valores na linha encontrada...');
+        targetRow.set('Date (Appointment)', formatToSheetDate(appointmentDate));
+        targetRow.set('Verification', verification);
+        targetRow.set('Technician', technician);
+        targetRow.set('Method', paymentMethod);
+        targetRow.set('Percentage', percentageValueRaw);
+        targetRow.set('Service Showed', serviceValue);
+        targetRow.set('Tips', tipsValue);
+        targetRow.set('Pet Showed', petShowedValue);
+        targetRow.set('To Pay', toPayValue);
+        
+        console.log('[LOG 5.1] Dados prontos para serem salvos:', JSON.stringify({
+            'Date (Appointment)': formatToSheetDate(appointmentDate),
+            'Verification': verification,
+            'Technician': technician,
+            'Method': paymentMethod,
+            'Percentage': percentageValueRaw,
+            'Service Showed': serviceValue,
+            'Tips': tipsValue,
+            'Pet Showed': petShowedValue,
+            'To Pay': toPayValue
+        }, null, 2));
 
-        // Campos de Texto (String)
-        targetRow['Date (Appointment)'] = formatToSheetDate(appointmentDate);
-        targetRow['Verification'] = verification;
-        targetRow['Technician'] = technician;
-        targetRow['Method'] = paymentMethod;
-        targetRow['Percentage'] = percentageValueRaw; // Salva como string "25%"
-        
-        // --- CORREÇÃO: Usar NÚMEROS para colunas numéricas ---
-        targetRow['Service Showed'] = serviceValue;
-        targetRow['Tips'] = tipsValue;
-        targetRow['Pet Showed'] = petShowedValue;
-        targetRow['To Pay'] = toPayValue; // Salva o valor calculado como número
-        
-        // 4. Salvar a linha atualizada
+        // LOG 6: Salvando
         await targetRow.save();
-
-        console.log(`[API LOG] Linha ${rowIndex} atualizada com sucesso na planilha.`);
+        console.log(`[LOG 6] SUCESSO! Linha ${rowIndex} salva na planilha.`);
         
-        return res.status(200).json({ success: true, message: 'Dados e cálculo de "To Pay" atualizados com sucesso!' });
+        return res.status(200).json({ success: true, message: 'Dados atualizados com sucesso!' });
 
     } catch (error) {
-        console.error('[API CRITICAL ERROR] Erro ao atualizar agendamento no Sheets:', error);
-        return res.status(500).json({ success: false, message: 'Ocorreu um erro no servidor. Por favor, tente novamente.' });
+        // LOG 7: Tratamento de erro crítico
+        console.error('[LOG 7 - ERRO CRÍTICO] Ocorreu uma exceção no processo:', error);
+        return res.status(500).json({ success: false, message: 'Ocorreu um erro no servidor. Verifique os logs.' });
     }
 }
