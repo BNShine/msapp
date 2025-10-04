@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.classList.remove('modal-open');
     }
 
+    // Corrigido: A função precisa ser declarada para ser encontrada
     function handleEditAppointmentClick(event) {
         const block = event.currentTarget;
         const apptId = block.dataset.id;
@@ -154,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
         VISIBLE_DAY_INDICES.forEach(dayIndex => {
             const date = new Date(currentWeekStart);
-            date.setDate(date.getDate() + dayIndex -1);
+            date.setDate(date.getDate() + dayIndex - 1); // Correção para alinhar com os dias da semana
             schedulerHeader.innerHTML += `<div class="day-column-header p-2 font-semibold border-r border-border">${DAY_NAMES[dayIndex]} (${date.getDate()}/${date.getMonth() + 1})</div>`;
         });
 
@@ -208,10 +209,59 @@ document.addEventListener('DOMContentLoaded', async () => {
                 block.className = `appointment-block ${bgColor} text-white rounded-md shadow-md border cursor-pointer`;
                 block.dataset.id = appt.id;
                 block.style.top = `${topOffset}px`;
-                block.style.gridColumn = apptDate.getDay() + 1;
+                block.style.gridColumn = apptDate.getDay(); // JS getDay() Mon is 1, so this works with grid-column
                 block.innerHTML = `
                     <div class="text-xs font-semibold overflow-hidden text-ellipsis">${appt.customers || 'N/A'}</div>
                     <div class="text-xs mt-1">Code: ${appt.code || 'N/A'}</div>
                     <div class="text-xs mt-1 font-medium">${startHour.toString().padStart(2,'0')}:${apptDate.getMinutes().toString().padStart(2,'0')}</div>
                     <div class="text-xs mt-1 font-bold">${appt.verification || 'Scheduled'}</div>
                 `;
+                block.addEventListener('click', handleEditAppointmentClick);
+                schedulerBody.appendChild(block);
+            });
+    }
+
+    // --- DATA FETCHING & INITIALIZATION ---
+    async function loadInitialData(isReload = false) {
+        if (!isReload) {
+            loadingOverlay.classList.remove('hidden');
+        }
+        try {
+            const [techResponse, apptResponse] = await Promise.all([
+                 fetch('/api/get-dashboard-data', { cache: 'no-store' }), 
+                 fetch('/api/get-technician-appointments', { cache: 'no-store' }) 
+            ]);
+            if (!techResponse.ok || !apptResponse.ok) throw new Error('Failed to load data from the server.');
+            const techData = await techResponse.json();
+            const apptData = await apptResponse.json();
+            allTechnicians = techData.technicians || [];
+            allAppointments = apptData.appointments || [];
+            populateTechSelects(allTechnicians); 
+            renderScheduler();
+        } catch (error) {
+            console.error('Error on loadInitialData:', error);
+            loadingOverlay.querySelector('p').textContent = `ERROR: ${error.message}`;
+        }
+    }
+
+    // --- EVENT LISTENERS ---
+    prevWeekBtn.addEventListener('click', () => {
+         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+         renderScheduler();
+    });
+    nextWeekBtn.addEventListener('click', () => {
+         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+         renderScheduler();
+    });
+    techSelectDropdown.addEventListener('change', (e) => {
+        selectedTechnician = e.target.value;
+        renderScheduler();
+    });
+    searchCode.addEventListener('input', renderScheduler);
+    modalSaveBtn.addEventListener('click', handleSaveAppointment);
+    modalCancelBtn.addEventListener('click', closeEditModal); 
+    modalCloseXBtn.addEventListener('click', closeEditModal);
+    
+    // --- INITIALIZATION ---
+    loadInitialData();
+}); // CORREÇÃO: Adicionado o fecha parênteses e chaves que estava faltando.
