@@ -1,7 +1,6 @@
 // public/calendar.js
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Seletores de elementos do DOM
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
     const selectedTechDisplay = document.getElementById('selected-tech-display');
     const loadingOverlay = document.getElementById('loading-overlay');
@@ -14,9 +13,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const availabilityFormContainer = document.getElementById('availability-form-container');
     const saveAvailabilityBtn = document.getElementById('save-availability-btn');
     const showedAppointmentsTableBody = document.getElementById('showed-appointments-table-body');
-    const editPaymentsBtn = document.getElementById('edit-payments-btn');
 
-    // Seletores do Modal
+    // Modal Selectors
     const editModal = document.getElementById('edit-appointment-modal');
     const modalSaveBtn = document.getElementById('modal-save-btn');
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
@@ -31,27 +29,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalPaymentMethod = document.getElementById('modal-payment-method');
     const modalCloseXBtn = document.getElementById('modal-close-x-btn');
 
-    // Variáveis de estado globais
     let allAppointments = []; 
     let allTechnicians = [];
     let selectedTechnician = ''; 
     let currentWeekStart = getStartOfWeek(new Date()); 
     let techAvailability = {}; 
-    let isSaving = {};
-    let isPaymentsEditable = false; // Novo estado para controlar a edição
+    let isSaving = {}; // Objeto para rastrear o estado de salvamento por linha
 
-    // Constantes de configuração
     const SCHEDULE_DURATION_HOURS = 2; 
     const SLOT_HEIGHT_PX = 60; 
+
     const TIME_SLOTS = Array.from({ length: 11 }, (_, i) => `${(8 + i).toString().padStart(2, '0')}:00`);
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const VISIBLE_DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
     const VERIFICATION_OPTIONS = ["Scheduled", "Showed", "Canceled"];
+    
     const petOptions = Array.from({ length: 10 }, (_, i) => i + 1);
     const percentageOptions = ["20%", "25%"];
     const paymentOptions = ["Check", "American Express", "Apple Pay", "Discover", "Master Card", "Visa", "Zelle", "Cash", "Invoice"];
     
-    // --- Funções Auxiliares de Data e Formatação ---
+    // --- Funções Auxiliares ---
 
     function getStartOfWeek(date) {
         const d = new Date(date);
@@ -70,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function parseSheetDate(dateStr) {
         if (!dateStr || dateStr.length < 16) return null;
         const [datePart, timePart] = dateStr.split(' ');
-        const [year, month, day] = dateStr.split(/[\/\s:]/).map(Number);
+        const [year, month, day] = datePart.split('/').map(Number);
         const [hour, minute] = timePart.split(':').map(Number);
         return new Date(year, month - 1, day, hour, minute); 
     }
@@ -85,8 +82,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!dateTimeStr) return '';
         return dateTimeStr.replace(/\//g, '-').replace(' ', 'T'); 
     }
-
-    // --- Lógica do Modal de Edição Rápida ---
 
     function openEditModal(appt) {
         modalApptId.value = appt.id;
@@ -179,8 +174,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- Lógica de Renderização do Calendário e Tabelas ---
-
     function updateWeekDisplay() {
         const endOfWeek = new Date(currentWeekStart);
         endOfWeek.setDate(currentWeekStart.getDate() + 6);
@@ -251,14 +244,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const apptDate = parseSheetDate(appt.appointmentDate);
         if (apptDate) {
             const dateKey = formatDateToYYYYMMDD(apptDate);
+            const date = new Date(currentWeekStart);
             let colIndex = -1;
             for(let i=0; i < 7; i++) {
-                const date = new Date(currentWeekStart);
-                date.setDate(date.getDate() + i);
                 if (formatDateToYYYYMMDD(date) === dateKey) {
                     colIndex = i;
                     break;
                 }
+                date.setDate(date.getDate() + 1);
             }
             if (colIndex === -1) {
                 block.remove();
@@ -328,7 +321,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         showedAppointmentsTableBody.innerHTML = '';
         const weekEnd = new Date(currentWeekStart);
         weekEnd.setDate(currentWeekStart.getDate() + 7);
-        const disabledState = !isPaymentsEditable ? 'disabled' : '';
 
         const appointmentsForWeek = allAppointments
             .filter(appt => {
@@ -347,32 +339,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             row.className = 'border-b border-border hover:bg-muted/50';
             row.dataset.rowId = appointment.id;
             row.innerHTML = `
-                <td class="p-4"><input type="datetime-local" value="${formatDateTimeForInput(appointment.appointmentDate)}" style="width: 160px;" class="bg-transparent border border-border rounded-md px-2" data-key="appointmentDate" ${disabledState}></td>
+                <td class="p-4"><input type="datetime-local" value="${formatDateTimeForInput(appointment.appointmentDate)}" style="width: 160px;" class="bg-transparent border border-border rounded-md px-2" data-key="appointmentDate"></td>
                 <td class="p-4">${appointment.customers.length > 18 ? appointment.customers.substring(0, 15) + '...' : appointment.customers}</td>
                 <td class="p-4 code-cell">${appointment.code}</td>
-                <td class="p-4"><input type="text" value="${appointment.technician}" class="bg-transparent border-none rounded-md px-2" data-key="technician" disabled></td>
+                <td class="p-4"><input type="text" value="${appointment.technician}" class="bg-transparent border border-border rounded-md px-2" data-key="technician" disabled></td>
                 <td class="p-4">
-                    <select style="width: 60px;" class="bg-transparent border border-border rounded-md px-2" data-key="petShowed" ${disabledState}>
+                    <select style="width: 60px;" class="bg-transparent border border-border rounded-md px-2" data-key="petShowed">
                         <option value="">Pets</option>
                         ${petOptions.map(num => `<option value="${num}" ${appointment.petShowed == String(num) ? 'selected' : ''}>${num}</option>`).join('')}
                     </select>
                 </td>
-                <td class="p-4"><input type="text" value="${appointment.serviceShowed || ''}" style="width: 100px;" class="bg-transparent border border-border rounded-md px-2" data-key="serviceShowed" ${disabledState}></td>
-                <td class="p-4"><input type="text" value="${appointment.tips || ''}" style="width: 80px;" class="bg-transparent border border-border rounded-md px-2" placeholder="$0.00" data-key="tips" ${disabledState}></td>
+                <td class="p-4"><input type="text" value="${appointment.serviceShowed || ''}" style="width: 100px;" class="bg-transparent border border-border rounded-md px-2" data-key="serviceShowed"></td>
+                <td class="p-4"><input type="text" value="${appointment.tips || ''}" style="width: 80px;" class="bg-transparent border border-border rounded-md px-2" placeholder="$0.00" data-key="tips"></td>
                 <td class="p-4">
-                    <select style="width: 80px;" class="bg-transparent border border-border rounded-md px-2" data-key="percentage" ${disabledState}>
+                    <select style="width: 80px;" class="bg-transparent border border-border rounded-md px-2" data-key="percentage">
                         <option value="">%</option>
                         ${percentageOptions.map(option => `<option value="${option}" ${appointment.percentage === option ? 'selected' : ''}>${option}</option>`).join('')}
                     </select>
                 </td>
                 <td class="p-4">
-                    <select style="width: 120px;" class="bg-transparent border border-border rounded-md px-2" data-key="paymentMethod" ${disabledState}>
+                    <select style="width: 120px;" class="bg-transparent border border-border rounded-md px-2" data-key="paymentMethod">
                         <option value="">Select...</option>
                         ${paymentOptions.map(option => `<option value="${option}" ${appointment.paymentMethod === option ? 'selected' : ''}>${option}</option>`).join('')}
                     </select>
                 </td>
                 <td class="p-4">
-                    <select style="width: 100px;" class="bg-transparent border border-border rounded-md px-2" data-key="verification" ${disabledState}>
+                    <select style="width: 100px;" class="bg-transparent border border-border rounded-md px-2" data-key="verification">
                         <option value="">Select...</option>
                         ${VERIFICATION_OPTIONS.map(option => `<option value="${option}" ${appointment.verification === option ? 'selected' : ''}>${option}</option>`).join('')}
                     </select>
@@ -410,6 +402,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             techSelectDropdown.appendChild(option.cloneNode(true));
             if (techConfigSelect) techConfigSelect.appendChild(option);
         });
+        techSelectDropdown.addEventListener('change', handleTechSelectionChange);
     }
     
     function handleTechSelectionChange(event) {
@@ -418,36 +411,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderScheduler();
     }
     
+    function initializeAvailability() {
+        const savedConfig = localStorage.getItem('techAvailability');
+        if (savedConfig) techAvailability = JSON.parse(savedConfig);
+    }
+    
     // --- Event Listeners ---
-    prevWeekBtn.addEventListener('click', () => {
+    if (prevWeekBtn) prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
         renderScheduler();
     });
-    nextWeekBtn.addEventListener('click', () => {
+    if (nextWeekBtn) nextWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
         renderScheduler();
     });
-    modalSaveBtn.addEventListener('click', handleSaveAppointment);
-    modalCancelBtn.addEventListener('click', closeEditModal); 
-    modalCloseXBtn.addEventListener('click', closeEditModal);
-    techSelectDropdown.addEventListener('change', handleTechSelectionChange);
-
-    // Novo listener para o botão "Edit Payments"
-    editPaymentsBtn.addEventListener('click', () => {
-        isPaymentsEditable = !isPaymentsEditable; // Inverte o estado
-        if (isPaymentsEditable) {
-            editPaymentsBtn.textContent = 'Lock Payments';
-            editPaymentsBtn.classList.remove('bg-pink-500', 'hover:bg-pink-600');
-            editPaymentsBtn.classList.add('bg-red-500', 'hover:bg-red-600');
-        } else {
-            editPaymentsBtn.textContent = 'Edit Payments';
-            editPaymentsBtn.classList.add('bg-pink-500', 'hover:bg-pink-600');
-            editPaymentsBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
-        }
-        renderShowedAppointmentsTable(); // Re-renderiza a tabela para aplicar o estado 'disabled'
-    });
+    if (modalSaveBtn) modalSaveBtn.addEventListener('click', handleSaveAppointment);
+    if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal); 
+    if (modalCloseXBtn) modalCloseXBtn.addEventListener('click', closeEditModal);
     
-    // Novo listener para salvamento automático da tabela
     if (showedAppointmentsTableBody) {
         showedAppointmentsTableBody.addEventListener('change', async (event) => {
             const target = event.target;
@@ -455,7 +436,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const row = target.closest('tr');
                 const apptId = row.dataset.rowId;
 
-                if (isSaving[apptId]) return;
+                if (isSaving[apptId]) return; // Impede salvamentos múltiplos
                 
                 isSaving[apptId] = true;
                 row.classList.add('is-saving');
@@ -498,21 +479,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                            verification: dataToUpdate.verification,
                        });
                     }
-                    
                     updateAppointmentInDOM(apptId); 
                     row.classList.remove('is-saving');
                     row.classList.add('is-success');
 
                 } catch (error) {
                     console.error('Error saving from table:', error);
-                    Object.assign(localAppt, originalData);
-                    renderScheduler();
+                    Object.assign(localAppt, originalData); // Reverte os dados
+                    renderScheduler(); // Re-renderiza para garantir consistência visual
                     row.classList.remove('is-saving');
                     row.classList.add('is-error');
                 } finally {
                     setTimeout(() => {
                         row.classList.remove('is-saving', 'is-success', 'is-error');
-                        delete isSaving[apptId];
+                        isSaving[apptId] = false;
                     }, 2000);
                 }
             }
