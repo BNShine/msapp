@@ -393,4 +393,83 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             // 1. Fetch Technicians List
-            const [techResponse,
+            const [techResponse, apptResponse] = await Promise.all([
+                 fetch('/api/get-dashboard-data'), 
+                 fetch('/api/get-technician-appointments') 
+            ]);
+
+            // --- DEBBUG CRÍTICO AQUI ---
+            console.log('[CALENDAR LOG - FETCH] Status API Dashboard:', techResponse.status);
+            
+            if (!techResponse.ok) {
+                 const errorText = await techResponse.text();
+                 console.error('[CALENDAR LOG - ERROR] Resposta da API de Dashboard (Texto Completo):', errorText);
+                 throw new Error(`Falha na API de Dashboard. Status: ${techResponse.status}. Verifique o console.`);
+            }
+
+            const techData = await techResponse.json();
+            
+            if (!techData.technicians || techData.technicians.length === 0) {
+                 console.warn('[CALENDAR LOG - DATA] A API retornou 0 técnicos. Verifique a planilha Technicians (Coluna A) ou o log do servidor.');
+            }
+
+            allTechnicians = techData.technicians || [];
+            console.log('[CALENDAR LOG - DATA] Total de técnicos carregados:', allTechnicians.length);
+            // ---------------------------
+
+            // 2. Process Appointments
+            const apptData = await apptResponse.json();
+            allAppointments = apptData.appointments || [];
+
+            // 3. Populate Dropdowns and Render
+            populateTechSelects(allTechnicians.sort()); 
+            renderScheduler();
+            
+            if (allTechnicians.length === 0) {
+                 loadingOverlay.innerHTML = '<p class="text-xl font-semibold text-red-600">No technicians found. Please check your Sheets setup.</p>';
+            }
+            
+        } catch (error) {
+            console.error('[CALENDAR LOG] Erro Crítico no loadInitialData:', error);
+            loadingOverlay.innerHTML = `<p class="text-xl font-semibold text-red-600">ERROR: ${error.message}</p>`;
+            loadingOverlay.classList.remove('hidden');
+        } finally {
+            if (allTechnicians.length > 0) {
+                 loadingOverlay.classList.add('hidden');
+            }
+        }
+    }
+
+
+    // --- INICIALIZAÇÃO E LISTENERS ---
+    
+    // Listeners de navegação (Previous Week/Next Week)
+    prevWeekBtn.addEventListener('click', () => {
+         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+         renderScheduler();
+    });
+    nextWeekBtn.addEventListener('click', () => {
+         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+         renderScheduler();
+    });
+
+    if (techSelectDropdown) techSelectDropdown.addEventListener('change', (e) => {
+         selectedTechnician = e.target.value;
+         console.log('[CALENDAR LOG] Técnico selecionado alterado para:', selectedTechnician);
+         renderScheduler();
+    });
+    if (techConfigSelect) techConfigSelect.addEventListener('change', handleTechConfigSelectChange);
+
+    // Event listeners de Modal 
+    if (modalSaveBtn) modalSaveBtn.addEventListener('click', handleSaveAppointment);
+    if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal); 
+    if (modalCloseXBtn) {
+        modalCloseXBtn.addEventListener('click', closeEditModal);
+    }
+    
+    // Novo listener para o filtro de código (aciona a renderização)
+    if (searchCode) searchCode.addEventListener('input', renderScheduler);
+
+
+    loadInitialData();
+});
