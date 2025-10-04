@@ -20,7 +20,7 @@ function parseToNumeric(value) {
     if (typeof value !== 'string') {
         value = String(value);
     }
-    // Remove R$, %, espaços, e substitui vírgula por ponto (caso frontend envie R$1,00)
+    // Remove R$, %, espaços, e substitui vírgula por ponto
     const cleanedValue = value.replace(/R\$/, '').replace(/%/g, '').replace(/\./g, '').replace(/,/g, '.').trim();
     const parsed = parseFloat(cleanedValue);
     return isNaN(parsed) ? 0 : parsed;
@@ -35,7 +35,7 @@ function formatToSheetDate(isoDate) {
 // Helper para garantir que valores numéricos/de quantidade vazios sejam salvos como '0'
 const ensureNumericString = (value) => {
     if (value === '' || value === undefined || value === null) return '0';
-    // Remove qualquer formatação de moeda ou vírgulas que possam ter sido injetadas pelo frontend
+    // Remove qualquer formatação de moeda ou vírgulas
     const cleaned = String(value).replace(/[^0-9.-]/g, '');
     return cleaned === '' ? '0' : cleaned;
 };
@@ -67,13 +67,9 @@ export default async function handler(req, res) {
         
         // 1. Calculate 'To Pay'
         const serviceValue = parseToNumeric(serviceShowed); 
-        const percentageValueRaw = ensurePercentageString(percentage); // Garante '20%' ou '0%'
-        const percentageValue = parseToNumeric(percentageValueRaw) / 100; // Converte '20%' -> 0.20
+        const percentageValueRaw = ensurePercentageString(percentage);
+        const percentageValue = parseToNumeric(percentageValueRaw) / 100;
         const tipsValue = parseToNumeric(tips);
-
-        // LOG DE DEBUG DO CÁLCULO
-        console.log(`[DEBUG CALC] Service Value: ${serviceValue}, Percentage Raw: ${percentageValueRaw}, Percentage Decimal: ${percentageValue}, Tips: ${tipsValue}`);
-
 
         let commissionValue = 0;
         if (serviceValue > 0 && percentageValue > 0) {
@@ -92,7 +88,6 @@ export default async function handler(req, res) {
         }
         
         // 2. Carrega todas as linhas e encontra a linha alvo por 'rowNumber'
-        // NOTA: Para aumentar a resiliência, vamos buscar as linhas mais frescas.
         const rows = await sheet.getRows();
         
         const targetRow = rows.find(row => row.rowNumber === rowIndex);
@@ -107,26 +102,35 @@ export default async function handler(req, res) {
         targetRow['Verification'] = verification; // ATUALIZA STATUS
         targetRow['Service Showed'] = ensureNumericString(serviceShowed); // ATUALIZA VALOR DO SERVIÇO
         
-        // Campos que não deveriam ter mudado no modal, mas devem ser salvos de volta:
+        // Outras colunas
         targetRow['Technician'] = technician;
         targetRow['Pet Showed'] = ensureNumericString(petShowed);
         targetRow['Tips'] = ensureNumericString(tips);
-        targetRow['Percentage'] = percentageValueRaw; // Salva o valor com % para uso futuro (se o campo estava vazio antes, pode ter sido salvo 0%)
+        targetRow['Percentage'] = percentageValueRaw;
         targetRow['Method'] = paymentMethod;
         
         // Campo calculado:
         targetRow['To Pay'] = toPayValue.toFixed(2);
         
-        // 4. Salva a linha atualizada
+        // DEBUG DE VALORES ANTES DE SALVAR (Verifique no seu terminal!)
+        console.log(`[DEBUG SAVE] Coluna Date (Appointment): ${targetRow['Date (Appointment)']}`);
+        console.log(`[DEBUG SAVE] Coluna Verification: ${targetRow['Verification']}`);
+        console.log(`[DEBUG SAVE] Coluna Service Showed: ${targetRow['Service Showed']}`);
+        console.log(`[DEBUG SAVE] Coluna To Pay (Calculado): ${targetRow['To Pay']}`);
+
+
+        // 4. Salva a linha atualizada (Ponto de falha mais provável)
         await targetRow.save();
 
         console.log('Dados atualizados com sucesso na planilha para o índice:', rowIndex);
         console.log(`Valor de 'To Pay' calculado e salvo: ${toPayValue.toFixed(2)}`);
         console.log('--- Fim do Processo de Atualização (Versão Final) ---');
+        
+        // O sucesso foi registrado, agora o cliente deve recarregar.
         return res.status(200).json({ success: true, message: 'Dados e cálculo de "To Pay" atualizados com sucesso!' });
     } catch (error) {
+        // Se este bloco for alcançado, significa que houve um erro real na API.
         console.error('ERRO CRÍTICO ao atualizar agendamento no Sheets. Stack Trace:', error.stack);
-        console.error('Objeto de Erro Completo:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
         
         return res.status(500).json({ success: false, message: 'Ocorreu um erro no servidor. Por favor, tente novamente.' });
     }
