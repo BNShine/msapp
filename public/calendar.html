@@ -11,7 +11,6 @@
     <style>
         .scheduler-grid {
             display: grid;
-            /* Atualizado para 7 dias (domingo a sábado) + coluna de tempo */
             grid-template-columns: 80px repeat(7, minmax(150px, 1fr)); 
             grid-auto-rows: minmax(60px, auto); 
             overflow-x: auto;
@@ -23,7 +22,7 @@
         }
         .appointment-block {
             height: 120px; 
-            width: 180px;
+            width: 180px; /* Largura ajustada */
             position: absolute;
             left: 0;
             top: 0; 
@@ -67,7 +66,6 @@
             display: none !important;
         }
 
-        /* Estilos para feedback de salvamento na tabela */
         tr.is-saving {
             background-color: hsl(var(--secondary) / 0.1);
             transition: background-color 0.3s;
@@ -118,6 +116,9 @@
                              <option value="">Loading Technicians...</option>
                         </select>
                         <p id="selected-tech-display" class="text-sm font-bold text-brand-primary">No Technician Selected</p>
+                        <button id="add-time-block-btn" class="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold h-9 px-4 py-2 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white transition-colors">
+                            + Add Time Block
+                        </button>
                     </div>
                     
                     <div class="flex-1 overflow-x-auto">
@@ -191,56 +192,71 @@
     </main>
     
     <script src="calendar.js"></script>
-<div id="edit-appointment-modal" class="modal-overlay-fixed hidden">
-    <div class="bg-card p-6 rounded-lg shadow-2xl w-2/5 relative" style="z-index: 1001;">
-        <button type="button" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800" id="modal-close-x-btn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-        </button>
-        
-        <h3 class="text-xl font-bold text-foreground mb-4">Edit Appointment Details</h3>
-        
-        <form id="appointment-edit-form" class="space-y-4">
-            <input type="hidden" id="modal-appt-id" name="id">
-            <input type="hidden" id="modal-original-technician" name="technician">
-            <input type="hidden" id="modal-pet-showed" name="petShowed">
-            <input type="hidden" id="modal-percentage" name="percentage">
-            <input type="hidden" id="modal-payment-method" name="paymentMethod">
 
-            <div class="space-y-2">
-                <label for="modal-date" class="block text-sm font-semibold text-foreground">Date and Time</label>
-                <input type="datetime-local" id="modal-date" name="appointmentDate" required
-                       class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-            </div>
-
-            <div class="space-y-2">
-                <label for="modal-verification" class="block text-sm font-semibold text-foreground">Status</label>
-                <select id="modal-verification" name="verification"
-                        class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                    </select>
-            </div>
-
-            <div class="space-y-2">
-                <label for="modal-service-value" class="block text-sm font-semibold text-foreground">Service Value</label>
-                <input type="text" id="modal-service-value" name="serviceShowed" placeholder="Ex: 150.00"
-                       class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-            </div>
-            
-            <div class="space-y-2">
-                <label for="modal-tips" class="block text-sm font-semibold text-foreground">Tips</label>
-                <input type="text" id="modal-tips" name="tips" placeholder="Ex: 20.00"
-                       class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-            </div>
-        </form>
-
-        <div class="mt-6 flex justify-end gap-3">
-            <button id="modal-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
-                Save Changes
+    <div id="edit-appointment-modal" class="modal-overlay-fixed hidden">
+        <div class="bg-card p-6 rounded-lg shadow-2xl w-2/5 relative" style="z-index: 1001;">
+            <button type="button" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800" id="modal-close-x-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
-            <button id="modal-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">
-                Cancel
-            </button>
+            <h3 class="text-xl font-bold text-foreground mb-4">Edit Appointment Details</h3>
+            <form id="appointment-edit-form" class="space-y-4">
+                <input type="hidden" id="modal-appt-id" name="id">
+                <input type="hidden" id="modal-original-technician" name="technician">
+                <input type="hidden" id="modal-pet-showed" name="petShowed">
+                <input type="hidden" id="modal-percentage" name="percentage">
+                <input type="hidden" id="modal-payment-method" name="paymentMethod">
+                <div class="space-y-2">
+                    <label for="modal-date" class="block text-sm font-semibold text-foreground">Date and Time</label>
+                    <input type="datetime-local" id="modal-date" name="appointmentDate" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                </div>
+                <div class="space-y-2">
+                    <label for="modal-verification" class="block text-sm font-semibold text-foreground">Status</label>
+                    <select id="modal-verification" name="verification" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"></select>
+                </div>
+                <div class="space-y-2">
+                    <label for="modal-service-value" class="block text-sm font-semibold text-foreground">Service Value</label>
+                    <input type="text" id="modal-service-value" name="serviceShowed" placeholder="Ex: 150.00" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                </div>
+                <div class="space-y-2">
+                    <label for="modal-tips" class="block text-sm font-semibold text-foreground">Tips</label>
+                    <input type="text" id="modal-tips" name="tips" placeholder="Ex: 20.00" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                </div>
+            </form>
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="modal-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">Save Changes</button>
+                <button id="modal-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">Cancel</button>
+            </div>
         </div>
     </div>
-</div>
+
+    <div id="time-block-modal" class="modal-overlay-fixed hidden">
+        <div class="bg-card p-6 rounded-lg shadow-2xl w-full max-w-md relative">
+            <h3 class="text-xl font-bold text-foreground mb-4">Add New Time Block</h3>
+            <form id="time-block-form" class="space-y-4">
+                <div class="space-y-2">
+                    <label for="block-date" class="block text-sm font-semibold text-foreground">Date</label>
+                    <input type="date" id="block-date" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label for="block-start-hour" class="block text-sm font-semibold text-foreground">Start Time</label>
+                        <input type="time" id="block-start-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="block-end-hour" class="block text-sm font-semibold text-foreground">End Time</label>
+                        <input type="time" id="block-end-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <label for="block-notes" class="block text-sm font-semibold text-foreground">Notes (Reason)</label>
+                    <textarea id="block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm" placeholder="Ex: Lunch, Personal appointment..."></textarea>
+                </div>
+            </form>
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="block-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">Save Block</button>
+                <button id="block-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">Cancel</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
