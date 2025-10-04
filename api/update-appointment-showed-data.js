@@ -1,4 +1,4 @@
-// api/update-appointment-showed-data.js
+// bnshine/msapp/msapp-4e398247b5d633a2b21f3c69482e0291ce9a9fc9/api/update-appointment-showed-data.js
 
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
@@ -25,8 +25,9 @@ function parseToNumeric(value) {
 }
 
 function formatToSheetDate(isoDate) {
-    if (!isoDate) return '';
-    return isoDate.replace('T', ' ').replace(/-/g, '/');
+    // MODIFICATION 1: The client now pre-formats the date to MM/DD/YYYY HH:MM.
+    // This function must simply return the received string.
+    return isoDate;
 }
 
 export default async function handler(req, res) {
@@ -36,6 +37,7 @@ export default async function handler(req, res) {
 
     try {
         const { rowIndex, technician, petShowed, serviceShowed, tips, percentage, paymentMethod, verification, appointmentDate } = req.body;
+        // appointmentDate is received in MM/DD/YYYY HH:MM format
 
         if (rowIndex === undefined || rowIndex < 2) { 
             return res.status(400).json({ success: false, message: `O índice da linha é inválido: ${rowIndex}` });
@@ -69,7 +71,7 @@ export default async function handler(req, res) {
         }
         
         // Define os valores na linha. A biblioteca enviará os tipos corretos para a planilha.
-        targetRow.set('Date (Appointment)', formatToSheetDate(appointmentDate));
+        targetRow.set('Date (Appointment)', formatToSheetDate(appointmentDate)); // Uses MM/DD/YYYY HH:MM directly
         targetRow.set('Verification', verification);
         targetRow.set('Technician', technician);
         targetRow.set('Method', paymentMethod);
