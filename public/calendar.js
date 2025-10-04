@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const saveAvailabilityBtn = document.getElementById('save-availability-btn');
     const showedAppointmentsTableBody = document.getElementById('showed-appointments-table-body');
 
-    // Modal Selectors
+    // Modal de Edição de Agendamento
     const editModal = document.getElementById('edit-appointment-modal');
     const modalSaveBtn = document.getElementById('modal-save-btn');
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
@@ -29,15 +29,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalPaymentMethod = document.getElementById('modal-payment-method');
     const modalCloseXBtn = document.getElementById('modal-close-x-btn');
 
-    let allAppointments = []; 
-    let allTechnicians = [];
-    let selectedTechnician = ''; 
-    let currentWeekStart = getStartOfWeek(new Date()); 
-    let techAvailability = {}; 
-    let isSaving = {}; // Objeto para rastrear o estado de salvamento por linha
+    // Modal de Bloco de Tempo
+    const addTimeBlockBtn = document.getElementById('add-time-block-btn');
+    const timeBlockModal = document.getElementById('time-block-modal');
+    const blockSaveBtn = document.getElementById('block-save-btn');
+    const blockCancelBtn = document.getElementById('block-cancel-btn');
 
-    const SCHEDULE_DURATION_HOURS = 2; 
-    const SLOT_HEIGHT_PX = 60; 
+    let allAppointments = [];
+    let allTechnicians = [];
+    let techAvailabilityBlocks = [];
+    let selectedTechnician = '';
+    let currentWeekStart = getStartOfWeek(new Date());
+    let isSaving = {};
+
+    const SCHEDULE_DURATION_HOURS = 2;
+    const SLOT_HEIGHT_PX = 60;
 
     const TIME_SLOTS = Array.from({ length: 11 }, (_, i) => `${(8 + i).toString().padStart(2, '0')}:00`);
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -49,7 +55,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const paymentOptions = ["Check", "American Express", "Apple Pay", "Discover", "Master Card", "Visa", "Zelle", "Cash", "Invoice"];
     
     // --- Funções Auxiliares ---
-
     function getStartOfWeek(date) {
         const d = new Date(date);
         d.setHours(0, 0, 0, 0);
@@ -83,6 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return dateTimeStr.replace(/\//g, '-').replace(' ', 'T'); 
     }
 
+    // --- Funções do Modal de Edição de Agendamento ---
     function openEditModal(appt) {
         modalApptId.value = appt.id;
         modalOriginalTechnician.value = appt.technician;
@@ -103,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (editModal) editModal.classList.add('hidden');
         document.body.classList.remove('modal-open');
     }
-    
+
     function handleEditAppointmentClick(event) {
         const block = event.currentTarget;
         const apptId = block.dataset.id;
@@ -113,13 +119,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     async function handleSaveAppointment(event) {
         event.stopPropagation();
-        const originalButtonText = modalSaveBtn.textContent;
         modalSaveBtn.textContent = 'Salvando...';
         modalSaveBtn.disabled = true;
 
-        const apptId = modalApptId.value;
         const dataToUpdate = {
-            rowIndex: parseInt(apptId, 10),
+            rowIndex: parseInt(modalApptId.value, 10),
             appointmentDate: modalDate.value,
             verification: modalVerificationSelect.value,
             serviceShowed: modalServiceValue.value,
@@ -129,18 +133,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             percentage: modalPercentage.value || '',
             paymentMethod: modalPaymentMethod.value || '',
         };
-        
-        const localAppt = allAppointments.find(a => String(a.id) === apptId);
-        const originalData = { ...localAppt };
-
-        if (localAppt) {
-            localAppt.appointmentDate = dataToUpdate.appointmentDate.replace('T', ' ').replace(/-/g, '/');
-            localAppt.verification = dataToUpdate.verification;
-            localAppt.serviceShowed = dataToUpdate.serviceShowed;
-            localAppt.tips = dataToUpdate.tips;
-            updateAppointmentInDOM(apptId);
-            renderShowedAppointmentsTable();
-        }
 
         try {
             const response = await fetch('/api/update-appointment-showed-data', {
@@ -151,38 +143,88 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await response.json();
             if (!result.success) throw new Error(result.message);
 
+            // Atualiza os dados locais
+            const localAppt = allAppointments.find(a => String(a.id) === modalApptId.value);
+            if(localAppt) {
+                localAppt.appointmentDate = dataToUpdate.appointmentDate.replace('T', ' ').replace(/-/g, '/');
+                localAppt.verification = dataToUpdate.verification;
+                localAppt.serviceShowed = dataToUpdate.serviceShowed;
+                localAppt.tips = dataToUpdate.tips;
+            }
+
             modalSaveBtn.textContent = 'Salvo!';
             setTimeout(() => {
                 closeEditModal();
-                modalSaveBtn.textContent = originalButtonText;
+                modalSaveBtn.textContent = 'Save Changes';
                 modalSaveBtn.disabled = false;
+                renderScheduler(); // Re-renderiza o calendário para refletir a mudança
             }, 1000);
 
         } catch (error) {
             console.error('Erro na API ao salvar:', error);
-            Object.assign(localAppt, originalData);
-            updateAppointmentInDOM(apptId);
-            renderShowedAppointmentsTable();
-            
             modalSaveBtn.textContent = 'Erro!';
             modalSaveBtn.style.backgroundColor = 'hsl(0 84.2% 60.2%)';
             setTimeout(() => {
-                modalSaveBtn.textContent = originalButtonText;
+                modalSaveBtn.textContent = 'Save Changes';
                 modalSaveBtn.disabled = false;
                 modalSaveBtn.style.backgroundColor = '';
             }, 2500);
         }
     }
 
+    // --- Funções do Modal de Bloco de Tempo ---
+    function openTimeBlockModal() {
+        if (!selectedTechnician) {
+            alert('Please select a technician first.');
+            return;
+        }
+        document.getElementById('time-block-form').reset();
+        timeBlockModal.classList.remove('hidden');
+    }
+
+    function closeTimeBlockModal() {
+        timeBlockModal.classList.add('hidden');
+    }
+
+    async function handleSaveTimeBlock() {
+        const data = {
+            technicianName: selectedTechnician,
+            date: document.getElementById('block-date').value.replace(/-/g, '/'),
+            startHour: document.getElementById('block-start-hour').value,
+            endHour: document.getElementById('block-end-hour').value,
+            notes: document.getElementById('block-notes').value,
+        };
+
+        if (!data.date || !data.startHour || !data.endHour) {
+            alert('Date, Start Time, and End Time are required.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/manage-technician-availability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+            
+            await fetchAvailabilityForSelectedTech();
+            renderScheduler();
+            closeTimeBlockModal();
+            alert('Time block saved!');
+
+        } catch (error) {
+            console.error('Error saving time block:', error);
+            alert(`Error: ${error.message}`);
+        }
+    }
+    
+    // --- Lógica Principal de Renderização ---
     function updateWeekDisplay() {
         const endOfWeek = new Date(currentWeekStart);
         endOfWeek.setDate(currentWeekStart.getDate() + 6);
-        const startMonth = currentWeekStart.toLocaleString('en-US', { month: 'short' });
-        const startDay = currentWeekStart.getDate().toString().padStart(2, '0');
-        const endMonth = endOfWeek.toLocaleString('en-US', { month: 'short' });
-        const endDay = endOfWeek.getDate().toString().padStart(2, '0');
-        const year = currentWeekStart.getFullYear();
-        currentWeekDisplay.textContent = `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
+        currentWeekDisplay.textContent = `${currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}`;
     }
 
     function renderScheduler() {
@@ -214,7 +256,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const dateKey = formatDateToYYYYMMDD(date);
                 const emptySlot = document.createElement('div');
                 emptySlot.className = 'time-slot border-t border-r border-border hover:bg-muted/10';
-                emptySlot.dataset.datekey = dateKey;
                 emptySlot.style.gridRow = rowIndex + 1;
                 emptySlot.style.gridColumn = columnMap[dateKey];
                 schedulerBody.appendChild(emptySlot);
@@ -222,55 +263,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         
         renderAppointments(columnMap);
+        renderTimeBlocks(columnMap);
         renderShowedAppointmentsTable();
         loadingOverlay.classList.toggle('hidden', !!selectedTechnician);
         updateWeekDisplay();
     }
     
-    function updateAppointmentInDOM(apptId) {
-        const block = schedulerBody.querySelector(`.appointment-block[data-id="${apptId}"]`);
-        if (!block) {
-            renderScheduler();
-            return;
-        }
-        const appt = allAppointments.find(a => String(a.id) === String(apptId));
-        if (!appt) return;
-
-        let bgColor = 'bg-custom-primary';
-        if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
-        else if (appt.verification === 'Showed') bgColor = 'bg-green-600';
-        block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
-        
-        const apptDate = parseSheetDate(appt.appointmentDate);
-        if (apptDate) {
-            const dateKey = formatDateToYYYYMMDD(apptDate);
-            const date = new Date(currentWeekStart);
-            let colIndex = -1;
-            for(let i=0; i < 7; i++) {
-                if (formatDateToYYYYMMDD(date) === dateKey) {
-                    colIndex = i;
-                    break;
-                }
-                date.setDate(date.getDate() + 1);
-            }
-            if (colIndex === -1) {
-                block.remove();
-                return;
-            }
-            block.style.gridColumnStart = colIndex + 2;
-            const topOffset = (apptDate.getHours() - 8) * SLOT_HEIGHT_PX + apptDate.getMinutes();
-            block.style.top = `${topOffset}px`;
-            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
-            block.querySelector('[data-view-content]').innerHTML = `
-                <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p>
-                <p class="text-sm font-bold truncate">${appt.customers}</p>
-                <p class="text-xs font-medium text-white/80">${appt.verification}</p>
-                <p class="text-xs font-medium text-white/80">Service: $${appt.serviceShowed || '0.00'}</p>
-                <p class="text-xs font-medium text-white/80">Tips: $${appt.tips || '0.00'}</p>
-            `;
-        }
-    }
-
     function renderAppointments(columnMap) {
         const weekEnd = new Date(currentWeekStart);
         weekEnd.setDate(currentWeekStart.getDate() + 7);
@@ -282,11 +280,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const dateKey = formatDateToYYYYMMDD(apptDate);
             const colIndex = columnMap[dateKey];
             if (!colIndex) return;
-            
-            const startHour = apptDate.getHours();
-            if (startHour < 8 || startHour >= 18) return;
 
-            const topOffset = (startHour - 8) * SLOT_HEIGHT_PX + apptDate.getMinutes(); 
+            const topOffset = (apptDate.getHours() - 8) * SLOT_HEIGHT_PX + apptDate.getMinutes(); 
             const block = document.createElement('div');
             let bgColor = 'bg-custom-primary';
             if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
@@ -294,7 +289,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
             block.dataset.id = appt.id;
-            block.draggable = true;
             block.style.gridColumnStart = colIndex;
             block.style.top = `${topOffset}px`;
 
@@ -308,11 +302,41 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>`;
             
             schedulerBody.appendChild(block);
-            block.addEventListener('dragstart', (e) => {
-                const id = e.target.dataset.id;
-                draggedAppointment = allAppointments.find(a => String(a.id) === id);
-            });
             block.addEventListener('click', handleEditAppointmentClick);
+        });
+    }
+
+    function renderTimeBlocks(columnMap) {
+        const weekEnd = new Date(currentWeekStart);
+        weekEnd.setDate(currentWeekStart.getDate() + 7);
+
+        techAvailabilityBlocks.forEach(block => {
+            const blockDate = new Date(block.date.replace(/\//g, '-') + 'T00:00:00');
+            if (blockDate < currentWeekStart || blockDate >= weekEnd) return;
+
+            const dateKey = formatDateToYYYYMMDD(blockDate);
+            const colIndex = columnMap[dateKey];
+            if (!colIndex) return;
+
+            const [startH, startM] = block.startHour.split(':').map(Number);
+            const [endH, endM] = block.endHour.split(':').map(Number);
+            
+            const topOffset = ((startH - 8) * SLOT_HEIGHT_PX) + (startM / 60 * SLOT_HEIGHT_PX);
+            const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+            const height = (durationMinutes / 60) * SLOT_HEIGHT_PX;
+
+            const blockEl = document.createElement('div');
+            blockEl.className = 'absolute w-full p-2 box-border rounded-md';
+            blockEl.style.gridColumnStart = colIndex;
+            blockEl.style.top = `${topOffset}px`;
+            blockEl.style.height = `${height}px`;
+            blockEl.style.backgroundColor = 'rgba(107, 114, 128, 0.7)';
+            blockEl.style.zIndex = '5';
+            blockEl.innerHTML = `
+                <p class="text-xs font-semibold text-white truncate">${block.notes || 'Blocked'}</p>
+                <p class="text-xs text-white/80">${block.startHour} - ${block.endHour}</p>
+            `;
+            schedulerBody.appendChild(blockEl);
         });
     }
 
@@ -374,6 +398,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // --- Carregamento de Dados ---
+    async function fetchAvailabilityForSelectedTech() {
+        if (!selectedTechnician) {
+            techAvailabilityBlocks = [];
+            return;
+        }
+        try {
+            const response = await fetch(`/api/manage-technician-availability?technicianName=${encodeURIComponent(selectedTechnician)}`);
+            if (!response.ok) throw new Error('Could not fetch availability.');
+            const data = await response.json();
+            techAvailabilityBlocks = data.availability || [];
+        } catch (error) {
+            console.error('Error fetching availability:', error);
+            techAvailabilityBlocks = [];
+        }
+    }
+
     async function loadInitialData() {
         try {
             const [techDataResponse, appointmentsResponse] = await Promise.all([
@@ -385,7 +426,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const apptsData = await appointmentsResponse.json();
             allTechnicians = techData.technicians || [];
             allAppointments = (apptsData.appointments || []).filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
+            
             populateTechSelects();
+            await fetchAvailabilityForSelectedTech();
             renderScheduler(); 
         } catch (error) {
             console.error('CRITICAL ERROR during loadInitialData:', error);
@@ -393,41 +436,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function populateTechSelects() {
-        if (!techSelectDropdown) return; 
         techSelectDropdown.innerHTML = '<option value="">Select Technician...</option>';
         allTechnicians.forEach(tech => {
             const option = document.createElement('option');
             option.value = tech;
             option.textContent = tech;
             techSelectDropdown.appendChild(option.cloneNode(true));
-            if (techConfigSelect) techConfigSelect.appendChild(option);
+            if (techConfigSelect) techConfigSelect.appendChild(option.cloneNode(true));
         });
-        techSelectDropdown.addEventListener('change', handleTechSelectionChange);
     }
     
-    function handleTechSelectionChange(event) {
+    async function handleTechSelectionChange(event) {
         selectedTechnician = event.target.value;
         selectedTechDisplay.textContent = selectedTechnician || 'No Technician Selected';
+        await fetchAvailabilityForSelectedTech();
         renderScheduler();
-    }
-    
-    function initializeAvailability() {
-        const savedConfig = localStorage.getItem('techAvailability');
-        if (savedConfig) techAvailability = JSON.parse(savedConfig);
     }
     
     // --- Event Listeners ---
-    if (prevWeekBtn) prevWeekBtn.addEventListener('click', () => {
+    techSelectDropdown.addEventListener('change', handleTechSelectionChange);
+    prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
         renderScheduler();
     });
-    if (nextWeekBtn) nextWeekBtn.addEventListener('click', () => {
+    nextWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
         renderScheduler();
     });
-    if (modalSaveBtn) modalSaveBtn.addEventListener('click', handleSaveAppointment);
-    if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal); 
-    if (modalCloseXBtn) modalCloseXBtn.addEventListener('click', closeEditModal);
+    modalSaveBtn.addEventListener('click', handleSaveAppointment);
+    modalCancelBtn.addEventListener('click', closeEditModal); 
+    modalCloseXBtn.addEventListener('click', closeEditModal);
+
+    // Listeners do Modal de Time Block
+    addTimeBlockBtn.addEventListener('click', openTimeBlockModal);
+    blockSaveBtn.addEventListener('click', handleSaveTimeBlock);
+    blockCancelBtn.addEventListener('click', closeTimeBlockModal);
     
     if (showedAppointmentsTableBody) {
         showedAppointmentsTableBody.addEventListener('change', async (event) => {
@@ -436,11 +479,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const row = target.closest('tr');
                 const apptId = row.dataset.rowId;
 
-                if (isSaving[apptId]) return; // Impede salvamentos múltiplos
+                if (isSaving[apptId]) return;
                 
                 isSaving[apptId] = true;
                 row.classList.add('is-saving');
-                row.classList.remove('is-success', 'is-error');
 
                 const dataToUpdate = {
                     rowIndex: parseInt(apptId, 10),
@@ -454,9 +496,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     verification: row.querySelector('[data-key="verification"]').value,
                 };
                 
-                const localAppt = allAppointments.find(a => String(a.id) === String(apptId));
-                const originalData = { ...localAppt };
-
                 try {
                     const response = await fetch('/api/update-appointment-showed-data', {
                         method: 'POST',
@@ -466,28 +505,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const result = await response.json();
                     if (!result.success) throw new Error(result.message);
                     
-                    if(localAppt) {
-                       Object.assign(localAppt, {
-                           ...localAppt,
-                           appointmentDate: dataToUpdate.appointmentDate.replace('T', ' ').replace(/-/g, '/'),
-                           technician: dataToUpdate.technician,
-                           petShowed: dataToUpdate.petShowed,
-                           serviceShowed: dataToUpdate.serviceShowed,
-                           tips: dataToUpdate.tips,
-                           percentage: dataToUpdate.percentage,
-                           paymentMethod: dataToUpdate.paymentMethod,
-                           verification: dataToUpdate.verification,
-                       });
-                    }
-                    updateAppointmentInDOM(apptId); 
-                    row.classList.remove('is-saving');
-                    row.classList.add('is-success');
+                    const localAppt = allAppointments.find(a => String(a.id) === String(apptId));
+                    if(localAppt) Object.assign(localAppt, dataToUpdate, {
+                        appointmentDate: dataToUpdate.appointmentDate.replace('T', ' ').replace(/-/g, '/')
+                    });
 
+                    renderScheduler();
+                    row.classList.add('is-success');
                 } catch (error) {
                     console.error('Error saving from table:', error);
-                    Object.assign(localAppt, originalData); // Reverte os dados
-                    renderScheduler(); // Re-renderiza para garantir consistência visual
-                    row.classList.remove('is-saving');
                     row.classList.add('is-error');
                 } finally {
                     setTimeout(() => {
