@@ -1,4 +1,4 @@
-// public/calendar.js
+// bnshine/msapp/msapp-4e398247b5d633a2b21f3c69482e0291ce9a9fc9/public/calendar.js
 
 document.addEventListener('DOMContentLoaded', async () => {
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
@@ -147,6 +147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function formatDateToYYYYMMDD(date) {
+        // Output for internal grid mapping: YYYY/MM/DD
         const year = date.getFullYear();
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
@@ -156,8 +157,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     function parseSheetDate(dateStr) {
         if (!dateStr || dateStr.length < 16) return null;
         const [datePart, timePart] = dateStr.split(' ');
-        const [year, month, day] = datePart.split('/').map(Number);
+        
+        // MODIFICATION 2: Change parsing order from YYYY/MM/DD to MM/DD/YYYY
+        const [month, day, year] = datePart.split('/').map(Number);
         const [hour, minute] = timePart.split(':').map(Number);
+        
+        // The fix for non-numeric/invalid parsing is to ensure a valid date is constructed
+        if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
+
         return new Date(year, month - 1, day, hour, minute); 
     }
     
@@ -169,7 +176,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function formatDateTimeForInput(dateTimeStr) {
         if (!dateTimeStr) return '';
-        return dateTimeStr.replace(/\//g, '-').replace(' ', 'T'); 
+        // Input: MM/DD/YYYY HH:MM (from API/Sheet)
+        // Output: YYYY-MM-DDTHH:MM (for HTML input)
+
+        const [datePart, timePart] = dateTimeStr.split(' ');
+        if (!datePart || !timePart) return '';
+
+        // MODIFICATION 3: Convert MM/DD/YYYY to YYYY-MM-DD 
+        const [month, day, year] = datePart.split('/');
+        
+        if (year && month && day) {
+             // Convert MM/DD/YYYY to YYYY-MM-DD and combine with time
+            return `${year}-${month}-${day}T${timePart}`; 
+        }
+        return '';
     }
 
     // --- Funções do Modal de Edição de Agendamento ---
@@ -206,9 +226,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         modalSaveBtn.textContent = 'Salvando...';
         modalSaveBtn.disabled = true;
 
+        const appointmentDateLocal = modalDate.value; // YYYY-MM-DDTHH:MM
+        
+        // MODIFICATION 4: Convert HTML input to API target format (MM/DD/YYYY HH:MM)
+        const [datePart, timePart] = appointmentDateLocal.split('T');
+        const [year, month, day] = datePart.split('-');
+        const apiFormattedDate = `${month}/${day}/${year} ${timePart}`; 
+        
         const dataToUpdate = {
             rowIndex: parseInt(modalApptId.value, 10),
-            appointmentDate: modalDate.value,
+            appointmentDate: apiFormattedDate,
             verification: modalVerificationSelect.value,
             serviceShowed: modalServiceValue.value,
             tips: modalTips.value,
@@ -218,8 +245,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             paymentMethod: modalPaymentMethod.value || '',
         };
         
-        // MODIFICATION 2: Add Hour Validation to Modal Save
-        const appointmentDateLocal = dataToUpdate.appointmentDate;
+        // MODIFICATION 5: Add Hour Validation to Modal Save
         const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
         const minute = parseInt(appointmentDateLocal.substring(14, 16), 10);
         
@@ -229,7 +255,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalSaveBtn.disabled = false;
             return;
         }
-        // END MODIFICATION 2
+        // END MODIFICATION 5
 
         try {
             const response = await fetch('/api/update-appointment-showed-data', {
@@ -242,7 +268,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const localAppt = allAppointments.find(a => String(a.id) === modalApptId.value);
             if(localAppt) {
-                localAppt.appointmentDate = dataToUpdate.appointmentDate.replace('T', ' ').replace(/-/g, '/');
+                // Update local data with the correct MM/DD/YYYY HH:MM format
+                localAppt.appointmentDate = apiFormattedDate;
                 localAppt.verification = dataToUpdate.verification;
                 localAppt.serviceShowed = dataToUpdate.serviceShowed;
                 localAppt.tips = dataToUpdate.tips;
@@ -294,11 +321,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const data = {
             technicianName: selectedTechnician,
-            date: dateValue.replace(/-/g, '/'),
+            date: dateValue.replace(/-/g, '/'), // YYYY/MM/DD
             startHour: startHourValue,
             endHour: endHourValue,
             notes: document.getElementById('block-notes').value,
         };
+        
+        // MODIFICATION 6: Convert YYYY/MM/DD (from date input) to MM/DD/YYYY for API/Sheets
+        const [year, month, day] = data.date.split('/');
+        data.date = `${month}/${day}/${year}`;
 
         try {
             const response = await fetch('/api/manage-technician-availability', {
@@ -424,7 +455,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             
-            const blockDate = new Date(block.date.replace(/\//g, '-') + 'T00:00:00');
+            // MODIFICATION 7: Ensure block.date is parsed as MM/DD/YYYY
+            const parts = block.date.split('/');
+            if (parts.length !== 3) return; 
+            const [M, D, Y] = parts;
+            const blockDate = new Date(`${Y}-${M}-${D}T00:00:00`);
+
             if (isNaN(blockDate.getTime())) return; // Ignora datas inválidas
 
             if (blockDate < currentWeekStart || blockDate >= weekEnd) return;
@@ -532,7 +568,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const selectedDayOfWeek = dayFilter.value;
-        // MODIFICATION: Read selectedTechName directly from DOM for robustness
+        // MODIFICATION 8: Read selectedTechName directly from DOM for robustness
         const selectedTechName = techSelectDropdown.value; 
 
         optimizeItineraryBtn.disabled = true;
@@ -552,7 +588,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             .filter(appt => {
                 const apptDate = parseSheetDate(appt.appointmentDate);
                 const apptDateKey = apptDate ? formatDateToYYYYMMDD(apptDate) : null;
-                return appt.technician === selectedTechName && apptDateKey === dateKey;
+                // MODIFICATION 9: Comparing internal YYYY/MM/DD date keys (correct for filtering by date)
+                return appt.technician === selectedTechName && apptDateKey === dateKey; 
             })
             // Sort by appointment time
             .sort((a, b) => {
@@ -889,10 +926,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 isSaving[apptId] = true;
                 row.classList.add('is-saving');
+                
+                const appointmentDateLocal = row.querySelector('[data-key="appointmentDate"]').value; // YYYY-MM-DDTHH:MM
+                const [datePart, timePart] = appointmentDateLocal.split('T');
+                const [year, month, day] = datePart.split('-');
+                const apiFormattedDate = `${month}/${day}/${year} ${timePart}`; // MM/DD/YYYY HH:MM
 
                 const dataToUpdate = {
                     rowIndex: parseInt(apptId, 10),
-                    appointmentDate: row.querySelector('[data-key="appointmentDate"]').value,
+                    appointmentDate: apiFormattedDate, 
                     technician: row.querySelector('[data-key="technician"]').value,
                     petShowed: row.querySelector('[data-key="petShowed"]').value,
                     serviceShowed: row.querySelector('[data-key="serviceShowed"]').value,
@@ -903,7 +945,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 };
                 
                 // MODIFICATION 5: Add Hour Validation to Table Change
-                const appointmentDateLocal = dataToUpdate.appointmentDate;
                 const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
                 const minute = parseInt(appointmentDateLocal.substring(14, 16), 10);
                 
@@ -932,7 +973,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     
                     const localAppt = allAppointments.find(a => String(a.id) === String(apptId));
                     if(localAppt) Object.assign(localAppt, dataToUpdate, {
-                        appointmentDate: dataToUpdate.appointmentDate.replace('T', ' ').replace(/-/g, '/')
+                        appointmentDate: apiFormattedDate
                     });
 
                     renderScheduler();
