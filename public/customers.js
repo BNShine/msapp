@@ -532,11 +532,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const selectedDayOfWeek = dayFilter.value;
-        const selectedTechName = selectedTechnician;
+        // MODIFICATION: Read selectedTechName directly from DOM for robustness
+        const selectedTechName = techSelectDropdown.value; 
 
         optimizeItineraryBtn.disabled = true;
         itineraryReverserBtn.disabled = true;
         
+        // The condition for displaying the fallback message
         if (!selectedTechName || selectedDayOfWeek === '') {
             dayItineraryTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-muted-foreground">Select a day and a technician to view appointments.</td></tr>';
             return;
@@ -598,7 +600,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        const techCoverageData = await (await fetch('/api/get-tech-coverage')).json();
+        // Fetch tech coverage data (needs technician's origin zip)
+        const techCoverageResponse = await fetch('/api/get-tech-coverage');
+        const techCoverageData = techCoverageResponse.ok ? await techCoverageResponse.json() : [];
         const selectedTechObj = techCoverageData.find(t => t.nome === selectedTechnician);
         const originZip = selectedTechObj?.zip_code;
 
@@ -626,6 +630,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (validAppointments.length < 1) {
             itineraryResultsList.innerHTML = '<p class="text-red-600">No appointments with valid Zip Codes to optimize.</p>';
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
             return;
         }
         
@@ -633,6 +639,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const [originLat, originLon] = await getLatLon(originZip);
         if (originLat === null) {
             alert('Error: Could not get coordinates for technician origin Zip Code.');
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
             return;
         }
 
@@ -713,7 +721,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const route = response.routes[0];
                 
-                itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (Starting from Nearest/Farthest):</p>`;
+                itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (Starting from ${isReversed ? 'Farthest' : 'Nearest'}):</p>`;
                 
                 // Map the Directions API order back to our optimized list for correct time display
                 const orderedSequence = [
