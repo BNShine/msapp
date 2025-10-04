@@ -33,18 +33,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     let allTechnicians = [];
     let selectedTechnician = ''; 
     let currentWeekStart = getStartOfWeek(new Date()); 
-    
     let techAvailability = {}; 
-    
+    let isSaving = {}; // Objeto para rastrear o estado de salvamento por linha
+
     const SCHEDULE_DURATION_HOURS = 2; 
     const SLOT_HEIGHT_PX = 60; 
 
     const TIME_SLOTS = Array.from({ length: 11 }, (_, i) => `${(8 + i).toString().padStart(2, '0')}:00`);
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const VISIBLE_DAY_INDICES = [0, 1, 2, 3, 4, 5, 6]; // Domingo a Sábado
+    const VISIBLE_DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
     const VERIFICATION_OPTIONS = ["Scheduled", "Showed", "Canceled"];
-
-    // Opções para a nova tabela
+    
     const petOptions = Array.from({ length: 10 }, (_, i) => i + 1);
     const percentageOptions = ["20%", "25%"];
     const paymentOptions = ["Check", "American Express", "Apple Pay", "Discover", "Master Card", "Visa", "Zelle", "Cash", "Invoice"];
@@ -54,9 +53,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     function getStartOfWeek(date) {
         const d = new Date(date);
         d.setHours(0, 0, 0, 0);
-        const day = d.getDay();
-        const diff = d.getDate() - day; // Ajuste para a semana começar no domingo
-        return new Date(d.setDate(diff));
+        d.setDate(d.getDate() - d.getDay());
+        return d;
     }
 
     function formatDateToYYYYMMDD(date) {
@@ -332,13 +330,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             .sort((a, b) => parseSheetDate(a.appointmentDate) - parseSheetDate(b.appointmentDate));
 
         if (appointmentsForWeek.length === 0) {
-            showedAppointmentsTableBody.innerHTML = '<tr><td colspan="11" class="p-4 text-center text-muted-foreground">No appointments for this technician in the selected week.</td></tr>';
+            showedAppointmentsTableBody.innerHTML = '<tr><td colspan="10" class="p-4 text-center text-muted-foreground">No appointments for this technician in the selected week.</td></tr>';
             return;
         }
 
         appointmentsForWeek.forEach(appointment => {
             const row = document.createElement('tr');
-            row.className = 'border-b border-border hover:bg-muted/50 transition-colors';
+            row.className = 'border-b border-border hover:bg-muted/50';
+            row.dataset.rowId = appointment.id;
             row.innerHTML = `
                 <td class="p-4"><input type="datetime-local" value="${formatDateTimeForInput(appointment.appointmentDate)}" style="width: 160px;" class="bg-transparent border border-border rounded-md px-2" data-key="appointmentDate"></td>
                 <td class="p-4">${appointment.customers.length > 18 ? appointment.customers.substring(0, 15) + '...' : appointment.customers}</td>
@@ -369,9 +368,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <option value="">Select...</option>
                         ${VERIFICATION_OPTIONS.map(option => `<option value="${option}" ${appointment.verification === option ? 'selected' : ''}>${option}</option>`).join('')}
                     </select>
-                </td>
-                <td class="p-4">
-                    <button class="save-btn-table inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-9 px-4 py-2 bg-brand-primary text-white hover:shadow-brand" data-row-id="${appointment.id}">Save</button>
                 </td>
             `;
             showedAppointmentsTableBody.appendChild(row);
@@ -434,15 +430,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (modalCloseXBtn) modalCloseXBtn.addEventListener('click', closeEditModal);
     
     if (showedAppointmentsTableBody) {
-        showedAppointmentsTableBody.addEventListener('click', async (event) => {
-            if (event.target.classList.contains('save-btn-table')) {
-                const button = event.target;
-                const row = button.closest('tr');
-                const apptId = button.dataset.rowId;
+        showedAppointmentsTableBody.addEventListener('change', async (event) => {
+            const target = event.target;
+            if (target.matches('input, select')) {
+                const row = target.closest('tr');
+                const apptId = row.dataset.rowId;
 
-                const originalButtonText = button.textContent;
-                button.textContent = '...';
-                button.disabled = true;
+                if (isSaving[apptId]) return; // Impede salvamentos múltiplos
+                
+                isSaving[apptId] = true;
+                row.classList.add('is-saving');
+                row.classList.remove('is-success', 'is-error');
 
                 const dataToUpdate = {
                     rowIndex: parseInt(apptId, 10),
@@ -456,6 +454,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     verification: row.querySelector('[data-key="verification"]').value,
                 };
                 
+                const localAppt = allAppointments.find(a => String(a.id) === String(apptId));
+                const originalData = { ...localAppt };
+
                 try {
                     const response = await fetch('/api/update-appointment-showed-data', {
                         method: 'POST',
@@ -465,7 +466,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const result = await response.json();
                     if (!result.success) throw new Error(result.message);
                     
-                    const localAppt = allAppointments.find(a => String(a.id) === String(apptId));
                     if(localAppt) {
                        Object.assign(localAppt, {
                            ...localAppt,
@@ -479,21 +479,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                            verification: dataToUpdate.verification,
                        });
                     }
-                    
-                    renderScheduler(); 
-
-                    button.textContent = 'Saved!';
-                    setTimeout(() => {
-                       button.textContent = originalButtonText;
-                       button.disabled = false;
-                    }, 2000);
+                    updateAppointmentInDOM(apptId); 
+                    row.classList.remove('is-saving');
+                    row.classList.add('is-success');
 
                 } catch (error) {
                     console.error('Error saving from table:', error);
-                    button.textContent = 'Error!';
-                     setTimeout(() => {
-                       button.textContent = originalButtonText;
-                       button.disabled = false;
+                    Object.assign(localAppt, originalData); // Reverte os dados
+                    renderScheduler(); // Re-renderiza para garantir consistência visual
+                    row.classList.remove('is-saving');
+                    row.classList.add('is-error');
+                } finally {
+                    setTimeout(() => {
+                        row.classList.remove('is-saving', 'is-success', 'is-error');
+                        isSaving[apptId] = false;
                     }, 2000);
                 }
             }
