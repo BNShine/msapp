@@ -1,4 +1,4 @@
-// bnshine/msapp/msapp-4e398247b5d633a2b21f3c69482e0291ce9a9fc9/api/update-appointment-showed-data.js
+// api/update-appointment-showed-data.js
 
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
@@ -24,10 +24,9 @@ function parseToNumeric(value) {
     return isNaN(parsed) ? 0 : parsed;
 }
 
-function formatToSheetDate(isoDate) {
-    // MODIFICATION 1: The client now pre-formats the date to MM/DD/YYYY HH:MM.
-    // This function must simply return the received string.
-    return isoDate;
+// MODIFICATION: Simply return the string as Sheets can handle MM/DD/YYYY HH:MM directly.
+function formatToSheetDate(dateTimeStr) {
+    return dateTimeStr;
 }
 
 export default async function handler(req, res) {
