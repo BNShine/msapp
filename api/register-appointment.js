@@ -1,4 +1,4 @@
-// bnshine/msapp/msapp-2b63d2d7d550a5666136cfa304877018159c1add/api/register-appointment.js
+// bnshine/msapp/msapp-4e398247b5d633a2b21f3c69482e0291ce9a9fc9/api/register-appointment.js
 
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
@@ -22,6 +22,7 @@ export default async function handler(req, res) {
 
     try {
         const { type, data, pets, closer1, closer2, customers, phone, oldNew, appointmentDate, serviceValue, franchise, city, source, week, month, year, code, reminderDate, verification, zipCode, technician } = req.body;
+        // appointmentDate and reminderDate are now expected to be MM/DD/YYYY [HH:MM]
 
         // Validação de campos essenciais (inclusão de 'technician' aqui)
         if (!type || !data || !customers || !phone || !appointmentDate || !serviceValue || !franchise || !city || !source) {
@@ -53,7 +54,7 @@ export default async function handler(req, res) {
             'Customers': customers,
             'Phone': phone,
             'Old/New': oldNew,
-            'Date (Appointment)': appointmentDate,
+            'Date (Appointment)': appointmentDate, // MM/DD/YYYY HH:MM
             'Service Value': serviceValue,
             'Franchise': franchise,
             'City': city,
@@ -62,7 +63,7 @@ export default async function handler(req, res) {
             'Month': month,
             'Year': year,
             'Code': code,
-            'Reminder Date': reminderDate,
+            'Reminder Date': reminderDate, // MM/DD/YYYY
             'Verification': verification, 
             'Zip Code': zipCode,
             'Technician': technician, // Campo salvo
