@@ -1,5 +1,3 @@
-// public/calendar.js
-
 document.addEventListener('DOMContentLoaded', async () => {
     // --- ELEMENT SELECTORS ---
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
@@ -9,7 +7,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currentWeekDisplay = document.getElementById('current-week-display');
     const prevWeekBtn = document.getElementById('prev-week');
     const nextWeekBtn = document.getElementById('next-week');
-    const techConfigSelect = document.getElementById('tech-config-select');
     const searchCode = document.getElementById('searchCode');
 
     // Modal Selectors
@@ -51,12 +48,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const VERIFICATION_OPTIONS = ["Scheduled", "Showed", "Canceled"];
     
     // --- HELPER FUNCTIONS ---
-    
     function getStartOfWeek(date) {
         const d = new Date(date);
         d.setHours(0, 0, 0, 0);
         const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -7 : 0); // Adjust to Sunday as start of week
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
         return new Date(d.setDate(diff));
     }
     
@@ -77,22 +73,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- MODAL LOGIC ---
     function openEditModal(appt) {
         if (!appt) return;
-
         modalApptId.value = appt.id;
         modalOriginalTechnician.value = appt.technician;
         modalPetShowed.value = appt.petShowed || ''; 
         modalTips.value = appt.tips || '';
         modalPercentage.value = appt.percentage || '';
         modalPaymentMethod.value = appt.paymentMethod || '';
-        
         modalDate.value = formatDateTimeForInput(appt.appointmentDate);
         modalServiceValue.value = appt.serviceShowed || '';
-        
         const currentVerification = appt.verification || "Scheduled";
         modalVerificationSelect.innerHTML = VERIFICATION_OPTIONS.map(opt => 
             `<option value="${opt}" ${opt === currentVerification ? 'selected' : ''}>${opt}</option>`
         ).join('');
-
         editModal.classList.remove('hidden');
         document.body.classList.add('modal-open');
     }
@@ -100,6 +92,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     function closeEditModal() {
         if (editModal) editModal.classList.add('hidden');
         document.body.classList.remove('modal-open');
+    }
+
+    function handleEditAppointmentClick(event) {
+        const block = event.currentTarget;
+        const apptId = block.dataset.id;
+        const localAppt = allAppointments.find(a => String(a.id) === apptId);
+        if (localAppt) {
+            openEditModal(localAppt);
+        } else {
+            console.error('Appointment data not found for ID:', apptId);
+            alert('Error: Could not find appointment details.');
+        }
     }
     
     async function handleSaveAppointment() {
@@ -114,16 +118,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             percentage: modalPercentage.value,
             paymentMethod: modalPaymentMethod.value,
         };
-
         try {
             const response = await fetch('/api/update-appointment-showed-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(dataToSend),
             });
-
             const result = await response.json();
-
             if (result.success) {
                 alert('Appointment updated successfully!');
                 await loadInitialData(true);
@@ -140,15 +141,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- RENDER FUNCTIONS ---
     function populateTechSelects(technicians) {
-        const createOptions = (techList) => techList.sort().map(tech => `<option value="${tech}">${tech}</option>`).join('');
-        
+        const optionsHtml = technicians.sort().map(tech => `<option value="${tech}">${tech}</option>`).join('');
         if (techSelectDropdown) {
-            techSelectDropdown.innerHTML = `<option value="">Select Technician</option>${createOptions(technicians)}`;
+            techSelectDropdown.innerHTML = `<option value="">Select Technician</option>${optionsHtml}`;
         }
-        if (techConfigSelect) {
-            techConfigSelect.innerHTML = `<option value="">Select Technician</option>${createOptions(technicians)}`;
-        }
-        
         if (selectedTechnician && technicians.includes(selectedTechnician)) {
             techSelectDropdown.value = selectedTechnician;
         }
@@ -156,45 +152,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
-        
         VISIBLE_DAY_INDICES.forEach(dayIndex => {
             const date = new Date(currentWeekStart);
-            date.setDate(date.getDate() + dayIndex);
-            const header = document.createElement('div');
-            header.className = 'day-column-header p-2 font-semibold border-r border-border';
-            header.textContent = `${DAY_NAMES[dayIndex]} (${date.getDate()}/${date.getMonth() + 1})`;
-            schedulerHeader.appendChild(header);
+            date.setDate(date.getDate() + dayIndex -1);
+            schedulerHeader.innerHTML += `<div class="day-column-header p-2 font-semibold border-r border-border">${DAY_NAMES[dayIndex]} (${date.getDate()}/${date.getMonth() + 1})</div>`;
         });
 
         schedulerBody.innerHTML = '';
-        
         TIME_SLOTS.forEach((time, rowIndex) => {
             const hour = parseInt(time.split(':')[0], 10);
-            const timeDiv = document.createElement('div');
-            timeDiv.className = 'time-slot timeline-header p-2 text-sm font-medium border-b border-border';
-            timeDiv.textContent = time;
-            schedulerBody.appendChild(timeDiv);
-
+            schedulerBody.innerHTML += `<div class="time-slot timeline-header p-2 text-sm font-medium border-b border-border">${time}</div>`;
             VISIBLE_DAY_INDICES.forEach(dayIndex => {
-                const emptySlot = document.createElement('div');
-                emptySlot.className = 'time-slot border-t border-r border-border hover:bg-muted/10';
-                if (hour >= NIGHT_SHIFT_HOUR) emptySlot.classList.add('night-shift');
-                emptySlot.style.gridRow = `${rowIndex + 1}`;
-                emptySlot.style.gridColumn = `${dayIndex + 1}`;
-                schedulerBody.appendChild(emptySlot);
+                schedulerBody.innerHTML += `<div class="time-slot border-t border-r border-border ${hour >= NIGHT_SHIFT_HOUR ? 'night-shift' : ''}" style="grid-row: ${rowIndex + 1}; grid-column: ${dayIndex + 1};"></div>`;
             });
         });
         
         renderAppointments();
         
         const weekEnd = new Date(currentWeekStart);
-        weekEnd.setDate(currentWeekStart.getDate() + 6);
+        weekEnd.setDate(currentWeekStart.getDate() + 5);
         currentWeekDisplay.textContent = `${currentWeekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`;
 
         loadingOverlay.classList.toggle('hidden', !!selectedTechnician);
-        if(!selectedTechnician) {
-            loadingOverlay.querySelector('p').textContent = 'Select a technician to view schedule.';
-        }
     }
     
     function renderAppointments() {
@@ -202,100 +181,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const weekEnd = new Date(currentWeekStart);
         weekEnd.setDate(currentWeekStart.getDate() + 7);
-        const codeFilterTerm = searchCode ? searchCode.value.toLowerCase().trim() : '';
+        const codeFilterTerm = searchCode.value.toLowerCase().trim();
 
-        const appointmentsToRender = allAppointments.filter(appt => {
-            if (appt.technician !== selectedTechnician) return false;
-            const apptDate = parseSheetDate(appt.appointmentDate);
-            if (!apptDate || apptDate < currentWeekStart || apptDate >= weekEnd) return false;
-            if (codeFilterTerm && (!appt.code || !appt.code.toLowerCase().includes(codeFilterTerm))) return false;
-            return VISIBLE_DAY_INDICES.includes(apptDate.getDay());
-        });
+        allAppointments
+            .filter(appt => {
+                if (appt.technician !== selectedTechnician) return false;
+                const apptDate = parseSheetDate(appt.appointmentDate);
+                if (!apptDate || apptDate < currentWeekStart || apptDate >= weekEnd) return false;
+                if (codeFilterTerm && (!appt.code || !appt.code.toLowerCase().includes(codeFilterTerm))) return false;
+                return VISIBLE_DAY_INDICES.includes(apptDate.getDay());
+            })
+            .forEach(appt => {
+                const apptDate = parseSheetDate(appt.appointmentDate);
+                if (!apptDate) return;
 
-        appointmentsToRender.forEach(appt => {
-            const apptDate = parseSheetDate(appt.appointmentDate);
-            if (!apptDate) return;
+                const startHour = apptDate.getHours();
+                if (startHour < TIME_SLOTS_START_HOUR || startHour >= TIME_SLOTS_END_HOUR) return;
 
-            const startHour = apptDate.getHours();
-            if (startHour < TIME_SLOTS_START_HOUR || startHour >= TIME_SLOTS_END_HOUR) return;
-
-            const topOffset = ((startHour - TIME_SLOTS_START_HOUR) * 60 + apptDate.getMinutes()) / 60 * SLOT_HEIGHT_PX;
-            
-            let bgColor = 'bg-custom-primary';
-            if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
-            else if (appt.verification === 'Showed') bgColor = 'bg-green-600';
-            
-            const block = document.createElement('div');
-            block.className = `appointment-block ${bgColor} text-white rounded-md shadow-md border`;
-            block.dataset.id = appt.id;
-            block.style.top = `${topOffset}px`;
-            block.style.gridColumn = apptDate.getDay() + 1;
-
-            block.innerHTML = `
-                <div class="text-xs font-semibold overflow-hidden text-ellipsis">${appt.customers || 'N/A'}</div>
-                <div class="text-xs mt-1">Code: ${appt.code || 'N/A'}</div>
-                <div class="text-xs mt-1 font-medium">${startHour.toString().padStart(2,'0')}:${apptDate.getMinutes().toString().padStart(2,'0')}</div>
-                <div class="text-xs mt-1 font-bold">${appt.verification || 'Scheduled'}</div>
-            `;
-            
-            block.addEventListener('click', handleEditAppointmentClick);
-            schedulerBody.appendChild(block);
-        });
-    }
-
-    // --- DATA FETCHING ---
-    async function loadInitialData(isReload = false) {
-        if (!isReload) {
-            loadingOverlay.classList.remove('hidden');
-            loadingOverlay.querySelector('p').textContent = 'Loading initial data...';
-        }
-
-        try {
-            const [techResponse, apptResponse] = await Promise.all([
-                 fetch('/api/get-dashboard-data', { cache: 'no-store' }), 
-                 fetch('/api/get-technician-appointments', { cache: 'no-store' }) 
-            ]);
-            
-            if (!techResponse.ok || !apptResponse.ok) throw new Error('Failed to load data from the server.');
-
-            const techData = await techResponse.json();
-            allTechnicians = techData.technicians || [];
-
-            const apptData = await apptResponse.json();
-            allAppointments = apptData.appointments || [];
-            
-            populateTechSelects(allTechnicians); 
-            renderScheduler();
-        } catch (error) {
-            console.error('Critical Error on loadInitialData:', error);
-            loadingOverlay.querySelector('p').textContent = `ERROR: ${error.message}`;
-            loadingOverlay.classList.remove('hidden');
-        }
-    }
-
-    // --- EVENT LISTENERS ---
-    prevWeekBtn.addEventListener('click', () => {
-         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
-         renderScheduler();
-    });
-
-    nextWeekBtn.addEventListener('click', () => {
-         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-         renderScheduler();
-    });
-
-    if (techSelectDropdown) {
-        techSelectDropdown.addEventListener('change', (e) => {
-            selectedTechnician = e.target.value;
-            renderScheduler();
-        });
-    }
-    
-    if (searchCode) searchCode.addEventListener('input', renderScheduler);
-    if (modalSaveBtn) modalSaveBtn.addEventListener('click', handleSaveAppointment);
-    if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal); 
-    if (modalCloseXBtn) modalCloseXBtn.addEventListener('click', closeEditModal);
-    
-    // --- INITIALIZATION ---
-    loadInitialData();
-}); // Fim do DOMContentLoaded
+                const topOffset = ((startHour - TIME_SLOTS_START_HOUR) * 60 + apptDate.getMinutes()) / 60 * SLOT_HEIGHT_PX;
+                
+                let bgColor = 'bg-custom-primary';
+                if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
+                else if (appt.verification === 'Showed') bgColor = 'bg-green-600';
+                
+                const block = document.createElement('div');
+                block.className = `appointment-block ${bgColor} text-white rounded-md shadow-md border cursor-pointer`;
+                block.dataset.id = appt.id;
+                block.style.top = `${topOffset}px`;
+                block.style.gridColumn = apptDate.getDay() + 1;
+                block.innerHTML = `
+                    <div class="text-xs font-semibold overflow-hidden text-ellipsis">${appt.customers || 'N/A'}</div>
+                    <div class="text-xs mt-1">Code: ${appt.code || 'N/A'}</div>
+                    <div class="text-xs mt-1 font-medium">${startHour.toString().padStart(2,'0')}:${apptDate.getMinutes().toString().padStart(2,'0')}</div>
+                    <div class="text-xs mt-1 font-bold">${appt.verification || 'Scheduled'}</div>
+                `;
