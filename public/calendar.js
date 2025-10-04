@@ -54,10 +54,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let map, directionsService, directionsRenderer;
     let dayAppointments = []; // Appointments for the selected day/tech
 
-    const SCHEDULE_DURATION_HOURS = 2;
+    const SCHEDULE_DURATION_HOURS = 2; // CORRECT CONSTANT NAME
     const SLOT_HEIGHT_PX = 60;
 
-    // MODIFICATION 1: Change TIME_SLOTS to 07:00 - 21:00 (15 slots: 7, 8, ..., 21)
     const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => `${(7 + i).toString().padStart(2, '0')}:00`); // 07:00 to 21:00
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const VISIBLE_DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
@@ -449,7 +448,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             block.style.gridColumnStart = colIndex;
             block.style.top = `${topOffset}px`;
 
-            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_DURATION_HOURS * 60 * 60 * 1000);
+            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000); // FIXED CONSTANT
             block.innerHTML = `<div data-view-content>
                 <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p>
                 <p class="text-sm font-bold truncate">${appt.customers}</p>
@@ -751,7 +750,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             optimizeItineraryBtn.disabled = false;
             itineraryReverserBtn.disabled = false;
 
-            if (status === 'OK') {
+            if (status === 'OK' && response && response.routes && response.routes.length > 0 && response.routes[0].waypoint_order) {
                 directionsRenderer.setDirections(response);
 
                 let totalDistance = 0;
@@ -763,7 +762,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // Map the Directions API order back to our optimized list for correct time display
                 const orderedSequence = [
-                    ...route.waypoints.map((wp, i) => optimizedItinerary[route.waypoint_order[i]]),
+                    ...route.waypoint_order.map((i) => optimizedItinerary[i]), // Use map over waypoint_order
                 ];
                 
                 // The full sequence: Tech Base -> Waypoints (Ordered) -> Tech Base
