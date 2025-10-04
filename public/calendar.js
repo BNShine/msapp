@@ -392,9 +392,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             // 1. Fetch Technicians List
+            // Adicionado { cache: 'no-store' } para forçar o bypass do cache do navegador/servidor
             const [techResponse, apptResponse] = await Promise.all([
-                 fetch('/api/get-dashboard-data'), 
-                 fetch('/api/get-technician-appointments') 
+                 fetch('/api/get-dashboard-data', { cache: 'no-store' }), 
+                 fetch('/api/get-technician-appointments', { cache: 'no-store' }) 
             ]);
             
             if (!techResponse.ok) {
