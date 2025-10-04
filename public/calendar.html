@@ -13,32 +13,36 @@
             display: grid;
             /* 80px para Time + 6 Colunas (Mon-Sat) */
             grid-template-columns: 80px repeat(6, minmax(150px, 1fr)); 
+            /* ALTURA AJUSTADA PARA O NOVO HORÁRIO (8:00h às 21:00h = 13 slots) */
             grid-auto-rows: minmax(60px, auto); 
             overflow-x: auto;
             min-width: 100%;
         }
         .time-slot {
             height: 60px;
-            position: relative; /* Container para o appointment-block (absolute) */
+            position: relative;
         }
+        /* NOVO: Estilo para o período noturno (Das 18:00 em diante) */
+        .time-slot.night-shift:nth-child(n+19) { /* Começa no slot 18:00 (linha 11), mas precisa de um seletor mais específico no grid */
+            background-color: #ffb2b2;
+        }
+        /* Garantindo que o time column header tenha cor de fundo base */
+        .timeline-header {
+             background-color: hsl(var(--card));
+        }
+
         .appointment-block {
             /* CORRIGIDO: 2 horas de duração (2 * 60px de altura) = 120px */
             height: 120px; 
             position: absolute;
-            width: 100%; /* GARANTE A LARGURA RESTRITA À COLUNA */
+            width: 100%;
             left: 0;
             top: 0; 
             padding: 8px; 
             box-sizing: border-box;
             z-index: 10;
         }
-        .timeline-header {
-            grid-column: 1;
-            position: sticky;
-            left: 0;
-            background-color: hsl(var(--card));
-            z-index: 20;
-        }
+        
         .day-column-header {
             text-align: center;
         }
@@ -55,12 +59,12 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); /* Fundo preto transparente */
+            background-color: rgba(0, 0, 0, 0.7);
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 1rem;
-            z-index: 1000; /* Z-INDEX EXTREMAMENTE ALTO */
+            z-index: 1000;
         }
 
         /* Classe que o JS adiciona ao body para desativar a rolagem */
@@ -91,7 +95,7 @@
     </header>
 
     <main class="p-8">
-        <div class="max-w-[86rem] mx-auto space-y-8">
+        <div class="mx-auto space-y-8 max-w-[85%] min-w-[700px]"> 
 
             <section class="rounded-lg border bg-card text-card-foreground shadow-large">
                 <div class="p-6 border-b border-border flex justify-between items-center flex-wrap gap-4">
@@ -109,8 +113,13 @@
                         <select id="tech-select-dropdown" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                              <option value="">Loading Technicians...</option>
                         </select>
-                        <p id="selected-tech-display" class="text-sm font-bold text-brand-primary">No Technician Selected</p>
-                    </div>
+                        
+                        <div class="space-y-2">
+                             <label for="searchCode" class="block text-sm font-semibold text-foreground">Code Filter</label>
+                            <input type="text" id="searchCode" placeholder="Ex: GHY78" class="w-full rounded-xl border-2 border-border transition-colors bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                        </div>
+                        
+                        </div>
                     
                     <div class="flex-1 overflow-x-auto">
                         <div id="scheduler-header" class="scheduler-grid border-b border-border" style="--num-techs: 6;">
@@ -120,7 +129,7 @@
                             <div id="scheduler-body" class="scheduler-grid relative min-w-full" style="--num-techs: 6;">
                                 </div>
                             <div id="loading-overlay" class="absolute inset-0 bg-white/70 flex items-center justify-center hidden z-30">
-                                <p class="text-xl font-semibold text-muted-foreground">Please select a technician.</p>
+                                <p class="text-xl font-semibold text-muted-foreground">Select a technician to view schedule.</p>
                             </div>
                         </div>
                     </div>
@@ -145,8 +154,7 @@
                 </div>
                 
                 <div id="availability-form-container" class="mt-6 space-y-4">
-                    <p class="text-muted-foreground p-4 border rounded-lg bg-muted/10">Select a technician above to manage their weekly working hours (8:00 to 18:00 range).</p>
-                </div>
+                    </div>
             </section>
         </div>
     </main>
