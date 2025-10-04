@@ -57,7 +57,7 @@ export default async function handler(req, res) {
             return {
                 id: row.rowNumber,
                 technician: technician,
-                appointmentDate: excelDateToDateTime(appointmentDateRaw), // YYYY/MM/DD HH:MM
+                appointmentDate: excelDateToDateTime(appointmentDateRaw), // MM/DD/YYYY HH:MM
                 customers: getCellValue('Customers'),
                 code: getCellValue('Code'),
                 verification: getCellValue('Verification') || 'Scheduled', 
@@ -67,6 +67,7 @@ export default async function handler(req, res) {
                 tips: getCellValue('Tips'),
                 percentage: getCellValue('Percentage'),
                 paymentMethod: getCellValue('Method'),
+                zipCode: getCellValue('Zip Code'), // Adicionado Zip Code
             };
         }).filter(a => a !== null);
 
