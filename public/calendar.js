@@ -317,8 +317,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!block || typeof block.date !== 'string' || block.date.trim() === '') {
                 return;
             }
-            const blockDate = new Date(block.date.replace(/\//g, '-') + 'T00:00:00');
             
+            const blockDate = new Date(block.date.replace(/\//g, '-') + 'T00:00:00');
+            if (isNaN(blockDate.getTime())) return; // Ignora datas inválidas
+
             if (blockDate < currentWeekStart || blockDate >= weekEnd) return;
 
             const dateKey = formatDateToYYYYMMDD(blockDate);
