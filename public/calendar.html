@@ -11,6 +11,7 @@
     <style>
         .scheduler-grid {
             display: grid;
+            /* Atualizado para 7 dias (domingo a sábado) + coluna de tempo */
             grid-template-columns: 80px repeat(7, minmax(150px, 1fr)); 
             grid-auto-rows: minmax(60px, auto); 
             overflow-x: auto;
@@ -66,6 +67,7 @@
             display: none !important;
         }
 
+        /* Estilos para feedback de salvamento na tabela */
         tr.is-saving {
             background-color: hsl(var(--secondary) / 0.1);
             transition: background-color 0.3s;
@@ -134,13 +136,10 @@
             </section>
 
             <section class="rounded-lg border bg-card text-card-foreground shadow-large">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 p-6 pb-8">
+                <div class="flex flex-col space-y-1.5 p-6 pb-8">
                     <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                         Manage Showed Appointments (Current Week)
                     </h2>
-                    <button id="edit-payments-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-pink-500 text-white hover:bg-pink-600 transition-colors">
-                        Edit Payments
-                    </button>
                 </div>
                 <div class="p-6 pt-0 overflow-x-auto">
                     <table class="w-full text-left">
