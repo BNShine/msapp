@@ -13,7 +13,7 @@
             display: grid;
             /* 80px para Time + 6 Colunas (Mon-Sat) */
             grid-template-columns: 80px repeat(6, minmax(150px, 1fr)); 
-            /* CORRIGIDO: 8:00h até 21:00h = 13 slots */
+            /* CORRIGIDO: 8:00h até 22:00h = 14 slots (agora no JS) */
             grid-auto-rows: minmax(60px, auto); 
             overflow-x: auto;
             min-width: 100%;
@@ -51,7 +51,7 @@
         
         /* NOVO: Cor de fundo para o turno da noite (18:00 em diante) */
         .time-slot.night-shift {
-            background-color: #ffb2b2;
+            background-color: #e9e9e9; /* Cor alterada para #e9e9e9 (Requisito 1) */
         }
 
         /* CLASSE AGRESSIVA PARA FORÇAR O MODAL A FLUTUAR */
