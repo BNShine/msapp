@@ -35,18 +35,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     const blockSaveBtn = document.getElementById('block-save-btn');
     const blockCancelBtn = document.getElementById('block-cancel-btn');
 
+    // START NEW SELECTORS
+    const dayFilter = document.getElementById('day-filter');
+    const dayItineraryTableBody = document.getElementById('day-itinerary-table-body');
+    const optimizeItineraryBtn = document.getElementById('optimize-itinerary-btn');
+    const itineraryReverserBtn = document.getElementById('itinerary-reverser-btn');
+    const itineraryMapContainer = document.getElementById('itinerary-map');
+    const itineraryResultsList = document.getElementById('itinerary-results-list');
+    // END NEW SELECTORS
+
     let allAppointments = [];
     let allTechnicians = [];
     let techAvailabilityBlocks = [];
     let selectedTechnician = '';
     let currentWeekStart = getStartOfWeek(new Date());
     let isSaving = {};
+    let GOOGLE_MAPS_API_KEY = null;
+    let map, directionsService, directionsRenderer;
+    let dayAppointments = []; // Appointments for the selected day/tech
 
     const SCHEDULE_DURATION_HOURS = 2;
     const SLOT_HEIGHT_PX = 60;
 
     // MODIFICATION 1: Change TIME_SLOTS to 07:00 - 21:00 (15 slots: 7, 8, ..., 21)
-    const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => `${(7 + i).toString().padStart(2, '0')}:00`);
+    const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => `${(7 + i).toString().padStart(2, '0')}:00`); // 07:00 to 21:00
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const VISIBLE_DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
     const VERIFICATION_OPTIONS = ["Scheduled", "Showed", "Canceled"];
@@ -55,12 +67,78 @@ document.addEventListener('DOMContentLoaded', async () => {
     const percentageOptions = ["20%", "25%"];
     const paymentOptions = ["Check", "American Express", "Apple Pay", "Discover", "Master Card", "Visa", "Zelle", "Cash", "Invoice"];
     
-    // START CONSTANTS FOR HOUR RANGE
     const MIN_HOUR = 7;
     const MAX_HOUR = 21;
-    // END CONSTANTS FOR HOUR RANGE
 
-    // --- Funções Auxiliares ---
+    // --- Geocoding and Distance Helpers (FROM quick-routes.js) ---
+    async function getLatLon(zipCode) {
+        if (!zipCode) return [null, null];
+        try {
+            // API pública para consulta de Zip Codes dos EUA
+            const response = await fetch(`https://api.zippopotam.us/us/${zipCode}`);
+            if (!response.ok) return [null, null];
+            const data = await response.json();
+            const place = data.places[0];
+            return [parseFloat(place.latitude), parseFloat(place.longitude)];
+        } catch (error) {
+            console.error('Erro ao buscar dados de zip code:', error);
+            return [null, null];
+        }
+    }
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
+    }
+
+    // --- Google Maps API Key Fetching (FROM quick-routes.js) ---
+    async function fetchGoogleMapsApiKey() {
+        if (GOOGLE_MAPS_API_KEY) return;
+        try {
+            const response = await fetch('/api/get-google-maps-api-key');
+            if (response.ok) {
+                const data = await response.json();
+                GOOGLE_MAPS_API_KEY = data.apiKey;
+                // Carrega o script do Google Maps dinamicamente
+                if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
+                    document.head.appendChild(script);
+                } else {
+                    window.initMap(); // Call it manually if API is already loaded
+                }
+            } else {
+                console.error('Falha ao buscar a chave da API do Google Maps.');
+                alert('Erro: Chave da Google Maps API não carregada. A otimização de rotas não funcionará.');
+            }
+        } catch (error) {
+            console.error('Erro ao buscar a chave da API do Google Maps:', error);
+        }
+    }
+    
+    // --- Global Map Initialization ---
+    window.initMap = function() {
+        if (itineraryMapContainer) {
+            map = new google.maps.Map(itineraryMapContainer, {
+                center: { lat: 39.8283, lng: -98.5795 }, // Centro dos EUA
+                zoom: 4,
+                streetViewControl: false,
+                fullscreenControl: false,
+            });
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
+        }
+    }
+    // --- End Google Maps Logic ---
+
+    // --- Date/Time Helpers ---
+
+    function getDayOfWeekDate(startOfWeekDate, dayOfWeek) {
+        const date = new Date(startOfWeekDate);
+        date.setDate(startOfWeekDate.getDate() + dayOfWeek);
+        return date;
+    }
+
+    // --- Funções Auxiliares (Existentes e Reutilizadas) ---
     function getStartOfWeek(date) {
         const d = new Date(date);
         d.setHours(0, 0, 0, 0);
@@ -69,17 +147,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function formatDateToYYYYMMDD(date) {
+        // Output for internal grid mapping: YYYY/MM/DD
         const year = date.getFullYear();
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
         return `${year}/${month}/${day}`;
     }
     
+    // MODIFICATION 2: Correct parsing for MM/DD/YYYY HH:MM format from API
     function parseSheetDate(dateStr) {
         if (!dateStr || dateStr.length < 16) return null;
         const [datePart, timePart] = dateStr.split(' ');
-        const [year, month, day] = datePart.split('/').map(Number);
+        
+        // Expected Input: MM/DD/YYYY HH:MM
+        const [month, day, year] = datePart.split('/').map(Number);
         const [hour, minute] = timePart.split(':').map(Number);
+        
+        if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
+
+        // Note: Month is 0-indexed in Date constructor (month - 1)
         return new Date(year, month - 1, day, hour, minute); 
     }
     
@@ -89,9 +175,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${hours}:${minutes}`;
     }
     
+    // MODIFICATION 3: Correct formatting from MM/DD/YYYY HH:MM to YYYY-MM-DDTHH:MM for input fields
     function formatDateTimeForInput(dateTimeStr) {
         if (!dateTimeStr) return '';
-        return dateTimeStr.replace(/\//g, '-').replace(' ', 'T'); 
+        // Input: MM/DD/YYYY HH:MM (from API/Sheet)
+        // Output: YYYY-MM-DDTHH:MM (for HTML input)
+
+        const [datePart, timePart] = dateTimeStr.split(' ');
+        if (!datePart || !timePart) return '';
+
+        const [month, day, year] = datePart.split('/');
+        
+        if (year && month && day) {
+             // Convert MM/DD/YYYY to YYYY-MM-DD and combine with time
+            return `${year}-${month}-${day}T${timePart}`; 
+        }
+        return '';
     }
 
     // --- Funções do Modal de Edição de Agendamento ---
@@ -127,10 +226,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         event.stopPropagation();
         modalSaveBtn.textContent = 'Salvando...';
         modalSaveBtn.disabled = true;
+        
+        const appointmentDateLocal = modalDate.value; // YYYY-MM-DDTHH:MM
+        // MODIFICATION 4: Convert HTML input to API target format (MM/DD/YYYY HH:MM)
+        const [datePart, timePart] = appointmentDateLocal.split('T');
+        const [year, month, day] = datePart.split('-');
+        const apiFormattedDate = `${month}/${day}/${year} ${timePart}`; 
 
         const dataToUpdate = {
             rowIndex: parseInt(modalApptId.value, 10),
-            appointmentDate: modalDate.value,
+            appointmentDate: apiFormattedDate,
             verification: modalVerificationSelect.value,
             serviceShowed: modalServiceValue.value,
             tips: modalTips.value,
@@ -140,8 +245,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             paymentMethod: modalPaymentMethod.value || '',
         };
         
-        // MODIFICATION 2: Add Hour Validation to Modal Save
-        const appointmentDateLocal = dataToUpdate.appointmentDate;
+        // MODIFICATION 5: Add Hour Validation to Modal Save
         const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
         const minute = parseInt(appointmentDateLocal.substring(14, 16), 10);
         
@@ -151,7 +255,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             modalSaveBtn.disabled = false;
             return;
         }
-        // END MODIFICATION 2
+        // END MODIFICATION 5
 
         try {
             const response = await fetch('/api/update-appointment-showed-data', {
@@ -164,7 +268,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const localAppt = allAppointments.find(a => String(a.id) === modalApptId.value);
             if(localAppt) {
-                localAppt.appointmentDate = dataToUpdate.appointmentDate.replace('T', ' ').replace(/-/g, '/');
+                localAppt.appointmentDate = apiFormattedDate;
                 localAppt.verification = dataToUpdate.verification;
                 localAppt.serviceShowed = dataToUpdate.serviceShowed;
                 localAppt.tips = dataToUpdate.tips;
@@ -221,6 +325,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             endHour: endHourValue,
             notes: document.getElementById('block-notes').value,
         };
+        
+        // MODIFICATION 6: Convert YYYY/MM/DD (from date input) to MM/DD/YYYY for API/Sheets
+        const [year, month, day] = data.date.split('/');
+        data.date = `${month}/${day}/${year}`;
 
         try {
             const response = await fetch('/api/manage-technician-availability', {
@@ -289,6 +397,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderShowedAppointmentsTable();
         loadingOverlay.classList.toggle('hidden', !!selectedTechnician);
         updateWeekDisplay();
+        
+        // New feature: Render the day itinerary table after scheduler load
+        renderDayItineraryTable();
     }
     
     function renderAppointments(columnMap) {
@@ -306,8 +417,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // MODIFICATION 3: Change start hour check and offset
             const startHour = apptDate.getHours();
             if (startHour < MIN_HOUR || startHour > MAX_HOUR) return;
-
-            const topOffset = (apptDate.getHours() - MIN_HOUR) * SLOT_HEIGHT_PX + apptDate.getMinutes(); 
+            
+            const topOffset = (startHour - MIN_HOUR) * SLOT_HEIGHT_PX + apptDate.getMinutes(); 
             // END MODIFICATION 3
 
             const block = document.createElement('div');
@@ -343,7 +454,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             
-            const blockDate = new Date(block.date.replace(/\//g, '-') + 'T00:00:00');
+            // MODIFICATION 7: Ensure block.date is parsed as MM/DD/YYYY
+            const parts = block.date.split('/');
+            if (parts.length !== 3) return; 
+            const [M, D, Y] = parts;
+            const blockDate = new Date(`${Y}-${M}-${D}T00:00:00`); // YYYY-MM-DD for constructor
+
             if (isNaN(blockDate.getTime())) return; // Ignora datas inválidas
 
             if (blockDate < currentWeekStart || blockDate >= weekEnd) return;
@@ -434,8 +550,281 @@ document.addEventListener('DOMContentLoaded', async () => {
             showedAppointmentsTableBody.appendChild(row);
         });
     }
+    
+    // --- NEW: Daily Itinerary Rendering ---
 
-    // --- Carregamento de Dados ---
+    function renderDayItineraryTable() {
+        if (!dayItineraryTableBody) return;
+        dayItineraryTableBody.innerHTML = '';
+        itineraryResultsList.innerHTML = 'No route calculated.';
+        
+        // Clear previous map route
+        if (directionsRenderer) directionsRenderer.setDirections({ routes: [] });
+        if (map) {
+             // Center map to US default view
+            map.setCenter({ lat: 39.8283, lng: -98.5795 });
+            map.setZoom(4);
+        }
+
+        const selectedDayOfWeek = dayFilter.value;
+        // MODIFICATION 8: Read selectedTechName directly from DOM for robustness
+        const selectedTechName = techSelectDropdown.value; 
+
+        optimizeItineraryBtn.disabled = true;
+        itineraryReverserBtn.disabled = true;
+        
+        // The condition for displaying the fallback message
+        if (!selectedTechName || selectedDayOfWeek === '') {
+            dayItineraryTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-muted-foreground">Select a day and a technician to view appointments.</td></tr>';
+            return;
+        }
+
+        const targetDate = getDayOfWeekDate(currentWeekStart, parseInt(selectedDayOfWeek, 10));
+        // MODIFICATION 9: Comparing internal YYYY/MM/DD date keys (correct for filtering by date)
+        const dateKey = formatDateToYYYYMMDD(targetDate); 
+
+        // Filter appointments for the selected day and technician
+        dayAppointments = allAppointments
+            .filter(appt => {
+                const apptDate = parseSheetDate(appt.appointmentDate);
+                const apptDateKey = apptDate ? formatDateToYYYYMMDD(apptDate) : null;
+                return appt.technician === selectedTechName && apptDateKey === dateKey; 
+            })
+            // Sort by appointment time
+            .sort((a, b) => {
+                const dateA = parseSheetDate(a.appointmentDate);
+                const dateB = parseSheetDate(b.appointmentDate);
+                return (dateA?.getTime() || 0) - (dateB?.getTime() || 0);
+            });
+
+        if (dayAppointments.length === 0) {
+            dayItineraryTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-muted-foreground">No appointments found for the selected day.</td></tr>';
+            return;
+        }
+
+        dayAppointments.forEach(appt => {
+            const row = document.createElement('tr');
+            row.classList.add('border-b', 'border-border', 'hover:bg-muted/50', 'transition-colors');
+            
+            const apptDate = parseSheetDate(appt.appointmentDate);
+            const apptTime = apptDate ? getTimeHHMM(apptDate) : '';
+
+            row.innerHTML = `
+                <td class="p-4 font-bold">${apptTime}</td>
+                <td class="p-4">${appt.customers}</td>
+                <td class="p-4">${appt.phone || ''}</td>
+                <td class="p-4 zip-code-cell">${appt.zipCode || 'N/A'}</td>
+                <td class="p-4">${appt.code || ''}</td>
+                <td class="p-4">${appt.verification || ''}</td>
+                <td class="p-4">${appt.technician || ''}</td>
+            `;
+            dayItineraryTableBody.appendChild(row);
+        });
+
+        // Enable buttons if there are appointments with zip codes
+        if (dayAppointments.some(appt => appt.zipCode && appt.zipCode.length > 0)) {
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+        }
+    }
+
+    // --- NEW: Itinerary Optimization Logic ---
+
+    async function runItineraryOptimization(appointments, isReversed = false) {
+        if (!directionsService || !directionsRenderer) {
+            alert('Google Maps Service is not initialized. Please ensure the API key is loaded.');
+            return;
+        }
+        
+        // Fetch tech coverage data (needs technician's origin zip)
+        const techCoverageResponse = await fetch('/api/get-tech-coverage');
+        const techCoverageData = techCoverageResponse.ok ? await techCoverageResponse.json() : [];
+        const selectedTechObj = techCoverageData.find(t => t.nome === selectedTechnician);
+        const originZip = selectedTechObj?.zip_code;
+
+        if (!originZip) {
+            alert('Technician origin Zip Code not found. Please register it in the Technician Registration section.');
+            return;
+        }
+
+        itineraryResultsList.innerHTML = 'Calculating route...';
+        optimizeItineraryBtn.disabled = true;
+        itineraryReverserBtn.disabled = true;
+
+        // 1. Filter appointments with valid Zip Code
+        const validAppointments = [];
+        for (const appt of appointments) {
+            if (appt.zipCode) {
+                const [lat, lon] = await getLatLon(appt.zipCode);
+                if (lat !== null) {
+                    validAppointments.push({ ...appt, lat, lon });
+                } else {
+                    console.warn(`Ignoring appointment with invalid zip: ${appt.zipCode}`);
+                }
+            }
+        }
+
+        if (validAppointments.length < 1) {
+            itineraryResultsList.innerHTML = '<p class="text-red-600">No appointments with valid Zip Codes to optimize.</p>';
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+            return;
+        }
+        
+        // 2. Get Origin Coords
+        const [originLat, originLon] = await getLatLon(originZip);
+        if (originLat === null) {
+            alert('Error: Could not get coordinates for technician origin Zip Code.');
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+            return;
+        }
+
+        // 3. Nearest Neighbor Approximation Algorithm
+        let currentLat = originLat;
+        let currentLon = originLon;
+
+        let unvisited = [...validAppointments];
+        let optimizedItinerary = [];
+        
+        // Find the closest appointment to the starting point (tech's zip)
+        let closestClient = null;
+        let minDistance = Infinity;
+        for (const client of unvisited) {
+            const distance = calculateDistance(currentLat, currentLon, client.lat, client.lon);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestClient = client;
+            }
+        }
+        
+        if (closestClient) {
+            optimizedItinerary.push(closestClient);
+            unvisited = unvisited.filter(c => c !== closestClient);
+            currentLat = closestClient.lat;
+            currentLon = closestClient.lon;
+        }
+
+        // Subsequent steps: build the rest of the route
+        while (unvisited.length > 0) {
+            closestClient = null;
+            minDistance = Infinity;
+
+            for (const client of unvisited) {
+                const distance = calculateDistance(currentLat, currentLon, client.lat, client.lon);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestClient = client;
+                }
+            }
+            optimizedItinerary.push(closestClient);
+            currentLat = closestClient.lat;
+            currentLon = closestClient.lon;
+            unvisited = unvisited.filter(c => c !== closestClient);
+        }
+        
+        // 4. Reverse the route if needed (Farthest First - still an approximation)
+        if (isReversed) {
+            optimizedItinerary.reverse();
+        }
+
+        // 5. Google Maps Directions Request
+        const origin = originZip;
+        const destination = originZip; // Technician's zip is the final destination (round trip)
+        const waypoints = optimizedItinerary.map(c => ({
+            location: c.zipCode,
+            stopover: true
+        }));
+        
+        const request = {
+            origin: origin,
+            destination: destination,
+            waypoints: waypoints.slice(0, 23), 
+            optimizeWaypoints: true,
+            travelMode: google.maps.TravelMode.DRIVING
+        };
+        
+        // 6. Display Route
+        directionsService.route(request, (response, status) => {
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+
+            if (status === 'OK') {
+                directionsRenderer.setDirections(response);
+
+                let totalDistance = 0;
+                let totalDuration = 0;
+
+                const route = response.routes[0];
+                
+                itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (Starting from ${isReversed ? 'Farthest' : 'Nearest'}):</p>`;
+                
+                // Map the Directions API order back to our optimized list for correct time display
+                const orderedSequence = [
+                    ...route.waypoints.map((wp, i) => optimizedItinerary[route.waypoint_order[i]]),
+                ];
+                
+                // The full sequence: Tech Base -> Waypoints (Ordered) -> Tech Base
+                const fullSequence = [
+                    { name: 'Start (Tech Base)', zipCode: originZip, apptTime: 'N/A' },
+                    ...orderedSequence.map(appt => ({ 
+                        name: appt.customers, 
+                        zipCode: appt.zipCode, 
+                        apptTime: getTimeHHMM(parseSheetDate(appt.appointmentDate)) 
+                    }))
+                ];
+
+                const legs = route.legs;
+
+                legs.forEach((leg, i) => {
+                    totalDistance += leg.distance.value;
+                    totalDuration += leg.duration.value;
+                    
+                    const destinationName = (i === legs.length - 1) ? 'End (Tech Base)' : fullSequence[i + 1].name;
+                    const destinationTime = (i === legs.length - 1) ? 'N/A' : fullSequence[i + 1].apptTime;
+                    const destinationIndex = i + 1;
+
+
+                    itineraryResultsList.innerHTML += `
+                        <div class="border-b border-muted py-2">
+                            <p class="font-bold text-base">${destinationIndex}. Go to: ${destinationName}</p>
+                            <p class="ml-4 text-sm">Target Appt Time: ${destinationTime} | Travel Time: ${leg.duration.text} | Distance: ${leg.distance.text}</p>
+                        </div>
+                    `;
+                });
+                
+                // Final Summary
+                itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-lg text-brand-primary">Total Round Trip: ${Math.round(totalDuration / 60)} min / ${(totalDistance / 1000).toFixed(2)} km</div>`;
+                
+            } else {
+                itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}</p>`;
+            }
+        });
+    }
+
+
+    function handleOptimizeItinerary() {
+        runItineraryOptimization(dayAppointments, false);
+    }
+    
+    function handleItineraryReverser() {
+        runItineraryOptimization(dayAppointments, true);
+    }
+
+
+    function handleDayFilterChange() {
+        // Clear previous route data whenever day or technician changes
+        if (directionsRenderer) directionsRenderer.setDirections({ routes: [] });
+        if (map) {
+             // Center map to US default view
+            map.setCenter({ lat: 39.8283, lng: -98.5795 });
+            map.setZoom(4);
+        }
+        renderDayItineraryTable();
+    }
+
+    // --- Data Fetching and Initialization ---
+
     async function fetchAvailabilityForSelectedTech() {
         if (!selectedTechnician) {
             techAvailabilityBlocks = [];
@@ -467,6 +856,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             populateTechSelects();
             await fetchAvailabilityForSelectedTech();
             renderScheduler(); 
+            
+            // NEW: Fetch and initialize Google Maps
+            await fetchGoogleMapsApiKey();
+            
         } catch (error) {
             console.error('CRITICAL ERROR during loadInitialData:', error);
         }
@@ -486,19 +879,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function handleTechSelectionChange(event) {
         selectedTechnician = event.target.value;
         selectedTechDisplay.textContent = selectedTechnician || 'No Technician Selected';
+        
         await fetchAvailabilityForSelectedTech();
-        renderScheduler();
+        renderScheduler(); 
+        handleDayFilterChange();
     }
     
     // --- Event Listeners ---
+    // Remove existing listener before adding the comprehensive one
+    techSelectDropdown.removeEventListener('change', handleTechSelectionChange);
     techSelectDropdown.addEventListener('change', handleTechSelectionChange);
+
     prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
         renderScheduler();
+        handleDayFilterChange(); // Update itinerary view when week changes
     });
     nextWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
         renderScheduler();
+        handleDayFilterChange(); // Update itinerary view when week changes
     });
     modalSaveBtn.addEventListener('click', handleSaveAppointment);
     modalCancelBtn.addEventListener('click', closeEditModal); 
@@ -508,7 +908,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     blockSaveBtn.addEventListener('click', handleSaveTimeBlock);
     blockCancelBtn.addEventListener('click', closeTimeBlockModal);
     
+    // NEW Event Listeners
+    if (dayFilter) dayFilter.addEventListener('change', handleDayFilterChange);
+    if (optimizeItineraryBtn) optimizeItineraryBtn.addEventListener('click', handleOptimizeItinerary);
+    if (itineraryReverserBtn) itineraryReverserBtn.addEventListener('click', handleItineraryReverser);
+    
     if (showedAppointmentsTableBody) {
+        // ... (Existing table change listener, kept for completeness) ...
         showedAppointmentsTableBody.addEventListener('change', async (event) => {
             const target = event.target;
             if (target.matches('input, select')) {
@@ -519,10 +925,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 isSaving[apptId] = true;
                 row.classList.add('is-saving');
+                
+                const appointmentDateLocal = row.querySelector('[data-key="appointmentDate"]').value; // YYYY-MM-DDTHH:MM
+                const [datePart, timePart] = appointmentDateLocal.split('T');
+                const [year, month, day] = datePart.split('-');
+                const apiFormattedDate = `${month}/${day}/${year} ${timePart}`; // MM/DD/YYYY HH:MM
 
                 const dataToUpdate = {
                     rowIndex: parseInt(apptId, 10),
-                    appointmentDate: row.querySelector('[data-key="appointmentDate"]').value,
+                    appointmentDate: apiFormattedDate, 
                     technician: row.querySelector('[data-key="technician"]').value,
                     petShowed: row.querySelector('[data-key="petShowed"]').value,
                     serviceShowed: row.querySelector('[data-key="serviceShowed"]').value,
@@ -533,7 +944,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 };
                 
                 // MODIFICATION 5: Add Hour Validation to Table Change
-                const appointmentDateLocal = dataToUpdate.appointmentDate;
                 const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
                 const minute = parseInt(appointmentDateLocal.substring(14, 16), 10);
                 
@@ -562,7 +972,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     
                     const localAppt = allAppointments.find(a => String(a.id) === String(apptId));
                     if(localAppt) Object.assign(localAppt, dataToUpdate, {
-                        appointmentDate: dataToUpdate.appointmentDate.replace('T', ' ').replace(/-/g, '/')
+                        appointmentDate: apiFormattedDate
                     });
 
                     renderScheduler();
