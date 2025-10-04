@@ -57,7 +57,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const SCHEDULE_DURATION_HOURS = 2;
     const SLOT_HEIGHT_PX = 60;
 
-    // MODIFICATION 1: Change TIME_SLOTS to 07:00 - 21:00 (15 slots: 7, 8, ..., 21)
     const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => `${(7 + i).toString().padStart(2, '0')}:00`); // 07:00 to 21:00
     const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const VISIBLE_DAY_INDICES = [0, 1, 2, 3, 4, 5, 6];
@@ -90,7 +89,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
     }
 
-    // --- Google Maps API Key Fetching (FROM quick-routes.js) ---
+    // --- Google Maps API Key Fetching (CORRECTION HERE) ---
     async function fetchGoogleMapsApiKey() {
         if (GOOGLE_MAPS_API_KEY) return;
         try {
@@ -98,13 +97,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (response.ok) {
                 const data = await response.json();
                 GOOGLE_MAPS_API_KEY = data.apiKey;
-                // Carrega o script do Google Maps dinamicamente
+                
+                // CRITICAL CORRECTION: Define initMap globally before injecting the script
+                window.initMap = function() {
+                    if (itineraryMapContainer) {
+                        map = new google.maps.Map(itineraryMapContainer, {
+                            center: { lat: 39.8283, lng: -98.5795 }, // Centro dos EUA
+                            zoom: 4,
+                            streetViewControl: false,
+                            fullscreenControl: false,
+                        });
+                        directionsService = new google.maps.DirectionsService();
+                        directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
+                        console.log('Google Maps services initialized.');
+                    }
+                }
+                
+                // Inject script only if it's not present
                 if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
                     const script = document.createElement('script');
                     script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
+                    script.async = true;
+                    script.defer = true;
                     document.head.appendChild(script);
                 } else {
-                    window.initMap(); // Call it manually if API is already loaded
+                    window.initMap(); // Call it immediately if API is already loaded (unlikely in page load scenario)
                 }
             } else {
                 console.error('Falha ao buscar a chave da API do Google Maps.');
@@ -112,20 +129,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (error) {
             console.error('Erro ao buscar a chave da API do Google Maps:', error);
-        }
-    }
-    
-    // --- Global Map Initialization ---
-    window.initMap = function() {
-        if (itineraryMapContainer) {
-            map = new google.maps.Map(itineraryMapContainer, {
-                center: { lat: 39.8283, lng: -98.5795 }, // Centro dos EUA
-                zoom: 4,
-                streetViewControl: false,
-                fullscreenControl: false,
-            });
-            directionsService = new google.maps.DirectionsService();
-            directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
         }
     }
     // --- End Google Maps Logic ---
@@ -156,10 +159,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // MODIFICATION 2: Correct parsing for MM/DD/YYYY HH:MM format from API (now tolerates unpadded strings)
     function parseSheetDate(dateStr) {
-        if (!dateStr) return null; // <-- Removed length check
+        if (!dateStr) return null; 
         const [datePart, timePart] = dateStr.split(' ');
         
-        if (!datePart || !timePart) return null; // Fails if no space/time part
+        if (!datePart || !timePart) return null; 
 
         // Expected Input: MM/DD/YYYY HH:MM (or M/D/YYYY H:MM)
         const dateParts = datePart.split('/');
