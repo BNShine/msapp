@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const availabilityFormContainer = document.getElementById('availability-form-container');
     const saveAvailabilityBtn = document.getElementById('save-availability-btn');
 
-    // NOVOS SELETORES DE BUSCA (Assumindo que existem no HTML)
     const searchCustomer = document.getElementById('searchCustomer');
     const searchDate = document.getElementById('searchDate');
     const searchCode = document.getElementById('searchCode');
@@ -28,16 +27,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const modalApptId = document.getElementById('modal-appt-id');
     const modalDate = document.getElementById('modal-date');
     const modalServiceValue = document.getElementById('modal-service-value');
+    const modalTips = document.getElementById('modal-tips');
     const modalOriginalTechnician = document.getElementById('modal-original-technician');
     const modalPetShowed = document.getElementById('modal-pet-showed');
-    const modalTips = document.getElementById('modal-tips');
     const modalPercentage = document.getElementById('modal-percentage');
     const modalPaymentMethod = document.getElementById('modal-payment-method');
-    
-    // Referência ao botão X
     const modalCloseXBtn = document.getElementById('modal-close-x-btn');
 
-    // VARIÁVEIS PRINCIPAIS (AGORA NO ESCOPO CORRETO)
     let allAppointments = []; 
     let allTechnicians = [];
     let selectedTechnician = ''; 
@@ -55,7 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const VERIFICATION_OPTIONS = ["Scheduled", "Showed", "Canceled"];
     let draggedAppointment = null;
     
-    // --- Helper Functions ---
+    // --- Funções Auxiliares ---
 
     function getStartOfWeek(date) {
         const d = new Date(date);
@@ -127,28 +123,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         modalApptId.value = appt.id;
         modalOriginalTechnician.value = appt.technician;
         modalPetShowed.value = appt.petShowed || '';
-        modalTips.value = appt.tips || '';
         modalPercentage.value = appt.percentage || '';
         modalPaymentMethod.value = appt.paymentMethod || '';
 
         modalDate.value = formatDateTimeForInput(appt.appointmentDate);
         modalServiceValue.value = appt.serviceShowed || '';
+        modalTips.value = appt.tips || '';
 
         modalVerificationSelect.innerHTML = VERIFICATION_OPTIONS.map(opt => 
             `<option value="${opt}" ${appt.verification === opt ? 'selected' : ''}>${opt}</option>`
         ).join('');
 
-        // 1. EXIBE O MODAL
         editModal.classList.remove('hidden');
-        
-        // 2. Ativa o travamento de rolagem
         document.body.classList.add('modal-open');
     }
 
     function closeEditModal() {
         if (editModal) editModal.classList.add('hidden');
-        
-        // Remove o travamento de rolagem
         document.body.classList.remove('modal-open');
     }
     
@@ -171,6 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const newDateLocal = modalDate.value;
         const newVerification = modalVerificationSelect.value;
         const newServiceShowed = modalServiceValue.value; 
+        const newTips = modalTips.value;
         
         if (!newDateLocal || !newVerification) {
              alert("Data e Status são campos obrigatórios.");
@@ -189,10 +181,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             rowIndex: parseInt(apptId, 10), 
             appointmentDate: newDateLocal, 
             verification: newVerification,
-            serviceShowed: newServiceShowed, 
+            serviceShowed: newServiceShowed,
+            tips: newTips,
             technician: localAppt.technician,
             petShowed: modalPetShowed.value || '',
-            tips: modalTips.value || '',
             percentage: modalPercentage.value || '',
             paymentMethod: modalPaymentMethod.value || '',
         };
@@ -207,12 +199,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = await response.json();
             
             if (result.success) {
-                // Atualiza o registro localmente
                 localAppt.appointmentDate = newAppointmentDateSheetFormat;
                 localAppt.verification = newVerification;
                 localAppt.serviceShowed = newServiceShowed;
+                localAppt.tips = newTips;
                 localAppt.petShowed = dataToUpdate.petShowed;
-                localAppt.tips = dataToUpdate.tips;
                 localAppt.percentage = dataToUpdate.percentage;
                 localAppt.paymentMethod = dataToUpdate.paymentMethod;
                 
@@ -228,7 +219,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Lógica de Drag and Drop (D&D)
     function addDragAndDropListeners(element) {
         element.addEventListener('dragstart', (e) => {
             const id = element.dataset.id;
@@ -241,8 +231,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 originalDate: element.dataset.date,
                 verification: localAppt.verification || '',
                 serviceShowed: localAppt.serviceShowed || '', 
-                petShowed: localAppt.petShowed || '',
                 tips: localAppt.tips || '',
+                petShowed: localAppt.petShowed || '',
                 percentage: localAppt.percentage || '',
                 paymentMethod: localAppt.paymentMethod || '',
             };
@@ -325,8 +315,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     technician: newTech,
                     verification: draggedAppointment.verification, 
                     serviceShowed: draggedAppointment.serviceShowed, 
-                    petShowed: draggedAppointment.petShowed,
                     tips: draggedAppointment.tips,
+                    petShowed: draggedAppointment.petShowed,
                     percentage: draggedAppointment.percentage,
                     paymentMethod: draggedAppointment.paymentMethod,
                 };
@@ -355,8 +345,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- Data Load e Rendering ---
-    
     function updateWeekDisplay() {
         const endOfWeek = new Date(currentWeekStart);
         endOfWeek.setDate(currentWeekStart.getDate() + 6);
@@ -496,6 +484,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             block.dataset.technician = appt.technician;
             block.dataset.date = appt.appointmentDate; 
             block.dataset.serviceshowed = appt.serviceShowed || ''; 
+            block.dataset.tips = appt.tips || '';
             block.dataset.verification = appt.verification; 
             block.draggable = true;
             
@@ -512,7 +501,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p>
                     <p class="text-sm font-bold truncate">${appt.customers}</p>
                     <p class="text-xs font-medium text-white/80">${appt.verification}</p>
-                    <p class="text-xs font-medium text-white/80">R$${appt.serviceShowed || '0.00'}</p>
+                    <p class="text-xs font-medium text-white/80">Service: $${appt.serviceShowed || '0.00'}</p>
+                    <p class="text-xs font-medium text-white/80">Tips: $${appt.tips || '0.00'}</p>
                 </div>
             `;
             
@@ -606,7 +596,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderScheduler();
     }
     
-    // --- Lógica de Busca ---
     function handleSearch() {
         const customerTerm = searchCustomer.value.toLowerCase().trim();
         const dateTerm = searchDate.value ? searchDate.value.replace(/-/g, '/') : ''; 
@@ -646,7 +635,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- Lógica de Disponibilidade ---
     function initializeAvailability() {
         const savedConfig = localStorage.getItem('techAvailability');
         if (savedConfig) {
@@ -729,9 +717,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderAvailabilityForm(technician);
     }
 
-
-    // --- Event Listeners e Inicialização ---
-    
     if (prevWeekBtn) prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
         renderScheduler();
@@ -744,14 +729,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (searchBtn) searchBtn.addEventListener('click', handleSearch);
 
-    // Event listeners de Modal
     if (modalSaveBtn) modalSaveBtn.addEventListener('click', handleSaveAppointment);
     if (modalCancelBtn) modalCancelBtn.addEventListener('click', closeEditModal); 
-    
-    // Listener do botão X
-    if (modalCloseXBtn) {
-        modalCloseXBtn.addEventListener('click', closeEditModal);
-    }
+    if (modalCloseXBtn) modalCloseXBtn.addEventListener('click', closeEditModal);
     
     if (saveAvailabilityBtn) saveAvailabilityBtn.addEventListener('click', () => {
         if (!techConfigSelect.value) {
@@ -765,6 +745,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (techConfigSelect) techConfigSelect.addEventListener('change', handleTechConfigSelectChange);
 
-    // INICIALIZAÇÃO
     loadInitialData();
 });
+
