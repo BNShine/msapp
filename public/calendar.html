@@ -66,6 +66,20 @@
         .hidden {
             display: none !important;
         }
+
+        /* Estilos para feedback de salvamento na tabela */
+        tr.is-saving {
+            background-color: hsl(var(--secondary) / 0.1);
+            transition: background-color 0.3s;
+        }
+        tr.is-success {
+            background-color: hsl(142.1 76.2% 36.3% / 0.15);
+            transition: background-color 0.3s;
+        }
+        tr.is-error {
+            background-color: hsl(0 84.2% 60.2% / 0.15);
+            transition: background-color 0.3s;
+        }
     </style>
 </head>
 <body class="bg-background">
@@ -121,7 +135,6 @@
                 </div>
             </section>
 
-            <!-- Seção de "Manage Showed" integrada -->
             <section class="rounded-lg border bg-card text-card-foreground shadow-large">
                 <div class="flex flex-col space-y-1.5 p-6 pb-8">
                     <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
@@ -142,12 +155,11 @@
                                 <th class="p-4 border-b border-border">Percentage</th>
                                 <th class="p-4 border-b border-border">Method</th>
                                 <th class="p-4 border-b border-border">Verification</th>
-                                <th class="p-4 border-b border-border">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="showed-appointments-table-body" class="text-foreground text-sm">
                             <tr>
-                                <td colspan="11" class="p-4 text-center">Select a technician to see appointments for the current week.</td>
+                                <td colspan="10" class="p-4 text-center">Select a technician to see appointments for the current week.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -232,4 +244,3 @@
 </div>
 </body>
 </html>
-
