@@ -1,5 +1,3 @@
-// bnshine/msapp/msapp-4e398247b5d633a2b21f3c69482e0291ce9a9fc9/api/utils.js
-
 // api/utils.js
 
 export function excelDateToDateTime(excelSerialDate) {
@@ -13,6 +11,7 @@ export function excelDateToDateTime(excelSerialDate) {
     // Se a conversão for bem-sucedida e for um número válido
     if (!isNaN(numericDate) && numericDate > 0) {
         // Lógica de conversão de data serial do Excel/Sheets (base 1900, offset -2)
+        // Cria uma data baseada em 1899-12-30 (base correta do Sheets) + dias em UTC.
         const days = Math.floor(numericDate);
         const timeFraction = numericDate - days;
         const msInDay = 24 * 60 * 60 * 1000;
@@ -31,7 +30,7 @@ export function excelDateToDateTime(excelSerialDate) {
         return `${month}/${day}/${year} ${hours}:${minutes}`;
     }
 
-    // Se for uma string (e.g., do formulário frontend YYYY-MM-DDTHH:MM ou YYYY/MM/DD HH:MM), retorna o valor
+    // Se for uma string (e.g., do formulário frontend ou Sheets string), tenta converter para MM/DD/YYYY HH:MM
     if (typeof excelSerialDate === 'string') {
         const dateParts = excelSerialDate.split(' ');
         
@@ -45,8 +44,9 @@ export function excelDateToDateTime(excelSerialDate) {
         }
         
         // If it's already in MM/DD/YYYY HH:MM or another non-Y/M/D format, return as is
-        if (dateParts.length === 2 && dateParts[0].includes('/') && dateParts[1].includes(':')) {
-            return excelSerialDate;
+        if (dateParts.length === 2 && dateParts[0].includes('/') && dateParts[1].includes(':') && dateParts[0].split('/')[0].length === 2) {
+             // Heuristic check: if the first part is 2 digits, assume MM/DD/YYYY
+             return excelSerialDate;
         }
     }
     
@@ -75,18 +75,30 @@ export function excelDateToYYYYMMDD(excelSerialDate) {
         // Remove a parte da hora, se existir (ex: 2025/10/01 10:30 -> 2025/10/01)
         const datePart = excelSerialDate.split(' ')[0];
         
-        // Handle input format YYYY/MM/DD (old internal format for date only) and convert to MM/DD/YYYY
+        // Handle incoming YYYY/MM/DD (old format) and convert to MM/DD/YYYY
         const parts = datePart.split('/');
         if (parts.length === 3) {
-             if (parts[0].length === 4) { // Assume YYYY/MM/DD format input
+             if (parts[0].length === 4) { // YYYY/MM/DD
                  const [Y, M, D] = parts;
                  return `${M}/${D}/${Y}`;
              }
         }
         
-        // If it's a date string already in MM/DD/YYYY, return the date part
+        // If it's already a date string in MM/DD/YYYY, return the date part
         return datePart;
     }
     
     return '';
 }
+
+export const dynamicLists = {
+    pets: Array.from({ length: 15 }, (_, i) => i + 1),
+    weeks: Array.from({ length: 5 }, (_, i) => i + 1),
+    months: Array.from({ length: 12 }, (_, i) => i + 1),
+    years: Array.from({ length: 17 }, (_, i) => 2024 + i),
+    sources: [
+        "Facebook", "Kommo", "Social Traffic", "SMS", "Call", "Friends", 
+        "Family Member", "Neighbors", "Reminder", "Email", "Google", 
+        "Website", "Grooming / Referral P", "Instagram", "Technician", "WhatsApp", "Other"
+    ]
+};
