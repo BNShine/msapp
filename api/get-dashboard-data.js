@@ -11,7 +11,7 @@ dotenv.config();
 const serviceAccountAuth = new JWT({
     email: process.env.CLIENT_EMAIL,
     key: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
 });
 
 const SPREADSHEET_ID_APPOINTMENTS = process.env.SHEET_ID_APPOINTMENTS;
@@ -108,3 +108,4 @@ export default async function handler(req, res) {
         res.status(500).json({ error: 'Falha ao buscar dados do painel.' });
     }
 }
+
