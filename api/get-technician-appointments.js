@@ -60,7 +60,8 @@ export default async function handler(req, res) {
                 customers: getCellValue('Customers'),
                 code: getCellValue('Code'),
                 verification: getCellValue('Verification') || 'Scheduled', 
-                pets: getCellValue('Pets'), // <-- CAMPO ADICIONADO AQUI
+                pets: getCellValue('Pets'),
+                margin: getCellValue('Margin') || '30',
                 petShowed: getCellValue('Pet Showed'),
                 serviceShowed: getCellValue('Service Showed'),
                 tips: getCellValue('Tips'),
