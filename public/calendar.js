@@ -2,7 +2,7 @@
 
 // Define initMap globalmente para ser usada como callback pelo script do Google Maps.
 window.initMap = function() {
-    // A visualização do mapa foi removida, mas o DirectionsService precisa ser inicializado
+    const itineraryMapContainer = document.getElementById('itinerary-map');
     if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
         directionsService = new google.maps.DirectionsService();
         console.log('[MAP LOG 4/4 SUCESSO] Google Directions Service initialized.');
@@ -52,6 +52,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const optimizeItineraryBtn = document.getElementById('optimize-itinerary-btn');
     const itineraryReverserBtn = document.getElementById('itinerary-reverser-btn');
     const itineraryResultsList = document.getElementById('itinerary-results-list');
+    const schedulingControls = document.getElementById('scheduling-controls');
+    const firstScheduleSelect = document.getElementById('first-schedule-select');
+    const applyRouteBtn = document.getElementById('apply-route-btn');
     // END NEW SELECTORS
 
     let allAppointments = [];
@@ -61,8 +64,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentWeekStart = getStartOfWeek(new Date());
     let isSaving = {};
     let GOOGLE_MAPS_API_KEY = null;
-    let directionsService; // Apenas DirectionsService é necessário
+    let directionsService; 
     let dayAppointments = []; 
+    let orderedClientStops = []; // NOVO: Armazena a ordem final (C1, C2, C3) para re-scheduling
 
     const SCHEDULE_DURATION_HOURS = 2; // CORRECT CONSTANT NAME
     const SLOT_HEIGHT_PX = 60;
@@ -78,6 +82,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const MIN_HOUR = 7;
     const MAX_HOUR = 21;
+    
+    // --- Funções Auxiliares Comuns ---
+    
+    // Função para preencher o dropdown First Schedule
+    function populateFirstScheduleDropdown() {
+        firstScheduleSelect.innerHTML = '';
+        for (let h = MIN_HOUR; h <= MAX_HOUR; h++) {
+            const time = `${String(h).padStart(2, '0')}:00`;
+            const option = document.createElement('option');
+            option.value = time;
+            option.textContent = time;
+            firstScheduleSelect.appendChild(option);
+        }
+        // Seleciona a primeira opção por padrão
+        if (firstScheduleSelect.options.length > 0) {
+            firstScheduleSelect.selectedIndex = 0;
+        }
+    }
+
 
     // --- Geocoding and Distance Helpers (FROM quick-routes.js) ---
     async function getLatLon(zipCode) {
@@ -103,12 +126,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchGoogleMapsApiKey() {
         if (GOOGLE_MAPS_API_KEY) return;
         try {
-            console.log('[MAP LOG 1/4] Fetching API key from backend...');
             const response = await fetch('/api/get-google-maps-api-key');
             if (response.ok) {
                 const data = await response.json();
                 GOOGLE_MAPS_API_KEY = data.apiKey;
-                console.log('[MAP LOG 2/4] API Key received. Injecting script...');
                 
                 // Inject script only if it's not present (CRITICAL FIX FOR DIRECTIONS SERVICE)
                 if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
@@ -649,13 +670,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             optimizeItineraryBtn.disabled = false;
             itineraryReverserBtn.disabled = false;
         }
+        
+        // MODIFICAÇÃO: Popula o dropdown de First Schedule
+        populateFirstScheduleDropdown();
+    }
+    
+    // NOVO: Função para preencher o dropdown First Schedule
+    function populateFirstScheduleDropdown() {
+        firstScheduleSelect.innerHTML = '';
+        for (let h = MIN_HOUR; h <= MAX_HOUR; h++) {
+            const time = `${String(h).padStart(2, '0')}:00`;
+            const option = document.createElement('option');
+            option.value = time;
+            option.textContent = time;
+            firstScheduleSelect.appendChild(option);
+        }
+        // Exibe os controles de scheduling
+        if(dayAppointments.length > 0) {
+            schedulingControls.classList.remove('hidden');
+        } else {
+            schedulingControls.classList.add('hidden');
+        }
     }
 
-    // --- NEW: Itinerary Optimization Logic ---
 
-    function clearCustomMarkers() {
-        // Marcadores customizados removidos, esta função fica vazia
-    }
+    // --- NEW: Itinerary Optimization Logic (Calculation Only) ---
 
     async function runItineraryOptimization(appointments, isReversed = false) {
         // Verifica se o DirectionsService está disponível
@@ -747,10 +786,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             shouldOptimizeWaypoints = false; 
         }
         
-        // Clear previous route and markers
-        // directionsRenderer.setDirections({ routes: [] }); // REMOVIDO
-        clearCustomMarkers(); // REMOVIDO
-
+        // Armazena a ordem final dos clientes para o re-scheduling
+        orderedClientStops = stopsForGoogleMaps;
+        
         // 5. Google Maps Directions Request
         const origin = originZip;
         const destination = originZip; // Technician's zip is the final destination (round trip)
@@ -776,22 +814,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (status === 'OK' && response && response.routes && response.routes.length > 0) {
                 
                 const route = response.routes[0];
-                // directionsRenderer.setDirections(response); // REMOVIDO MAPA
 
                 let totalDistance = 0;
                 let totalDuration = 0;
                 
                 itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (Starting from ${isReversed ? 'Farthest' : 'Nearest'}):</p>`;
                 
-                // Determine the final ordered stops based on Google's final route (which might be the waypoints themselves if optimizeWaypoints is false)
-                // When optimizeWaypoints=false, route.waypoint_order is generally empty or sequential [0, 1, 2...].
+                // Determine the final ordered stops based on Google's final route
                 const finalOrderedStops = (shouldOptimizeWaypoints && route.waypoint_order && route.waypoint_order.length > 0)
                     ? route.waypoint_order.map((i) => optimizedItinerary[i]) // If Google optimized, use its order against the NEAREST-FIRST list
-                    : stopsForGoogleMaps; // If optimization was off (Reverser), use the manually ordered list
+                    : stopsForGoogleMaps; 
                 
                 // Add the stops in their final order to the full sequence, including origin/destination markers.
                 const fullSequence = [
-                    { name: 'HOME (Start)', zipCode: originZip, lat: originLat, lng: originLon, apptTime: 'N/A' },
+                    { name: 'HOME (Start)', zipCode: originZip, apptTime: 'N/A' },
                     ...finalOrderedStops.map(appt => ({ 
                         name: appt.customers, 
                         zipCode: appt.zipCode, 
@@ -802,7 +838,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     { name: 'HOME (End)', zipCode: originZip, lat: originLat, lng: originLon, apptTime: 'N/A' }
                 ];
                 
-                // --- CUSTOM MARKER RENDERING REMOVIDO ---
+                // Atualiza a ordem final para o re-scheduling (garante que a ordem usada no UI seja a que foi calculada pelo Google)
+                orderedClientStops = finalOrderedStops;
 
                 const legs = route.legs;
 
@@ -827,20 +864,92 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-lg text-brand-primary">Total Round Trip: ${Math.round(totalDuration / 60)} min / ${(totalDistance / 1000).toFixed(2)} km</div>`;
                 
             } else {
-                // Reinicia os marcadores em caso de falha para garantir que não haja sobras
-                clearCustomMarkers(); // REMOVIDO
                 itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}. Motivo: O Google Maps não conseguiu traçar a rota com os Zips fornecidos, ou o Zip de Origem é inválido.</p>`;
             }
         });
     }
 
+    // NOVO: Lógica para aplicar a rota ao calendário
+    async function handleApplyRoute() {
+        const selectedTime = firstScheduleSelect.value; // HH:MM
+        const selectedDayOfWeek = dayFilter.value;
+        const selectedTechName = techSelectDropdown.value;
+        
+        if (orderedClientStops.length === 0 || !selectedTime || !selectedDayOfWeek || !selectedTechName) {
+            alert("Erro: Selecione o técnico, o dia e calcule uma rota antes de aplicar.");
+            return;
+        }
 
-    function handleOptimizeItinerary() {
-        runItineraryOptimization(dayAppointments, false);
-    }
-    
-    function handleItineraryReverser() {
-        runItineraryOptimization(dayAppointments, true);
+        const targetDate = getDayOfWeekDate(currentWeekStart, parseInt(selectedDayOfWeek, 10));
+        
+        const initialHour = parseInt(selectedTime.split(':')[0], 10);
+        const initialMinute = parseInt(selectedTime.split(':')[1], 10);
+        
+        // Inicia o primeiro agendamento na hora/minuto selecionado
+        let currentAppointmentDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), initialHour, initialMinute);
+        
+        applyRouteBtn.disabled = true;
+        applyRouteBtn.textContent = 'Applying...';
+        itineraryResultsList.innerHTML += `<div class="text-brand-primary mt-4 font-bold">Applying changes to ${orderedClientStops.length} appointments...</div>`;
+
+        let successCount = 0;
+
+        for (const [index, appt] of orderedClientStops.entries()) {
+            
+            // Converte a data do loop (que é um objeto Date) para o formato do input HTML YYYY-MM-DDTHH:MM
+            const newDateString = `${currentAppointmentDate.getFullYear()}-${String(currentAppointmentDate.getMonth() + 1).padStart(2, '0')}-${String(currentAppointmentDate.getDate()).padStart(2, '0')}`;
+            const newTimeString = `${String(currentAppointmentDate.getHours()).padStart(2, '0')}:${String(currentAppointmentDate.getMinutes()).padStart(2, '0')}`;
+            const appointmentDateLocal = `${newDateString}T${newTimeString}`;
+
+            // Converte o formato do input HTML para o formato de API MM/DD/YYYY HH:MM
+            const apiFormattedDate = `${String(currentAppointmentDate.getMonth() + 1).padStart(2, '0')}/${String(currentAppointmentDate.getDate()).padStart(2, '0')}/${currentAppointmentDate.getFullYear()} ${newTimeString}`;
+
+            
+            // Busca o agendamento completo pelo ID para enviar todos os dados para a API de update
+            const fullApptDetails = allAppointments.find(a => a.id === appt.id);
+            
+            if (fullApptDetails) {
+                 const dataToUpdate = {
+                    rowIndex: fullApptDetails.id, // O ID é o rowIndex
+                    appointmentDate: apiFormattedDate,
+                    verification: fullApptDetails.verification,
+                    serviceShowed: fullApptDetails.serviceShowed,
+                    tips: fullApptDetails.tips,
+                    technician: fullApptDetails.technician,
+                    petShowed: fullApptDetails.petShowed,
+                    percentage: fullApptDetails.percentage,
+                    paymentMethod: fullApptDetails.paymentMethod,
+                 };
+                 
+                 try {
+                     const response = await fetch('/api/update-appointment-showed-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataToUpdate),
+                    });
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        successCount++;
+                        // Atualiza o agendamento localmente para refletir o novo horário
+                        fullApptDetails.appointmentDate = apiFormattedDate;
+                    } else {
+                        itineraryResultsList.innerHTML += `<div class="text-red-600">Erro ao atualizar ${fullApptDetails.customers}: ${result.message}</div>`;
+                    }
+                 } catch (e) {
+                      itineraryResultsList.innerHTML += `<div class="text-red-600">Erro de rede ao atualizar ${fullApptDetails.customers}.</div>`;
+                 }
+            }
+            
+            // Adiciona 2 horas para o próximo agendamento (2 * 60 minutos * 60 segundos * 1000 ms)
+            currentAppointmentDate = new Date(currentAppointmentDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
+        }
+
+        renderScheduler(); // Re-renderiza o calendário para refletir as mudanças
+        itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-green-600">✅ ${successCount} agendamentos atualizados com sucesso!</div>`;
+
+        applyRouteBtn.disabled = false;
+        applyRouteBtn.textContent = 'Apply Route';
     }
 
 
@@ -886,7 +995,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderScheduler(); 
             
             // NEW: Inicializa DirectionsService (sem mapa)
-            await fetchGoogleMapsApiKey();
+            if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
+                directionsService = new google.maps.DirectionsService();
+            } else {
+                 console.warn("Google Maps script not loaded, Directions Service may be unavailable.");
+            }
             
         } catch (error) {
             console.error('CRITICAL ERROR during loadInitialData:', error);
@@ -941,6 +1054,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (dayFilter) dayFilter.addEventListener('change', handleDayFilterChange);
     if (optimizeItineraryBtn) optimizeItineraryBtn.addEventListener('click', handleOptimizeItinerary);
     if (itineraryReverserBtn) itineraryReverserBtn.addEventListener('click', handleItineraryReverser);
+    
+    // NOVO: Listener para aplicar a rota
+    if(applyRouteBtn) applyRouteBtn.addEventListener('click', handleApplyRoute);
     
     if (showedAppointmentsTableBody) {
         // ... (Existing table change listener, kept for completeness) ...
