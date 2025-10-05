@@ -541,7 +541,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 // =======================================================================
-// INÍCIO DO NOVO CÓDIGO PARA VERIFICAÇÃO DE DISPONIBILIDADE (VERSÃO COM CÁLCULO DE VIAGEM)
+// INÍCIO DO NOVO CÓDIGO PARA VERIFICAÇÃO DE DISPONIBILIDADE (VERSÃO COM BOTÃO DE PULAR)
 // =======================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -550,9 +550,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const mainFormSection = document.getElementById('main-appointment-form');
     const zipCodeInput = document.getElementById('customer-zip-code');
-    const numPetsInput = document.getElementById('num-pets'); // Novo
-    const marginSelect = document.getElementById('appointment-margin'); // Novo
+    const numPetsInput = document.getElementById('num-pets');
+    const marginSelect = document.getElementById('appointment-margin');
     const verifyBtn = document.getElementById('verify-availability-btn');
+    const skipBtn = document.getElementById('skip-to-manual-btn'); // NOVO BOTÃO
     const resultsDiv = document.getElementById('availability-results');
 
     let availabilityData = [];
@@ -560,7 +561,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     verifyBtn.addEventListener('click', handleVerifyAvailability);
 
+    // *** NOVO EVENT LISTENER PARA O BOTÃO DE PULAR ***
+    skipBtn.addEventListener('click', () => {
+        availabilitySection.style.display = 'none';
+        mainFormSection.classList.remove('hidden');
+        mainFormSection.scrollIntoView({ behavior: 'smooth' });
+    });
+
     async function handleVerifyAvailability() {
+        // ... (função handleVerifyAvailability permanece a mesma da versão anterior)
         const zipCode = zipCodeInput.value.trim();
         const numPets = numPetsInput.value;
         const margin = marginSelect.value;
@@ -578,7 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/find-availability', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipCode, numPets, margin }), // Envia os novos dados
+                body: JSON.stringify({ zipCode, numPets, margin }),
             });
             
             const contentType = response.headers.get("content-type");
@@ -606,6 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function displayCurrentOption(originalZip, numPets) {
+        // ... (função displayCurrentOption permanece a mesma da versão anterior)
         if (availabilityData.length === 0) {
             resultsDiv.innerHTML = `<p class="text-red-600 font-semibold">No suitable slots found with the given travel constraints.</p>`;
             return;
@@ -679,6 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleSlotSelection(event) {
+        // ... (função handleSlotSelection permanece a mesma da versão anterior)
         const { slot, date, tech, zip, pets } = event.currentTarget.dataset;
         
         availabilitySection.style.display = 'none';
@@ -686,7 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('appointmentDate').value = `${date}T${slot}`;
         document.getElementById('zipCode').value = zip;
-        document.getElementById('pets').value = pets; // Preenche o número de pets
+        document.getElementById('pets').value = pets;
 
         document.getElementById('zipCode').dispatchEvent(new Event('input', { bubbles: true }));
 
