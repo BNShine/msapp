@@ -143,18 +143,106 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.classList.remove('modal-open');
     }
 
-
-    // --- 5. Funções de Manipulação de Dados (API Calls) ---
+    // --- 5. Funções de Manipulação de Dados (API Calls - CORRIGIDAS) ---
     
     async function handleSaveAppointment() {
-        // A lógica de salvamento foi movida para manageShowed.js
-        // Dispara um evento para notificar o outro script que uma atualização pode ser necessária
         document.dispatchEvent(new CustomEvent('appointmentUpdated'));
     }
 
-    async function handleSaveTimeBlock() { /* ... Lógica para salvar bloco de tempo ... */ }
-    async function handleUpdateTimeBlock() { /* ... Lógica para atualizar bloco de tempo ... */ }
-    async function handleDeleteTimeBlock() { /* ... Lógica para deletar bloco de tempo ... */ }
+    async function handleSaveTimeBlock() {
+        const techName = selectedTechnician;
+        const date = document.getElementById('block-date').value;
+        const startHour = document.getElementById('block-start-hour').value;
+        const endHour = document.getElementById('block-end-hour').value;
+        const notes = document.getElementById('block-notes').value;
+
+        if (!date || !startHour || !endHour) {
+            alert('Date, Start Time, and End Time are required.');
+            return;
+        }
+        
+        const [year, month, day] = date.split('-');
+        const formattedDate = `${month}/${day}/${year}`;
+
+        const data = { technicianName: techName, date: formattedDate, startHour, endHour, notes };
+
+        try {
+            const response = await fetch('/api/manage-technician-availability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+            
+            await fetchAvailabilityForSelectedTech();
+            renderScheduler();
+            closeTimeBlockModal();
+            alert('Time block saved successfully!');
+        } catch (error) {
+            console.error('Error saving time block:', error);
+            alert(`Error: ${error.message}`);
+        }
+    }
+
+    async function handleUpdateTimeBlock() {
+        const rowNumber = parseInt(editBlockRowNumberInput.value, 10);
+        const dateValue = editBlockDateInput.value;
+        const [year, month, day] = dateValue.split('-');
+        const formattedDate = `${month}/${day}/${year}`;
+
+        const dataToUpdate = {
+            rowNumber,
+            date: formattedDate,
+            startHour: editBlockStartInput.value,
+            endHour: editBlockEndInput.value,
+            notes: editBlockNotesInput.value,
+        };
+
+        try {
+            const response = await fetch('/api/manage-technician-availability', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataToUpdate),
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+            
+            await fetchAvailabilityForSelectedTech();
+            renderScheduler();
+            closeEditTimeBlockModal();
+            alert('Time block updated successfully!');
+        } catch (error) {
+            console.error('Error updating time block:', error);
+            alert(`Error: ${error.message}`);
+        }
+    }
+
+    async function handleDeleteTimeBlock() {
+        if (!confirm('Are you sure you want to delete this time block?')) {
+            return;
+        }
+
+        const rowNumber = parseInt(editBlockRowNumberInput.value, 10);
+
+        try {
+            const response = await fetch('/api/manage-technician-availability', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rowNumber }),
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+            
+            await fetchAvailabilityForSelectedTech();
+            renderScheduler();
+            closeEditTimeBlockModal();
+            alert('Time block deleted successfully!');
+        } catch (error) {
+            console.error('Error deleting time block:', error);
+            alert(`Error: ${error.message}`);
+        }
+    }
 
     async function fetchAvailabilityForSelectedTech() {
         if (!selectedTechnician) {
@@ -172,14 +260,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-
-    // --- 6. Funções de Renderização (CORRIGIDAS) ---
+    // --- 6. Funções de Renderização ---
 
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
-        schedulerBody.innerHTML = ''; // Limpa o corpo do calendário
+        schedulerBody.innerHTML = ''; 
 
-        // 1. Renderiza a coluna de horários
         TIME_SLOTS.forEach((time, rowIndex) => {
             const timeDiv = document.createElement('div');
             timeDiv.className = 'time-slot timeline-header p-2 text-xs font-medium border-t border-border flex items-center justify-center';
@@ -188,28 +274,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             schedulerBody.appendChild(timeDiv);
         });
         
-        // 2. Renderiza os cabeçalhos dos dias e os contêineres para os agendamentos
         DAY_NAMES.forEach((dayName, dayIndex) => {
             const date = new Date(currentWeekStart);
             date.setDate(currentWeekStart.getDate() + dayIndex);
             const dateKey = formatDateToYYYYMMDD(date);
             const column = dayIndex + 2;
 
-            // Cabeçalho
             const header = document.createElement('div');
             header.className = 'day-column-header p-2 font-semibold border-l border-border';
             header.style.gridColumn = column;
             header.textContent = `${dayName} ${date.getDate()}`;
             schedulerHeader.appendChild(header);
 
-            // Contêiner do Dia (ESSA É A CORREÇÃO PRINCIPAL)
             const dayContainer = document.createElement('div');
-            dayContainer.className = 'relative border-r border-border'; // position: relative é a chave
+            dayContainer.className = 'relative border-r border-border';
             dayContainer.style.gridColumn = column;
-            dayContainer.style.gridRow = `1 / span ${TIME_SLOTS.length}`; // Ocupa todas as linhas de horário
-            dayContainer.dataset.dateKey = dateKey; // Atributo para encontrar este contêiner depois
+            dayContainer.style.gridRow = `1 / span ${TIME_SLOTS.length}`;
+            dayContainer.dataset.dateKey = dateKey;
             
-            // Adiciona linhas de grade horizontais dentro de cada contêiner de dia
             TIME_SLOTS.forEach((_, rowIndex) => {
                  const line = document.createElement('div');
                  line.className = 'absolute w-full border-t border-border/50';
@@ -237,15 +319,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!apptDate || apptDate < currentWeekStart || apptDate >= weekEnd) return;
 
             const dateKey = formatDateToYYYYMMDD(apptDate);
-            
-            // Encontra o contêiner do dia correto usando o data-attribute
             const dayContainer = schedulerBody.querySelector(`[data-date-key="${dateKey}"]`);
             if (!dayContainer) return;
 
             const startHour = apptDate.getHours();
             if (startHour < MIN_HOUR || startHour >= MAX_HOUR) return;
             
-            // O `topOffset` agora é relativo ao topo do contêiner do dia, que começa no topo do grid
             const topOffset = (startHour - MIN_HOUR) * SLOT_HEIGHT_PX + (apptDate.getMinutes() / 60 * SLOT_HEIGHT_PX);
 
             const block = document.createElement('div');
@@ -253,7 +332,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
             else if (appt.verification === 'Showed') bgColor = 'bg-green-600';
 
-            // A propriedade `gridColumnStart` não é mais necessária
             block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
             block.dataset.id = appt.id;
             block.style.top = `${topOffset}px`;
@@ -262,8 +340,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             block.innerHTML = `<div><p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p><p class="text-sm font-bold truncate">${appt.customers}</p><p class="text-xs font-medium text-white/80">${appt.verification}</p></div>`;
             
             block.addEventListener('click', () => openEditModal(appt));
-            
-            // Adiciona o bloco ao contêiner do dia específico
             dayContainer.appendChild(block);
         });
     }
@@ -373,9 +449,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     editBlockDeleteBtn.addEventListener('click', handleDeleteTimeBlock);
     editBlockCancelBtn.addEventListener('click', closeEditTimeBlockModal);
 
-    // Listener para recarregar dados quando um agendamento for atualizado em outro módulo
     document.addEventListener('appointmentUpdated', async () => {
-        // Recarrega os dados dos agendamentos e renderiza o calendário novamente
         const appointmentsResponse = await fetch('/api/get-technician-appointments');
         const apptsData = await appointmentsResponse.json();
         allAppointments = (apptsData.appointments || []).filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
