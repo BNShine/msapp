@@ -541,7 +541,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 // =======================================================================
-// INÍCIO DO NOVO CÓDIGO PARA VERIFICAÇÃO DE DISPONIBILIDADE (VERSÃO COM OPÇÕES MÚLTIPLAS)
+// INÍCIO DO NOVO CÓDIGO PARA VERIFICAÇÃO DE DISPONIBILIDADE (VERSÃO COM CÁLCULO DE VIAGEM)
 // =======================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -550,10 +550,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const mainFormSection = document.getElementById('main-appointment-form');
     const zipCodeInput = document.getElementById('customer-zip-code');
+    const numPetsInput = document.getElementById('num-pets'); // Novo
+    const marginSelect = document.getElementById('appointment-margin'); // Novo
     const verifyBtn = document.getElementById('verify-availability-btn');
     const resultsDiv = document.getElementById('availability-results');
 
-    // Estado para gerenciar as opções
     let availabilityData = [];
     let currentOptionIndex = 0;
 
@@ -561,20 +562,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleVerifyAvailability() {
         const zipCode = zipCodeInput.value.trim();
-        if (zipCode.length !== 5) {
-            resultsDiv.innerHTML = `<p class="text-red-600 font-semibold">Please enter a valid 5-digit Zip Code.</p>`;
+        const numPets = numPetsInput.value;
+        const margin = marginSelect.value;
+
+        if (zipCode.length !== 5 || !numPets || numPets < 1) {
+            resultsDiv.innerHTML = `<p class="text-red-600 font-semibold">Please enter a valid Zip Code and Number of Pets.</p>`;
             return;
         }
 
-        resultsDiv.innerHTML = `<p class="text-muted-foreground">Searching for availability...</p>`;
+        resultsDiv.innerHTML = `<p class="text-muted-foreground">Calculating travel times and finding the best slots...</p>`;
         verifyBtn.disabled = true;
-        verifyBtn.textContent = 'Searching...';
+        verifyBtn.textContent = 'Calculating...';
 
         try {
             const response = await fetch('/api/find-availability', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipCode }),
+                body: JSON.stringify({ zipCode, numPets, margin }), // Envia os novos dados
             });
             
             const contentType = response.headers.get("content-type");
@@ -584,10 +588,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error(result.message || 'An unknown error occurred.');
                 }
                 
-                // Salva os dados e exibe a primeira opção
                 availabilityData = result.options;
                 currentOptionIndex = 0;
-                displayCurrentOption(zipCode);
+                displayCurrentOption(zipCode, numPets);
 
             } else {
                 const textResponse = await response.text();
@@ -601,10 +604,10 @@ document.addEventListener('DOMContentLoaded', () => {
             verifyBtn.textContent = 'Check Availability';
         }
     }
-
-    function displayCurrentOption(originalZip) {
+    
+    function displayCurrentOption(originalZip, numPets) {
         if (availabilityData.length === 0) {
-            resultsDiv.innerHTML = `<p class="text-red-600 font-semibold">No available options found.</p>`;
+            resultsDiv.innerHTML = `<p class="text-red-600 font-semibold">No suitable slots found with the given travel constraints.</p>`;
             return;
         }
 
@@ -616,17 +619,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         let slotsHtml = availableSlots.map(slot => 
-            `<button type="button" class="slot-btn bg-brand-primary/10 text-brand-primary font-semibold py-2 px-4 rounded-lg hover:bg-brand-primary hover:text-white transition-colors" data-slot="${slot}" data-date="${date}" data-tech="${technician}" data-zip="${originalZip}">
+            `<button type="button" class="slot-btn bg-brand-primary/10 text-brand-primary font-semibold py-2 px-4 rounded-lg hover:bg-brand-primary hover:text-white transition-colors" data-slot="${slot}" data-date="${date}" data-tech="${technician}" data-zip="${originalZip}" data-pets="${numPets}">
                 ${slot}
             </button>`
         ).join('');
         
-        // Botões de navegação
         const prevButtonHtml = currentOptionIndex > 0 ? `<button id="prev-option-btn" class="text-sm font-semibold text-brand-primary hover:underline">&larr; Previous Option</button>` : `<div></div>`;
         const nextButtonHtml = currentOptionIndex < availabilityData.length - 1 ? `<button id="next-option-btn" class="text-sm font-semibold text-brand-primary hover:underline">Next Option &rarr;</button>` : `<div></div>`;
 
         resultsDiv.innerHTML = `
-            <div class="space-y-4 p-4 border rounded-lg bg-muted/30">
+             <div class="space-y-4 p-4 border rounded-lg bg-muted/30">
                 <div class="flex justify-between items-center">
                     <p class="text-lg font-bold text-green-600">Option ${currentOptionIndex + 1} of ${availabilityData.length}</p>
                     <div class="flex gap-4">
@@ -649,7 +651,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="text-base">${friendlyDate}</p>
                 </div>
                 <div>
-                    <p class="text-sm font-semibold text-foreground">Available Times:</p>
+                    <p class="text-sm font-semibold text-foreground">Available Start Times:</p>
                     <div class="flex flex-wrap gap-2 mt-2">
                         ${slotsHtml}
                     </div>
@@ -657,7 +659,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        // Adiciona event listeners aos botões
         document.querySelectorAll('.slot-btn').forEach(button => button.addEventListener('click', handleSlotSelection));
         
         const prevBtn = document.getElementById('prev-option-btn');
@@ -666,25 +667,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (prevBtn) {
             prevBtn.addEventListener('click', () => {
                 currentOptionIndex--;
-                displayCurrentOption(originalZip);
+                displayCurrentOption(originalZip, numPets);
             });
         }
         if (nextBtn) {
             nextBtn.addEventListener('click', () => {
                 currentOptionIndex++;
-                displayCurrentOption(originalZip);
+                displayCurrentOption(originalZip, numPets);
             });
         }
     }
 
     async function handleSlotSelection(event) {
-        const { slot, date, tech, zip } = event.currentTarget.dataset;
+        const { slot, date, tech, zip, pets } = event.currentTarget.dataset;
         
         availabilitySection.style.display = 'none';
         mainFormSection.classList.remove('hidden');
 
         document.getElementById('appointmentDate').value = `${date}T${slot}`;
         document.getElementById('zipCode').value = zip;
+        document.getElementById('pets').value = pets; // Preenche o número de pets
 
         document.getElementById('zipCode').dispatchEvent(new Event('input', { bubbles: true }));
 
@@ -706,6 +708,5 @@ document.addEventListener('DOMContentLoaded', () => {
 // =======================================================================
 // FIM DO NOVO CÓDIGO
 // =======================================================================
-    }
-});
+
 
