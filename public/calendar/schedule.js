@@ -1,7 +1,7 @@
 // public/calendar/schedule.js
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // --- 1. Seletores de Elementos (bloco completo restaurado) ---
+    // --- 1. Seletores de Elementos (bloco completo restaurado e atualizado) ---
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
     const selectedTechDisplay = document.getElementById('selected-tech-display');
     const loadingOverlay = document.getElementById('loading-overlay');
@@ -10,13 +10,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currentWeekDisplay = document.getElementById('current-week-display');
     const prevWeekBtn = document.getElementById('prev-week');
     const nextWeekBtn = document.getElementById('next-week');
+    const todayBtn = document.getElementById('today-btn'); // NOVO SELETOR
     const addTimeBlockBtn = document.getElementById('add-time-block-btn');
 
     // Modais e seus botões
     const editModal = document.getElementById('edit-appointment-modal');
     const modalSaveBtn = document.getElementById('modal-save-btn');
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
-    // const modalCloseXBtn = document.getElementById('modal-close-x-btn'); // O 'X' foi removido do HTML
     const timeBlockModal = document.getElementById('time-block-modal');
     const blockSaveBtn = document.getElementById('block-save-btn');
     const blockCancelBtn = document.getElementById('block-cancel-btn');
@@ -505,27 +505,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function handleTechSelectionChange(event) {
         selectedTechnician = event.target.value;
-        selectedTechDisplay.textContent = selectedTechnician || 'No Technician Selected';
+        if (selectedTechnician) {
+            selectedTechDisplay.innerHTML = `<p class="font-bold text-brand-primary">${selectedTechnician}</p> <p class="text-sm text-muted-foreground">Schedule and details below.</p>`;
+        } else {
+            selectedTechDisplay.innerHTML = `<p class="font-bold text-brand-primary">No Technician Selected</p><p class="text-sm text-muted-foreground">Select a technician from the top bar to view their schedule.</p>`;
+        }
         await fetchAvailabilityForSelectedTech();
         renderScheduler();
         document.dispatchEvent(new CustomEvent('technicianChanged', { detail: { technician: selectedTechnician, weekStart: currentWeekStart } }));
     }
 
     techSelectDropdown.addEventListener('change', handleTechSelectionChange);
+    
     prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
         renderScheduler();
         document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } }));
     });
+    
     nextWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
         renderScheduler();
         document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } }));
     });
     
+    todayBtn.addEventListener('click', () => {
+        currentWeekStart = getStartOfWeek(new Date());
+        renderScheduler();
+        document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } }));
+    });
+    
     modalSaveBtn.addEventListener('click', handleSaveAppointment);
     modalCancelBtn.addEventListener('click', closeEditModal);
-    // if (modalCloseXBtn) modalCloseXBtn.addEventListener('click', closeEditModal); // Linha removida
     addTimeBlockBtn.addEventListener('click', openTimeBlockModal);
     blockSaveBtn.addEventListener('click', handleSaveTimeBlock);
     blockCancelBtn.addEventListener('click', closeTimeBlockModal);
