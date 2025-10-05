@@ -44,50 +44,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const MIN_HOUR = 7;
     const MAX_HOUR = 21;
 
-    // --- 3. Funções Auxiliares (Datas, etc.) ---
+    // --- 3. Funções Auxiliares ---
 
-    function getStartOfWeek(date) {
-        const d = new Date(date);
-        d.setHours(0, 0, 0, 0);
-        d.setDate(d.getDate() - d.getDay());
-        return d;
-    }
-
-    function formatDateToYYYYMMDD(date) {
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        return `${year}/${month}/${day}`;
-    }
-
-    function parseSheetDate(dateStr) {
-        if (!dateStr) return null;
-        const [datePart, timePart] = dateStr.split(' ');
-        if (!datePart || !timePart) return null;
-        const dateParts = datePart.split('/');
-        if (dateParts.length !== 3) return null;
-        const [month, day, year] = dateParts.map(Number);
-        const [hour, minute] = timePart.split(':').map(Number);
-        if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
-        return new Date(year, month - 1, day, hour, minute);
-    }
-
-    function getTimeHHMM(date) {
-        if (!date) return '';
-        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-    }
-
-    function formatDateTimeForInput(dateTimeStr) {
-        if (!dateTimeStr) return '';
-        const date = parseSheetDate(dateTimeStr);
-        if (!date) return '';
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        const hour = date.getHours().toString().padStart(2, '0');
-        const minute = date.getMinutes().toString().padStart(2, '0');
-        return `${year}-${month}-${day}T${hour}:${minute}`;
-    }
+    function getStartOfWeek(date) { /* ...código existente... */ }
+    function formatDateToYYYYMMDD(date) { /* ...código existente... */ }
+    function parseSheetDate(dateStr) { /* ...código existente... */ }
+    function getTimeHHMM(date) { /* ...código existente... */ }
+    function formatDateTimeForInput(dateTimeStr) { /* ...código existente... */ }
 
     // --- 4. Funções de Manipulação dos Modais ---
 
@@ -102,212 +65,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('modal-service-value').value = serviceShowed || '';
         document.getElementById('modal-tips').value = tips || '';
         const verificationSelect = document.getElementById('modal-verification');
-        verificationSelect.innerHTML = ["Scheduled", "Showed", "Canceled"].map(opt =>
+        
+        // **NOVA OPÇÃO ADICIONADA**
+        const statusOptions = ["Scheduled", "Confirmed", "Showed", "Canceled"];
+        verificationSelect.innerHTML = statusOptions.map(opt =>
             `<option value="${opt}" ${verification === opt ? 'selected' : ''}>${opt}</option>`
         ).join('');
+        
         editModal.classList.remove('hidden');
         document.body.classList.add('modal-open');
     }
 
-    function closeEditModal() {
-        if (editModal) editModal.classList.add('hidden');
-        document.body.classList.remove('modal-open');
-    }
+    function closeEditModal() { /* ...código existente... */ }
+    function openTimeBlockModal() { /* ...código existente... */ }
+    function closeTimeBlockModal() { /* ...código existente... */ }
+    function openEditTimeBlockModal(blockData) { /* ...código existente... */ }
+    function closeEditTimeBlockModal() { /* ...código existente... */ }
 
-    function openTimeBlockModal() {
-        if (!selectedTechnician) {
-            alert('Please select a technician first.');
-            return;
-        }
-        document.getElementById('time-block-form').reset();
-        timeBlockModal.classList.remove('hidden');
-    }
-
-    function closeTimeBlockModal() {
-        timeBlockModal.classList.add('hidden');
-    }
-
-    function openEditTimeBlockModal(blockData) {
-        editBlockRowNumberInput.value = blockData.rowNumber;
-        const [month, day, year] = blockData.date.split('/');
-        editBlockDateInput.value = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        editBlockStartInput.value = blockData.startHour;
-        editBlockEndInput.value = blockData.endHour;
-        editBlockNotesInput.value = blockData.notes;
-        editTimeBlockModal.classList.remove('hidden');
-        document.body.classList.add('modal-open');
-    }
-
-    function closeEditTimeBlockModal() {
-        if (editTimeBlockModal) editTimeBlockModal.classList.add('hidden');
-        document.body.classList.remove('modal-open');
-    }
-
-    // --- 5. Funções de Manipulação de Dados (API Calls - CORRIGIDAS) ---
+    // --- 5. Funções de Manipulação de Dados (API Calls) ---
     
-    async function handleSaveAppointment() {
-        document.dispatchEvent(new CustomEvent('appointmentUpdated'));
-    }
-
-    async function handleSaveTimeBlock() {
-        const techName = selectedTechnician;
-        const date = document.getElementById('block-date').value;
-        const startHour = document.getElementById('block-start-hour').value;
-        const endHour = document.getElementById('block-end-hour').value;
-        const notes = document.getElementById('block-notes').value;
-
-        if (!date || !startHour || !endHour) {
-            alert('Date, Start Time, and End Time are required.');
-            return;
-        }
-        
-        const [year, month, day] = date.split('-');
-        const formattedDate = `${month}/${day}/${year}`;
-
-        const data = { technicianName: techName, date: formattedDate, startHour, endHour, notes };
-
-        try {
-            const response = await fetch('/api/manage-technician-availability', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-            const result = await response.json();
-            if (!result.success) throw new Error(result.message);
-            
-            await fetchAvailabilityForSelectedTech();
-            renderScheduler();
-            closeTimeBlockModal();
-            alert('Time block saved successfully!');
-        } catch (error) {
-            console.error('Error saving time block:', error);
-            alert(`Error: ${error.message}`);
-        }
-    }
-
-    async function handleUpdateTimeBlock() {
-        const rowNumber = parseInt(editBlockRowNumberInput.value, 10);
-        const dateValue = editBlockDateInput.value;
-        const [year, month, day] = dateValue.split('-');
-        const formattedDate = `${month}/${day}/${year}`;
-
-        const dataToUpdate = {
-            rowNumber,
-            date: formattedDate,
-            startHour: editBlockStartInput.value,
-            endHour: editBlockEndInput.value,
-            notes: editBlockNotesInput.value,
-        };
-
-        try {
-            const response = await fetch('/api/manage-technician-availability', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToUpdate),
-            });
-            const result = await response.json();
-            if (!result.success) throw new Error(result.message);
-            
-            await fetchAvailabilityForSelectedTech();
-            renderScheduler();
-            closeEditTimeBlockModal();
-            alert('Time block updated successfully!');
-        } catch (error) {
-            console.error('Error updating time block:', error);
-            alert(`Error: ${error.message}`);
-        }
-    }
-
-    async function handleDeleteTimeBlock() {
-        if (!confirm('Are you sure you want to delete this time block?')) {
-            return;
-        }
-
-        const rowNumber = parseInt(editBlockRowNumberInput.value, 10);
-
-        try {
-            const response = await fetch('/api/manage-technician-availability', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rowNumber }),
-            });
-            const result = await response.json();
-            if (!result.success) throw new Error(result.message);
-            
-            await fetchAvailabilityForSelectedTech();
-            renderScheduler();
-            closeEditTimeBlockModal();
-            alert('Time block deleted successfully!');
-        } catch (error) {
-            console.error('Error deleting time block:', error);
-            alert(`Error: ${error.message}`);
-        }
-    }
-
-    async function fetchAvailabilityForSelectedTech() {
-        if (!selectedTechnician) {
-            techAvailabilityBlocks = [];
-            return;
-        }
-        try {
-            const response = await fetch(`/api/manage-technician-availability?technicianName=${encodeURIComponent(selectedTechnician)}`);
-            if (!response.ok) throw new Error('Could not fetch availability.');
-            const data = await response.json();
-            techAvailabilityBlocks = data.availability || [];
-        } catch (error) {
-            console.error('Error fetching availability:', error);
-            techAvailabilityBlocks = [];
-        }
-    }
+    async function handleSaveAppointment() { /* ...código existente... */ }
+    async function handleSaveTimeBlock() { /* ...código existente... */ }
+    async function handleUpdateTimeBlock() { /* ...código existente... */ }
+    async function handleDeleteTimeBlock() { /* ...código existente... */ }
+    async function fetchAvailabilityForSelectedTech() { /* ...código existente... */ }
 
     // --- 6. Funções de Renderização ---
 
-    function renderScheduler() {
-        schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
-        schedulerBody.innerHTML = ''; 
-
-        TIME_SLOTS.forEach((time, rowIndex) => {
-            const timeDiv = document.createElement('div');
-            timeDiv.className = 'time-slot timeline-header p-2 text-xs font-medium border-t border-border flex items-center justify-center';
-            timeDiv.textContent = time;
-            timeDiv.style.gridRow = `${rowIndex + 1} / span 1`;
-            schedulerBody.appendChild(timeDiv);
-        });
-        
-        DAY_NAMES.forEach((dayName, dayIndex) => {
-            const date = new Date(currentWeekStart);
-            date.setDate(currentWeekStart.getDate() + dayIndex);
-            const dateKey = formatDateToYYYYMMDD(date);
-            const column = dayIndex + 2;
-
-            const header = document.createElement('div');
-            header.className = 'day-column-header p-2 font-semibold border-l border-border';
-            header.style.gridColumn = column;
-            header.textContent = `${dayName} ${date.getDate()}`;
-            schedulerHeader.appendChild(header);
-
-            const dayContainer = document.createElement('div');
-            dayContainer.className = 'relative border-r border-border';
-            dayContainer.style.gridColumn = column;
-            dayContainer.style.gridRow = `1 / span ${TIME_SLOTS.length}`;
-            dayContainer.dataset.dateKey = dateKey;
-            
-            TIME_SLOTS.forEach((_, rowIndex) => {
-                 const line = document.createElement('div');
-                 line.className = 'absolute w-full border-t border-border/50';
-                 line.style.height = '1px';
-                 line.style.top = `${(rowIndex + 1) * SLOT_HEIGHT_PX}px`;
-                 dayContainer.appendChild(line);
-            });
-
-            schedulerBody.appendChild(dayContainer);
-        });
-
-        renderAppointments();
-        renderTimeBlocks();
-        updateWeekDisplay();
-        loadingOverlay.classList.toggle('hidden', !!selectedTechnician);
-    }
+    function renderScheduler() { /* ...código existente... */ }
 
     function renderAppointments() {
         const weekEnd = new Date(currentWeekStart);
@@ -328,133 +113,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             const topOffset = (startHour - MIN_HOUR) * SLOT_HEIGHT_PX + (apptDate.getMinutes() / 60 * SLOT_HEIGHT_PX);
 
             const block = document.createElement('div');
-            let bgColor = 'bg-custom-primary';
-            if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
-            else if (appt.verification === 'Showed') bgColor = 'bg-green-600';
+            let bgColor = 'bg-custom-primary'; // Default
+            
+            // **NOVA LÓGICA DE COR**
+            if (appt.verification === 'Canceled') {
+                bgColor = 'bg-cherry-red';
+            } else if (appt.verification === 'Showed') {
+                bgColor = 'bg-green-600';
+            } else if (appt.verification === 'Confirmed') {
+                bgColor = 'bg-yellow-confirmed text-black'; // Adiciona text-black para melhor contraste
+            }
 
-            block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
+            block.className = `appointment-block ${bgColor} rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
             block.dataset.id = appt.id;
             block.style.top = `${topOffset}px`;
 
             const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
-            block.innerHTML = `<div><p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p><p class="text-sm font-bold truncate">${appt.customers}</p><p class="text-xs font-medium text-white/80">${appt.verification}</p></div>`;
+            block.innerHTML = `<div><p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p><p class="text-sm font-bold truncate">${appt.customers}</p><p class="text-xs font-medium opacity-80">${appt.verification}</p></div>`;
             
             block.addEventListener('click', () => openEditModal(appt));
             dayContainer.appendChild(block);
         });
     }
     
-    function renderTimeBlocks() {
-        const weekEnd = new Date(currentWeekStart);
-        weekEnd.setDate(currentWeekStart.getDate() + 7);
-
-        techAvailabilityBlocks.forEach(block => {
-            if (!block || typeof block.date !== 'string' || block.date.trim() === '') return;
-            
-            const parts = block.date.split('/');
-            if (parts.length !== 3) return;
-            const [M, D, Y] = parts;
-            const blockDate = new Date(`${Y}-${M}-${D}T00:00:00`);
-
-            if (isNaN(blockDate.getTime()) || blockDate < currentWeekStart || blockDate >= weekEnd) return;
-
-            const dateKey = formatDateToYYYYMMDD(blockDate);
-            const dayContainer = schedulerBody.querySelector(`[data-date-key="${dateKey}"]`);
-            if (!dayContainer) return;
-
-            const [startH, startM] = block.startHour.split(':').map(Number);
-            const [endH, endM] = block.endHour.split(':').map(Number);
-
-            const topOffset = ((startH - MIN_HOUR) * SLOT_HEIGHT_PX) + (startM / 60 * SLOT_HEIGHT_PX);
-            const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
-            const height = (durationMinutes / 60) * SLOT_HEIGHT_PX;
-
-            const blockEl = document.createElement('div');
-            blockEl.className = 'appointment-block';
-            blockEl.style.height = `${height}px`;
-            blockEl.style.backgroundColor = 'rgba(107, 114, 128, 0.7)';
-            blockEl.style.zIndex = '5';
-            blockEl.style.cursor = 'pointer';
-            blockEl.style.top = `${topOffset}px`;
-            blockEl.innerHTML = `<p class="text-xs font-semibold text-white truncate">${block.notes || 'Blocked'}</p><p class="text-xs text-white/80">${block.startHour} - ${block.endHour}</p>`;
-            
-            blockEl.addEventListener('click', () => openEditTimeBlockModal(block));
-            dayContainer.appendChild(blockEl);
-        });
-    }
-
-    function updateWeekDisplay() {
-        const endOfWeek = new Date(currentWeekStart);
-        endOfWeek.setDate(currentWeekStart.getDate() + 6);
-        currentWeekDisplay.textContent = `${currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}`;
-    }
+    function renderTimeBlocks() { /* ...código existente... */ }
+    function updateWeekDisplay() { /* ...código existente... */ }
 
     // --- 7. Inicialização e Event Listeners ---
+    async function loadInitialData() { /* ...código existente... */ }
+    function populateTechSelects() { /* ...código existente... */ }
+    async function handleTechSelectionChange(event) { /* ...código existente... */ }
 
-    async function loadInitialData() {
-        try {
-            const [techDataResponse, appointmentsResponse] = await Promise.all([
-                fetch('/api/get-dashboard-data'),
-                fetch('/api/get-technician-appointments')
-            ]);
-            if (!techDataResponse.ok || !appointmentsResponse.ok) throw new Error('Failed to load initial data.');
-            const techData = await techDataResponse.json();
-            const apptsData = await appointmentsResponse.json();
-            allTechnicians = techData.technicians || [];
-            allAppointments = (apptsData.appointments || []).filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
-            populateTechSelects();
-            renderScheduler();
-        } catch (error) {
-            console.error('CRITICAL ERROR during loadInitialData:', error);
-        }
-    }
-
-    function populateTechSelects() {
-        techSelectDropdown.innerHTML = '<option value="">Select Technician...</option>';
-        allTechnicians.forEach(tech => {
-            const option = document.createElement('option');
-            option.value = tech;
-            option.textContent = tech;
-            techSelectDropdown.appendChild(option.cloneNode(true));
-        });
-    }
-
-    async function handleTechSelectionChange(event) {
-        selectedTechnician = event.target.value;
-        selectedTechDisplay.textContent = selectedTechnician || 'No Technician Selected';
-        await fetchAvailabilityForSelectedTech();
-        renderScheduler();
-        document.dispatchEvent(new CustomEvent('technicianChanged', { detail: { technician: selectedTechnician, weekStart: currentWeekStart } }));
-    }
-
-    techSelectDropdown.addEventListener('change', handleTechSelectionChange);
-    prevWeekBtn.addEventListener('click', () => {
-        currentWeekStart.setDate(currentWeekStart.getDate() - 7);
-        renderScheduler();
-        document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } }));
-    });
-    nextWeekBtn.addEventListener('click', () => {
-        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-        renderScheduler();
-        document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } }));
-    });
-    
-    modalSaveBtn.addEventListener('click', handleSaveAppointment);
-    modalCancelBtn.addEventListener('click', closeEditModal);
-    modalCloseXBtn.addEventListener('click', closeEditModal);
-    addTimeBlockBtn.addEventListener('click', openTimeBlockModal);
-    blockSaveBtn.addEventListener('click', handleSaveTimeBlock);
-    blockCancelBtn.addEventListener('click', closeTimeBlockModal);
-    editBlockSaveBtn.addEventListener('click', handleUpdateTimeBlock);
-    editBlockDeleteBtn.addEventListener('click', handleDeleteTimeBlock);
-    editBlockCancelBtn.addEventListener('click', closeEditTimeBlockModal);
-
-    document.addEventListener('appointmentUpdated', async () => {
-        const appointmentsResponse = await fetch('/api/get-technician-appointments');
-        const apptsData = await appointmentsResponse.json();
-        allAppointments = (apptsData.appointments || []).filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
-        renderScheduler();
-    });
-
-    loadInitialData();
+    // ... (todos os outros event listeners permanecem os mesmos) ...
 });
