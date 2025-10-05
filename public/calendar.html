@@ -83,53 +83,67 @@
 </head>
 <body class="bg-background">
 
-    <header class="bg-card shadow-large border-b border-border">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <div class="flex items-center gap-4">
-            <h1 class="text-xl font-bold text-foreground">Technician Scheduler</h1>
-          </div>
-          <a href="../appointments.html" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
-             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-4 h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-             New Appointment
-          </a>
+    <header class="bg-card shadow-large border-b border-border sticky top-0 z-40">
+        <div class="max-w-[98rem] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-4">
+                    <button id="today-btn" class="px-4 py-2 text-sm font-medium border rounded-md hover:bg-muted">Today</button>
+                    <div class="flex items-center gap-2">
+                        <button id="prev-week" class="p-2 border rounded-md hover:bg-muted">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
+                        </button>
+                        <span id="current-week-display" class="font-bold text-lg text-foreground/80 w-48 text-center">Loading...</span>
+                        <button id="next-week" class="p-2 border rounded-md hover:bg-muted">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>
+                        </button>
+                    </div>
+                </div>
+    
+                <div class="flex-1 flex justify-center items-center gap-4">
+                     <h1 class="text-xl font-bold text-foreground/80 hidden lg:block">Technician Scheduler</h1>
+                </div>
+    
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <label for="tech-select-dropdown" class="text-sm font-medium">Technician:</label>
+                        <select id="tech-select-dropdown" class="w-48 rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                             <option value="">Loading Technicians...</option>
+                        </select>
+                    </div>
+                    <div class="w-24">
+                         <a href="appointments.html" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-10 px-4 bg-brand-primary text-white hover:shadow-brand transition-shadow">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                            New
+                         </a>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
     </header>
 
     <main class="p-8">
         <div class="max-w-[98rem] mx-auto space-y-8">
-
             <section class="rounded-lg border bg-card text-card-foreground shadow-large">
-                <div class="p-6 border-b border-border flex justify-between items-center flex-wrap gap-4">
-                    <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">Weekly Schedule</h2>
-                    <div class="flex items-center gap-4">
-                        <button id="prev-week" class="p-2 border rounded-md hover:bg-muted">Prev</button>
-                        <span id="current-week-display" class="font-bold text-lg flex items-center">Loading...</span>
-                        <button id="next-week" class="p-2 border rounded-md hover:bg-muted">Next</button>
-                    </div>
-                </div>
-                
                 <div class="flex">
                     <div id="tech-filter-panel" class="w-64 border-r border-border p-4 space-y-4 flex-shrink-0">
-                        <h3 class="text-lg font-semibold">Select Technician</h3>
-                        <select id="tech-select-dropdown" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                             <option value="">Loading Technicians...</option>
-                        </select>
-                        <p id="selected-tech-display" class="text-sm font-bold text-brand-primary">No Technician Selected</p>
+                        <h3 class="text-lg font-semibold">Technician Details</h3>
+                        <div id="selected-tech-display" class="p-3 border-l-4 border-brand-primary bg-brand-primary/10 rounded-r-lg">
+                            <p class="font-bold text-brand-primary">No Technician Selected</p>
+                            <p class="text-sm text-muted-foreground">Select a technician from the top bar to view their schedule.</p>
+                        </div>
                         <button id="add-time-block-btn" class="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold h-9 px-4 py-2 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white transition-colors">
-                            + Add Time Block
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus-circle"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                            Add Time Block
                         </button>
                     </div>
                     
                     <div class="flex-1 overflow-x-auto">
                         <div id="scheduler-header" class="scheduler-grid border-b border-border">
-                            <div class="timeline-header p-2 font-semibold">Time</div>
-                        </div>
+                            </div>
                         <div id="scheduler-body-wrapper" class="relative">
                             <div id="scheduler-body" class="scheduler-grid relative min-w-full">
                                 </div>
-                            <div id="loading-overlay" class="absolute inset-0 bg-white/70 flex items-center justify-center hidden z-30">
+                            <div id="loading-overlay" class="absolute inset-0 bg-white/70 flex items-center justify-center z-30">
                                 <p class="text-xl font-semibold text-muted-foreground">Please select a technician.</p>
                             </div>
                         </div>
