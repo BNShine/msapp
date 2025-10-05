@@ -540,3 +540,130 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 });
+// =======================================================================
+// INÍCIO DO NOVO CÓDIGO PARA VERIFICAÇÃO DE DISPONIBILIDADE
+// =======================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Seletores para a nova funcionalidade
+    const availabilitySection = document.getElementById('availability-checker-section');
+    const mainFormSection = document.getElementById('main-appointment-form');
+    const zipCodeInput = document.getElementById('customer-zip-code');
+    const verifyBtn = document.getElementById('verify-availability-btn');
+    const resultsDiv = document.getElementById('availability-results');
+
+    if (verifyBtn) {
+        verifyBtn.addEventListener('click', handleVerifyAvailability);
+    }
+
+    async function handleVerifyAvailability() {
+        const zipCode = zipCodeInput.value.trim();
+        if (zipCode.length !== 5) {
+            resultsDiv.innerHTML = `<p class="text-red-600 font-semibold">Please enter a valid 5-digit Zip Code.</p>`;
+            return;
+        }
+
+        resultsDiv.innerHTML = `<p class="text-muted-foreground">Searching for availability...</p>`;
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = 'Searching...';
+
+        try {
+            const response = await fetch('/api/find-availability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ zipCode }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'An unknown error occurred.');
+            }
+
+            if (result.success) {
+                renderAvailabilityResults(result, zipCode);
+            }
+
+        } catch (error) {
+            resultsDiv.innerHTML = `<p class="text-red-600 font-semibold">Error: ${error.message}</p>`;
+        } finally {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Check Availability';
+        }
+    }
+
+    function renderAvailabilityResults(data, originalZip) {
+        const { technician, date, availableSlots } = data;
+        
+        // Formata a data para uma leitura mais amigável
+        const friendlyDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+
+        let slotsHtml = availableSlots.map(slot => 
+            `<button type="button" class="slot-btn bg-brand-primary/10 text-brand-primary font-semibold py-2 px-4 rounded-lg hover:bg-brand-primary hover:text-white transition-colors" data-slot="${slot}" data-date="${date}" data-tech="${technician}" data-zip="${originalZip}">
+                ${slot}
+            </button>`
+        ).join('');
+
+        resultsDiv.innerHTML = `
+            <div class="space-y-3">
+                <p class="text-lg font-bold text-green-600">Good news! We found an available technician.</p>
+                <div>
+                    <p class="text-sm font-semibold text-foreground">Technician:</p>
+                    <p class="text-base">${technician}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-foreground">Next Available Date:</p>
+                    <p class="text-base">${friendlyDate}</p>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-foreground">Available Times:</p>
+                    <div class="flex flex-wrap gap-2 mt-2">
+                        ${slotsHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Adiciona event listeners aos novos botões de slot
+        document.querySelectorAll('.slot-btn').forEach(button => {
+            button.addEventListener('click', handleSlotSelection);
+        });
+    }
+
+    async function handleSlotSelection(event) {
+        const { slot, date, tech, zip } = event.currentTarget.dataset;
+        
+        // 1. Ocultar a seção de verificação e mostrar o formulário principal
+        availabilitySection.classList.add('hidden');
+        mainFormSection.classList.remove('hidden');
+
+        // 2. Preencher os campos do formulário
+        document.getElementById('appointmentDate').value = `${date}T${slot}`;
+        document.getElementById('zipCode').value = zip;
+
+        // Dispara o evento de input no zipCode para preencher a cidade automaticamente
+        document.getElementById('zipCode').dispatchEvent(new Event('input', { bubbles: true }));
+
+        // Forçar a atualização do `suggestedTechDisplay` (que agora é um select)
+        // A função updateSuggestedTechnician será chamada pelo evento de input do zipCode.
+        // Precisamos esperar um pouco para que o select seja criado e então podemos selecionar o valor.
+        setTimeout(() => {
+            const techSelect = document.getElementById('suggestedTechSelect');
+            if (techSelect) {
+                techSelect.value = tech;
+            } else {
+                 // Fallback caso o select não seja criado, preenche o campo oculto.
+                 const hiddenTechInput = document.querySelector('input[name="technician"]');
+                 if(hiddenTechInput) hiddenTechInput.value = tech;
+            }
+        }, 1500); // Espera 1.5s para a API do zippopotam e a renderização do select terminarem.
+
+        // Rola a página suavemente até o formulário
+        mainFormSection.scrollIntoView({ behavior: 'smooth' });
+        
+        // Dispara manualmente o evento de input da data para atualizar o reminder
+        document.getElementById('appointmentDate').dispatchEvent(new Event('input', { bubbles: true }));
+    }
+});
