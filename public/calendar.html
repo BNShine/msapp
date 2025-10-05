@@ -11,7 +11,6 @@
     <style>
         .scheduler-grid {
             display: grid;
-            /* Atualizado para 7 dias + coluna de tempo */
             grid-template-columns: 80px repeat(7, minmax(150px, 1fr)); 
             grid-auto-rows: minmax(60px, auto); 
             overflow-x: auto;
@@ -220,7 +219,6 @@
                 </div>
                 
                 <h3 class="text-xl font-bold text-foreground mt-8 mb-4">Optimized Route Results</h3>
-                <div id="itinerary-map" class="h-[400px] w-full rounded-lg border border-border bg-muted/10 mb-4"></div>
                 <div id="itinerary-results-list" class="mt-4 space-y-2 text-sm text-muted-foreground">
                     No route calculated.
                 </div>
@@ -243,7 +241,7 @@
                 </div>
                 
                 <div id="availability-form-container" class="mt-6 space-y-4">
-                    <p class="text-muted-foreground p-4 border rounded-lg bg-muted/10">Select a technician above to manage their weekly working hours (7:00 to 21:00 range).</p>
+                    <p class="text-muted-foreground p-4 border rounded-lg bg-muted/10">Select a technician above to manage their weekly working hours (8:00 to 18:00 range).</p>
                 </div>
             </section>
         </div>
