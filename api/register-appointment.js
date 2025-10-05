@@ -21,9 +21,8 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { type, data, pets, closer1, closer2, customers, phone, oldNew, appointmentDate, serviceValue, franchise, city, source, week, month, year, code, reminderDate, verification, zipCode, technician } = req.body;
+        const { type, data, pets, closer1, closer2, customers, phone, oldNew, appointmentDate, serviceValue, franchise, city, source, week, month, year, code, reminderDate, verification, zipCode, technician, margin } = req.body;
 
-        // Validação de campos essenciais
         if (!type || !data || !customers || !phone || !appointmentDate || !serviceValue || !franchise || !city || !source || !code) {
             return res.status(400).json({ success: false, message: 'Todos os campos obrigatórios, incluindo o código, precisam ser preenchidos.' });
         }
@@ -42,15 +41,12 @@ export default async function handler(req, res) {
             return res.status(500).json({ success: false, message: `Planilha "${SHEET_NAME_APPOINTMENTS}" não encontrada.` });
         }
 
-        // --- NOVA LÓGICA DE VERIFICAÇÃO DE CÓDIGO ---
         const rows = await sheet.getRows();
         const codeExists = rows.some(row => row.get('Code') === code);
 
         if (codeExists) {
-            // Retorna um erro 409 Conflict se o código já existir
             return res.status(409).json({ success: false, message: `Erro: O código de confirmação "${code}" já existe. O agendamento pode ser um duplicado.` });
         }
-        // --- FIM DA NOVA LÓGICA ---
 
         const newRow = {
             'Type': type,
@@ -74,6 +70,7 @@ export default async function handler(req, res) {
             'Verification': verification, 
             'Zip Code': zipCode,
             'Technician': technician,
+            'Margin': margin || '30',
         };
 
         await sheet.addRow(newRow);
