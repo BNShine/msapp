@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Technician Scheduler</title>
-    <link href="output.css" rel="stylesheet">
+    <link href="../output.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/lucide-static@latest/dist/umd/lucide.js"></script>
     
@@ -21,8 +21,6 @@
             position: relative;
         }
         .appointment-block {
-            /* NOTA: A largura dos blocos de agendamento e de tempo é fixada em 150px para consistência visual. */
-            /* Se as colunas do calendário mudarem, este valor pode precisar de ajuste. */
             width: 150px;
             height: 120px; 
             position: absolute;
@@ -90,8 +88,8 @@
           <div class="flex items-center gap-4">
             <h1 class="text-xl font-bold text-foreground">Technician Scheduler</h1>
           </div>
-          <a href="appointments.html" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
-             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-4 h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          <a href="../appointments.html" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
+             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-4 h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
              New Appointment
           </a>
         </div>
@@ -170,7 +168,7 @@
             </section>
 
             <section id="day-itinerary-section" class="rounded-lg border bg-card text-card-foreground shadow-large p-6">
-                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">4. Daily Itinerary and Optimization</h2>
+                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">Daily Itinerary and Optimization</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                     <div class="space-y-2">
                         <label for="day-filter" class="block text-sm font-semibold text-foreground">Select Day (of the current week)</label>
@@ -189,11 +187,11 @@
                 
                 <div class="flex gap-4 mt-4 mb-4">
                     <button id="optimize-itinerary-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand disabled:opacity-50" disabled>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-route w-4 h-4"><path d="M3 3v18h18"/><path d="m21 7-5 5h5"/><path d="m11 11-3 3h3"/><path d="m11 7-5 5h5"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-route w-4 h-4"><path d="M3 3v18h18"/><path d="m21 7-5 5h5"/><path d="m11 11-3 3h3"/><path d="m11 7-5 5h5"/></svg>
                         Itinerary Optimizer (Nearest)
                     </button>
                     <button id="itinerary-reverser-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand disabled:opacity-50" disabled>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-down-up w-4 h-4"><path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-down-up w-4 h-4"><path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/></svg>
                         Itinerary Reverser (Farthest)
                     </button>
                 </div>
@@ -241,13 +239,11 @@
             </section>
         </div>
     </main>
-    
-    <script src="calendar.js"></script>
 
     <div id="edit-appointment-modal" class="modal-overlay-fixed hidden">
         <div class="bg-card p-6 rounded-lg shadow-2xl w-full max-w-md relative" style="z-index: 1001;">
             <button type="button" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800" id="modal-close-x-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
             <h3 class="text-xl font-bold text-foreground mb-4">Edit Appointment Details</h3>
             <form id="appointment-edit-form" class="space-y-4">
@@ -343,6 +339,10 @@
             </div>
         </div>
     </div>
+    
+    <script src="calendar/schedule.js"></script>
+    <script src="calendar/manageShowed.js"></script>
+    <script src="calendar/itinerary.js"></script>
 
 </body>
 </html>
