@@ -14,16 +14,19 @@ const serviceAccountAuth = new JWT({
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
-const SPREADSHEET_ID_DATA = process.env.SHEET_ID_DATA;
+// --- CORREÇÃO APLICADA AQUI ---
+// Apontando para a planilha correta (SHEET_ID) conforme especificado.
+const SPREADSHEET_ID = process.env.SHEET_ID;
 
 export default async function handler(req, res) {
-    const doc = new GoogleSpreadsheet(SPREADSHEET_ID_DATA, serviceAccountAuth);
+    // Usando a variável corrigida para acessar a planilha.
+    const doc = new GoogleSpreadsheet(SPREADSHEET_ID, serviceAccountAuth);
 
     try {
         await doc.loadInfo();
         const sheet = doc.sheetsByTitle[SHEET_NAME_AVAILABILITY];
         if (!sheet) {
-            return res.status(500).json({ success: false, message: `Planilha "${SHEET_NAME_AVAILABILITY}" não encontrada.` });
+            return res.status(500).json({ success: false, message: `Planilha "${SHEET_NAME_AVAILABILITY}" não encontrada na planilha com ID fornecido.` });
         }
 
         // --- LÓGICA DE PULL (GET) ---
@@ -72,6 +75,6 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('Erro na API de disponibilidade:', error);
-        return res.status(500).json({ success: false, message: 'Ocorreu um erro no servidor.' });
+        return res.status(500).json({ success: false, message: 'Ocorreu um erro no servidor ao acessar a planilha de disponibilidade.' });
     }
 }
