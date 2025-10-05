@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currentWeekDisplay = document.getElementById('current-week-display');
     const prevWeekBtn = document.getElementById('prev-week');
     const nextWeekBtn = document.getElementById('next-week');
+    const techConfigSelect = document.getElementById('tech-config-select');
+    const showedAppointmentsTableBody = document.getElementById('showed-appointments-table-body');
     const addTimeBlockBtn = document.getElementById('add-time-block-btn');
     const dayFilter = document.getElementById('day-filter');
     const dayItineraryTableBody = document.getElementById('day-itinerary-table-body');
@@ -26,9 +28,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const schedulingControls = document.getElementById('scheduling-controls');
     const firstScheduleSelect = document.getElementById('first-schedule-select');
     const applyRouteBtn = document.getElementById('apply-route-btn');
-    const showedAppointmentsTableBody = document.getElementById('showed-appointments-table-body');
 
-    // Modais
+    // Modais e seus botões
     const editModal = document.getElementById('edit-appointment-modal');
     const modalSaveBtn = document.getElementById('modal-save-btn');
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
@@ -46,15 +47,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const editBlockEndInput = document.getElementById('edit-block-end-hour');
     const editBlockNotesInput = document.getElementById('edit-block-notes');
 
-    // --- 2. Variáveis Globais ---
+    // --- 2. Variáveis Globais e Constantes ---
     let allAppointments = [];
     let allTechnicians = [];
     let techAvailabilityBlocks = [];
     let selectedTechnician = '';
     let currentWeekStart = getStartOfWeek(new Date());
-    let directionsService;
-    let dayAppointments = [];
-    let orderedClientStops = [];
+    let isSaving = {};
+    let directionsService; 
+    let dayAppointments = []; 
+    let orderedClientStops = []; 
     let GOOGLE_MAPS_API_KEY = null;
 
     const SCHEDULE_DURATION_HOURS = 2;
@@ -64,9 +66,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const MIN_HOUR = 7;
     const MAX_HOUR = 21;
 
-    // --- 3. Declaração de Todas as Funções ---
+    // --- 3. Funções Auxiliares (Datas, Geo, Formatação) ---
 
-    // Funções Auxiliares (Datas, Geo, Formatação)
     function getStartOfWeek(date) {
         const d = new Date(date);
         d.setHours(0, 0, 0, 0);
@@ -86,30 +87,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         const [datePart, timePart] = dateStr.split(' ');
         if (!datePart || !timePart) return null; 
         const dateParts = datePart.split('/');
-        if (dateParts.length !== 3) return null;
+        const timeParts = timePart.split(':');
+        if (dateParts.length !== 3 || timeParts.length < 2) return null;
         const [month, day, year] = dateParts.map(Number);
-        const [hour, minute] = timePart.split(':').map(Number);
+        const [hour, minute] = timeParts.map(Number);
         if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
         return new Date(year, month - 1, day, hour, minute); 
     }
     
     function getTimeHHMM(date) {
         if (!date) return '';
-        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
     }
     
     function formatDateTimeForInput(dateTimeStr) {
         if (!dateTimeStr) return '';
-        const date = parseSheetDate(dateTimeStr);
-        if (!date) return '';
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        const hour = date.getHours().toString().padStart(2, '0');
-        const minute = date.getMinutes().toString().padStart(2, '0');
-        return `${year}-${month}-${day}T${hour}:${minute}`;
+        const [datePart, timePart] = dateTimeStr.split(' ');
+        if (!datePart || !timePart) return '';
+        const [month, day, year] = datePart.split('/');
+        const [hour, minute] = timePart.split(':').map(Number);
+        if (year && month && day) {
+             const paddedHour = String(hour).padStart(2, '0');
+             const paddedMinute = String(minute).padStart(2, '0');
+            return `${year}-${month.toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}T${paddedHour}:${paddedMinute}`; 
+        }
+        return '';
     }
-    
+
     function getDayOfWeekDate(startOfWeekDate, dayOfWeek) {
         const date = new Date(startOfWeekDate);
         date.setDate(startOfWeekDate.getDate() + dayOfWeek);
@@ -134,7 +140,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
     }
 
-    // Funções de Manipulação dos Modais
+    // --- 4. Funções de Manipulação dos Modais ---
+
     function openEditModal(appt) {
         const { id, technician, petShowed, percentage, paymentMethod, appointmentDate, serviceShowed, tips, verification } = appt;
         document.getElementById('modal-appt-id').value = id;
@@ -187,21 +194,136 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.classList.remove('modal-open');
     }
 
-    // Funções de API
+    // --- 5. Funções de Manipulação de Dados (API Calls) ---
+
     async function handleSaveAppointment() {
-        // ... (código para salvar agendamento)
+        modalSaveBtn.textContent = 'Saving...';
+        modalSaveBtn.disabled = true;
+        const appointmentDateLocal = document.getElementById('modal-date').value;
+        const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
+        if (hour < MIN_HOUR || hour >= MAX_HOUR) {
+            alert(`Save Error: Appointments must be scheduled between ${MIN_HOUR}:00 and ${MAX_HOUR - 1}:59.`);
+            modalSaveBtn.textContent = 'Save Changes';
+            modalSaveBtn.disabled = false;
+            return;
+        }
+        const [datePart, timePart] = appointmentDateLocal.split('T');
+        const [year, month, day] = datePart.split('-');
+        const apiFormattedDate = `${month}/${day}/${year} ${timePart}`;
+        const dataToUpdate = {
+            rowIndex: parseInt(document.getElementById('modal-appt-id').value, 10),
+            appointmentDate: apiFormattedDate,
+            verification: document.getElementById('modal-verification').value,
+            serviceShowed: document.getElementById('modal-service-value').value,
+            tips: document.getElementById('modal-tips').value,
+            technician: document.getElementById('modal-original-technician').value,
+            petShowed: document.getElementById('modal-pet-showed').value || '',
+            percentage: document.getElementById('modal-percentage').value || '',
+            paymentMethod: document.getElementById('modal-payment-method').value || '',
+        };
+        try {
+            const response = await fetch('/api/update-appointment-showed-data', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataToUpdate)
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+            const localAppt = allAppointments.find(a => String(a.id) === String(dataToUpdate.rowIndex));
+            if (localAppt) Object.assign(localAppt, { ...dataToUpdate, appointmentDate: apiFormattedDate });
+            modalSaveBtn.textContent = 'Saved!';
+            setTimeout(() => {
+                closeEditModal();
+                modalSaveBtn.textContent = 'Save Changes';
+                modalSaveBtn.disabled = false;
+                renderScheduler();
+            }, 1000);
+        } catch (error) {
+            console.error('API Error on Save:', error);
+            modalSaveBtn.textContent = 'Error!';
+            setTimeout(() => {
+                modalSaveBtn.textContent = 'Save Changes';
+                modalSaveBtn.disabled = false;
+            }, 2500);
+        }
     }
     
     async function handleSaveTimeBlock() {
-        // ... (código para criar time block)
+        const dateValue = document.getElementById('block-date').value;
+        const startHourValue = document.getElementById('block-start-hour').value;
+        const endHourValue = document.getElementById('block-end-hour').value;
+        if (!dateValue || !startHourValue || !endHourValue) {
+            alert('Date, Start Time, and End Time are required.');
+            return;
+        }
+        const [year, month, day] = dateValue.split('-');
+        const data = {
+            technicianName: selectedTechnician,
+            date: `${month}/${day}/${year}`,
+            startHour: startHourValue,
+            endHour: endHourValue,
+            notes: document.getElementById('block-notes').value,
+        };
+        try {
+            const response = await fetch('/api/manage-technician-availability', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+            await fetchAvailabilityForSelectedTech();
+            renderScheduler();
+            closeTimeBlockModal();
+            alert('Time block saved!');
+        } catch (error) {
+            console.error('Error saving time block:', error);
+            alert(`Error: ${error.message}`);
+        }
     }
 
     async function handleUpdateTimeBlock() {
-        // ... (código para atualizar time block)
+        const rowNumber = parseInt(editBlockRowNumberInput.value, 10);
+        const [year, month, day] = editBlockDateInput.value.split('-');
+        const dataToUpdate = {
+            rowNumber,
+            date: `${month}/${day}/${year}`,
+            startHour: editBlockStartInput.value,
+            endHour: editBlockEndInput.value,
+            notes: editBlockNotesInput.value
+        };
+        try {
+            const response = await fetch('/api/manage-technician-availability', {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataToUpdate),
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+            const index = techAvailabilityBlocks.findIndex(b => b.rowNumber === rowNumber);
+            if (index !== -1) {
+                techAvailabilityBlocks[index] = { ...techAvailabilityBlocks[index], ...dataToUpdate };
+            }
+            renderScheduler();
+            closeEditTimeBlockModal();
+            alert('Time block updated!');
+        } catch (error) {
+            console.error('Error updating time block:', error);
+            alert('Error: ' + error.message);
+        }
     }
 
     async function handleDeleteTimeBlock() {
-        // ... (código para deletar time block)
+        if (!confirm('Are you sure you want to delete this time block?')) return;
+        const rowNumber = parseInt(editBlockRowNumberInput.value, 10);
+        try {
+            const response = await fetch('/api/manage-technician-availability', {
+                method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rowNumber }),
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+            techAvailabilityBlocks = techAvailabilityBlocks.filter(b => b.rowNumber !== rowNumber);
+            renderScheduler();
+            closeEditTimeBlockModal();
+            alert('Time block deleted!');
+        } catch (error) {
+            console.error('Error deleting time block:', error);
+            alert('Error: ' + error.message);
+        }
     }
 
     async function fetchAvailabilityForSelectedTech() {
@@ -220,29 +342,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    async function fetchGoogleMapsApiKey() {
-        if (GOOGLE_MAPS_API_KEY) return;
-        try {
-            const response = await fetch('/api/get-google-maps-api-key');
-            if (response.ok) {
-                const data = await response.json();
-                GOOGLE_MAPS_API_KEY = data.apiKey;
-                if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
-                    const script = document.createElement('script');
-                    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
-                    document.head.appendChild(script);
-                } else {
-                    window.initMap();
-                }
-            } else {
-                console.error('Failed to fetch Google Maps API key.');
-            }
-        } catch (error) {
-            console.error('Error fetching Google Maps API key:', error);
-        }
-    }
+    // --- 6. Funções de Renderização do Calendário e Tabelas ---
 
-    // Funções de Renderização
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
         schedulerBody.innerHTML = '';
@@ -405,11 +506,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- LÓGICA DE OTIMIZAÇÃO DE ROTA RESTAURADA ---
+    // --- 7. Lógica de Otimização de Rota ---
+
     async function runItineraryOptimization(isReversed = false) {
         if (!directionsService) {
-            itineraryResultsList.innerHTML = '<p class="text-red-600">Google Maps Service is not initialized. Please wait a moment and try again.</p>';
-            return;
+            await fetchGoogleMapsApiKey(); // Tenta carregar se não estiver pronto
+            if (!directionsService) {
+                 itineraryResultsList.innerHTML = '<p class="text-red-600">Google Maps Service is not initialized. Please wait a moment and try again.</p>';
+                return;
+            }
         }
         const techCoverageResponse = await fetch('/api/get-tech-coverage');
         const techCoverageData = techCoverageResponse.ok ? await techCoverageResponse.json() : [];
@@ -487,12 +592,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (${isReversed ? 'Farthest First' : 'Nearest First'}):</p>`;
                 let totalDuration = 0, totalDistance = 0;
                 
-                // Use the order from Google if it optimized, otherwise use our calculated order
                 const finalOrder = route.waypoint_order ? route.waypoint_order.map(i => stopsForGoogle[i]) : stopsForGoogle;
                 orderedClientStops = finalOrder;
 
                 route.legs.forEach((leg, i) => {
-                    const clientName = i === 0 ? finalOrder[0].customers : finalOrder[i].customers;
+                    const clientName = (finalOrder[i] || {}).customers || 'Destination';
                     itineraryResultsList.innerHTML += `
                         <div class="border-b border-muted py-2">
                             <p class="font-bold text-base">${i + 1}. Go to: ${leg.end_address} (${clientName})</p>
@@ -511,14 +615,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // --- 8. Inicialização e Event Listeners ---
     async function handleOptimizeItinerary() { await runItineraryOptimization(false); }
     async function handleItineraryReverser() { await runItineraryOptimization(true); }
     function handleDayFilterChange() { renderDayItineraryTable(); }
+    async function handleApplyRoute() { /* Placeholder */ }
 
-    // --- 7. Inicialização ---
     async function loadInitialData() {
         try {
-            await fetchGoogleMapsApiKey(); // Carrega a chave do Google Maps primeiro
+            await fetchGoogleMapsApiKey();
             const [techDataResponse, appointmentsResponse] = await Promise.all([
                 fetch('/api/get-dashboard-data'),
                 fetch('/api/get-technician-appointments')
@@ -552,15 +657,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderScheduler(); 
     }
 
-    // --- 8. Adicionar Event Listeners ---
     techSelectDropdown.addEventListener('change', handleTechSelectionChange);
     prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
         renderScheduler();
+        handleDayFilterChange();
     });
     nextWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
         renderScheduler();
+        handleDayFilterChange();
     });
     
     modalSaveBtn.addEventListener('click', handleSaveAppointment);
@@ -575,7 +681,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (dayFilter) dayFilter.addEventListener('change', handleDayFilterChange);
     if (optimizeItineraryBtn) optimizeItineraryBtn.addEventListener('click', handleOptimizeItinerary);
     if (itineraryReverserBtn) itineraryReverserBtn.addEventListener('click', handleItineraryReverser);
+    if (applyRouteBtn) applyRouteBtn.addEventListener('click', handleApplyRoute);
 
-    // --- Carga Inicial ---
+    // Carga Inicial
     loadInitialData();
 });
