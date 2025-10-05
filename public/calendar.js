@@ -1,7 +1,8 @@
 // public/calendar.js
 
-// A função initMap é necessária para o DirectionsService, mesmo sem mapa.
+// Define initMap globalmente para ser usada como callback pelo script do Google Maps.
 window.initMap = function() {
+    // A visualização do mapa foi removida, mas o DirectionsService precisa ser inicializado
     if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
         directionsService = new google.maps.DirectionsService();
         console.log('[MAP LOG 4/4 SUCESSO] Google Directions Service initialized.');
@@ -773,8 +774,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // Clear previous route and markers
-        // directionsRenderer.setDirections({ routes: [] }); // REMOVIDO
-        // clearCustomMarkers(); // REMOVIDO
+        clearCustomMarkers(); // REMOVIDO
 
         // 5. Google Maps Directions Request
         const origin = originZip;
@@ -801,7 +801,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (status === 'OK' && response && response.routes && response.routes.length > 0) {
                 
                 const route = response.routes[0];
-                // directionsRenderer.setDirections(response); // REMOVIDO MAPA
 
                 let totalDistance = 0;
                 let totalDuration = 0;
@@ -809,6 +808,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (Starting from ${isReversed ? 'Farthest' : 'Nearest'}):</p>`;
                 
                 // Determine the final ordered stops based on Google's final route (which might be the waypoints themselves if optimizeWaypoints is false)
+                // When optimizeWaypoints=false, route.waypoint_order is generally empty or sequential [0, 1, 2...].
                 const finalOrderedStops = (shouldOptimizeWaypoints && route.waypoint_order && route.waypoint_order.length > 0)
                     ? route.waypoint_order.map((i) => optimizedItinerary[i]) // If Google optimized, use its order against the NEAREST-FIRST list
                     : stopsForGoogleMaps; // If optimization was off (Reverser), use the manually ordered list
@@ -823,299 +823,4 @@ document.addEventListener('DOMContentLoaded', async () => {
                         lng: appt.lon, 
                         apptTime: getTimeHHMM(parseSheetDate(appt.appointmentDate)) 
                     })),
-                    { name: 'HOME (End)', zipCode: originZip, lat: originLat, lng: originLon, apptTime: 'N/A' }
-                ];
-                
-                // Atualiza a ordem final para o re-scheduling
-                orderedClientStops = finalOrderedStops;
-
-                const legs = route.legs;
-
-                legs.forEach((leg, i) => {
-                    totalDistance += leg.distance.value;
-                    totalDuration += leg.duration.value;
-                    
-                    const destinationName = fullSequence[i + 1].name;
-                    const destinationTime = fullSequence[i + 1].apptTime;
-                    const destinationIndex = i + 1;
-
-
-                    itineraryResultsList.innerHTML += `
-                        <div class="border-b border-muted py-2">
-                            <p class="font-bold text-base">${destinationIndex}. Go to: ${destinationName}</p>
-                            <p class="ml-4 text-sm">Target Appt Time: ${destinationTime} | Travel Time: ${leg.duration.text} | Distance: ${leg.distance.text}</p>
-                        </div>
-                    `;
-                });
-                
-                // Final Summary
-                itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-lg text-brand-primary">Total Round Trip: ${Math.round(totalDuration / 60)} min / ${(totalDistance / 1000).toFixed(2)} km</div>`;
-                
-            } else {
-                // Reinicia os marcadores em caso de falha para garantir que não haja sobras
-                clearCustomMarkers(); // REMOVIDO
-                itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}. Motivo: O Google Maps não conseguiu traçar a rota com os Zips fornecidos, ou o Zip de Origem é inválido.</p>`;
-            }
-        });
-    }
-
-    // NOVO: Lógica para aplicar a rota ao calendário
-    async function handleApplyRoute() {
-        const selectedTime = firstScheduleSelect.value; // HH:MM
-        const selectedDayOfWeek = dayFilter.value;
-        const selectedTechName = techSelectDropdown.value;
-        
-        if (orderedClientStops.length === 0 || !selectedTime || !selectedDayOfWeek || !selectedTechName) {
-            alert("Erro: Selecione o técnico, o dia e calcule uma rota antes de aplicar.");
-            return;
-        }
-
-        const targetDate = getDayOfWeekDate(currentWeekStart, parseInt(selectedDayOfWeek, 10));
-        
-        const initialHour = parseInt(selectedTime.split(':')[0], 10);
-        const initialMinute = parseInt(selectedTime.split(':')[1], 10);
-        
-        // Inicia o primeiro agendamento na hora/minuto selecionado
-        let currentAppointmentDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), initialHour, initialMinute);
-        
-        applyRouteBtn.disabled = true;
-        applyRouteBtn.textContent = 'Applying...';
-        itineraryResultsList.innerHTML += `<div class="text-brand-primary mt-4 font-bold">Applying changes to ${orderedClientStops.length} appointments...</div>`;
-
-        let successCount = 0;
-
-        for (const [index, appt] of orderedClientStops.entries()) {
-            
-            // Converte o formato do input HTML para o formato de API MM/DD/YYYY HH:MM
-            const newTimeString = `${String(currentAppointmentDate.getHours()).padStart(2, '0')}:${String(currentAppointmentDate.getMinutes()).padStart(2, '0')}`;
-            const apiFormattedDate = `${String(currentAppointmentDate.getMonth() + 1).padStart(2, '0')}/${String(currentAppointmentDate.getDate()).padStart(2, '0')}/${currentAppointmentDate.getFullYear()} ${newTimeString}`;
-
-            
-            // Busca o agendamento completo pelo ID para enviar todos os dados para a API de update
-            const fullApptDetails = allAppointments.find(a => a.id === appt.id);
-            
-            if (fullApptDetails) {
-                 const dataToUpdate = {
-                    rowIndex: fullApptDetails.id, // O ID é o rowIndex
-                    appointmentDate: apiFormattedDate,
-                    verification: fullApptDetails.verification,
-                    serviceShowed: fullApptDetails.serviceShowed,
-                    tips: fullApptDetails.tips,
-                    technician: fullApptDetails.technician,
-                    petShowed: fullApptDetails.petShowed,
-                    percentage: fullApptDetails.percentage,
-                    paymentMethod: fullApptDetails.paymentMethod,
-                 };
-                 
-                 try {
-                     const response = await fetch('/api/update-appointment-showed-data', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(dataToUpdate),
-                    });
-                    const result = await response.json();
-                    
-                    if (result.success) {
-                        successCount++;
-                        // Atualiza o agendamento localmente para refletir o novo horário
-                        fullApptDetails.appointmentDate = apiFormattedDate;
-                    } else {
-                        itineraryResultsList.innerHTML += `<div class="text-red-600">Erro ao atualizar ${fullApptDetails.customers}: ${result.message}</div>`;
-                    }
-                 } catch (e) {
-                      itineraryResultsList.innerHTML += `<div class="text-red-600">Erro de rede ao atualizar ${fullApptDetails.customers}.</div>`;
-                 }
-            }
-            
-            // Adiciona 2 horas para o próximo agendamento (2 * 60 minutos * 60 segundos * 1000 ms)
-            currentAppointmentDate = new Date(currentAppointmentDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
-        }
-
-        renderScheduler(); // Re-renderiza o calendário para refletir as mudanças
-        itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-green-600">✅ ${successCount} agendamentos atualizados com sucesso!</div>`;
-
-        applyRouteBtn.disabled = false;
-        applyRouteBtn.textContent = 'Apply Route';
-    }
-
-
-    function handleDayFilterChange() {
-        // Clear previous route data whenever day or technician changes
-        renderDayItineraryTable();
-    }
-
-    // --- Data Fetching and Initialization ---
-
-    async function fetchAvailabilityForSelectedTech() {
-        if (!selectedTechnician) {
-            techAvailabilityBlocks = [];
-            return;
-        }
-        try {
-            const response = await fetch(`/api/manage-technician-availability?technicianName=${encodeURIComponent(selectedTechnician)}`);
-            if (!response.ok) throw new Error('Could not fetch availability.');
-            const data = await response.json();
-            techAvailabilityBlocks = data.availability || [];
-        } catch (error) {
-            console.error('Error fetching availability:', error);
-            techAvailabilityBlocks = [];
-        }
-    }
-
-    async function loadInitialData() {
-        try {
-            const [techDataResponse, appointmentsResponse] = await Promise.all([
-                fetch('/api/get-dashboard-data'),
-                fetch('/api/get-technician-appointments')
-            ]);
-            if (!techDataResponse.ok || !appointmentsResponse.ok) throw new Error('Failed to load initial data.');
-            const techData = await techDataResponse.json();
-            const apptsData = await appointmentsResponse.json();
-            allTechnicians = techData.technicians || [];
-            allAppointments = (apptsData.appointments || []).filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
-            
-            // Popula os dropdowns de técnico (calendar.html e techConfigSelect)
-            populateTechSelects(); 
-            
-            await fetchAvailabilityForSelectedTech();
-            renderScheduler(); 
-            
-            // NEW: Inicializa DirectionsService (sem mapa)
-            await fetchGoogleMapsApiKey();
-            
-        } catch (error) {
-            console.error('CRITICAL ERROR during loadInitialData:', error);
-        }
-    }
-    
-    function populateTechSelects() {
-        // Populates both dropdowns with the fetched technician list
-        techSelectDropdown.innerHTML = '<option value="">Select Technician...</option>';
-        allTechnicians.forEach(tech => {
-            const option = document.createElement('option');
-            option.value = tech;
-            option.textContent = tech;
-            techSelectDropdown.appendChild(option.cloneNode(true));
-            if (techConfigSelect) techConfigSelect.appendChild(option.cloneNode(true));
-        });
-    }
-    
-    async function handleTechSelectionChange(event) {
-        selectedTechnician = event.target.value;
-        selectedTechDisplay.textContent = selectedTechnician || 'No Technician Selected';
-        
-        await fetchAvailabilityForSelectedTech();
-        renderScheduler(); 
-        handleDayFilterChange();
-    }
-    
-    // --- Event Listeners ---
-    // Remove existing listener before adding the comprehensive one
-    techSelectDropdown.removeEventListener('change', handleTechSelectionChange);
-    techSelectDropdown.addEventListener('change', handleTechSelectionChange);
-
-    prevWeekBtn.addEventListener('click', () => {
-        currentWeekStart.setDate(currentWeekStart.getDate() - 7);
-        renderScheduler();
-        handleDayFilterChange(); // Update itinerary view when week changes
-    });
-    nextWeekBtn.addEventListener('click', () => {
-        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-        renderScheduler();
-        handleDayFilterChange(); // Update itinerary view when week changes
-    });
-    modalSaveBtn.addEventListener('click', handleSaveAppointment);
-    modalCancelBtn.addEventListener('click', closeEditModal); 
-    modalCloseXBtn.addEventListener('click', closeEditModal);
-
-    addTimeBlockBtn.addEventListener('click', openTimeBlockModal);
-    blockSaveBtn.addEventListener('click', handleSaveTimeBlock);
-    blockCancelBtn.addEventListener('click', closeTimeBlockModal);
-    
-    // NEW Event Listeners
-    if (dayFilter) dayFilter.addEventListener('change', handleDayFilterChange);
-    if (optimizeItineraryBtn) optimizeItineraryBtn.addEventListener('click', handleOptimizeItinerary);
-    if (itineraryReverserBtn) itineraryReverserBtn.addEventListener('click', handleItineraryReverser);
-    if(applyRouteBtn) applyRouteBtn.addEventListener('click', handleApplyRoute);
-    
-    if (showedAppointmentsTableBody) {
-        // ... (Existing table change listener, kept for completeness) ...
-        showedAppointmentsTableBody.addEventListener('change', async (event) => {
-            const target = event.target;
-            if (target.matches('input, select')) {
-                const row = target.closest('tr');
-                const apptId = row.dataset.rowId;
-
-                if (isSaving[apptId]) return;
-                
-                isSaving[apptId] = true;
-                row.classList.add('is-saving');
-                
-                const appointmentDateLocal = row.querySelector('[data-key="appointmentDate"]').value; // YYYY-MM-DDTHH:MM
-                const [datePart, timePart] = appointmentDateLocal.split('T');
-                const [year, month, day] = datePart.split('-');
-                const apiFormattedDate = `${month}/${day}/${year} ${timePart}`; // MM/DD/YYYY HH:MM
-
-                const dataToUpdate = {
-                    rowIndex: parseInt(apptId, 10),
-                    appointmentDate: apiFormattedDate, 
-                    technician: row.querySelector('[data-key="technician"]').value,
-                    petShowed: row.querySelector('[data-key="petShowed"]').value,
-                    serviceShowed: row.querySelector('[data-key="serviceShowed"]').value,
-                    tips: row.querySelector('[data-key="tips"]').value,
-                    percentage: row.querySelector('[data-key="percentage"]').value,
-                    paymentMethod: row.querySelector('[data-key="paymentMethod"]').value,
-                    verification: row.querySelector('[data-key="verification"]').value,
-                };
-                
-                // MODIFICATION 5: Add Hour Validation to Table Change
-                const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
-                const minute = parseInt(appointmentDateLocal.substring(14, 16), 10);
-                const MIN_HOUR = 7;
-                const MAX_HOUR = 21;
-
-                if (hour < MIN_HOUR || hour > MAX_HOUR || (hour === MAX_HOUR && minute > 0)) {
-                    alert(`Save Error: Appointments must be scheduled between ${MIN_HOUR}:00 and ${MAX_HOUR}:00.`);
-                    row.classList.remove('is-saving');
-                    row.classList.add('is-error');
-                    setTimeout(() => {
-                        row.classList.remove('is-error');
-                        isSaving[apptId] = false;
-                    }, 2000);
-                    // Re-render the row/table to show original value
-                    renderScheduler(); 
-                    return;
-                }
-                // END MODIFICATION 5
-
-                try {
-                    const response = await fetch('/api/update-appointment-showed-data', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(dataToUpdate),
-                    });
-                    const result = await response.json();
-                    if (!result.success) throw new Error(result.message);
-                    
-                    const localAppt = allAppointments.find(a => String(a.id) === String(apptId));
-                    if(localAppt) Object.assign(localAppt, dataToUpdate, {
-                        appointmentDate: apiFormattedDate
-                    });
-
-                    renderScheduler();
-                    row.classList.add('is-success');
-                } catch (error) {
-                    console.error('Error saving from table:', error);
-                    row.classList.add('is-error');
-                } finally {
-                    setTimeout(() => {
-                        row.classList.remove('is-saving', 'is-success', 'is-error');
-                        isSaving[apptId] = false;
-                    }, 2000);
-                }
-            }
-        });
-    }
-
-    loadInitialData();
-});
+                    { name: 'HOME (End)', zipCode: originZip, lat: originLat, lng
