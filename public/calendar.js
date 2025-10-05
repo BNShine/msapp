@@ -1,12 +1,5 @@
 // public/calendar.js
 
-// Define initMap globalmente para ser usada como callback pelo script do Google Maps.
-window.initMap = function() {
-    if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
-        directionsService = new google.maps.DirectionsService();
-    }
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
     // --- 1. Seletores de Elementos ---
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
@@ -65,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const MIN_HOUR = 7;
     const MAX_HOUR = 21;
 
-    // --- 3. Funções Auxiliares (Datas, Geo, Formatação) ---
+    // --- 3. Declaração de Todas as Funções ---
 
     function getStartOfWeek(date) {
         const d = new Date(date);
@@ -121,8 +114,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return date;
     }
 
-    // --- 4. Funções de Manipulação dos Modais ---
-
     function openEditModal(appt) {
         const { id, technician, petShowed, percentage, paymentMethod, appointmentDate, serviceShowed, tips, verification } = appt;
         document.getElementById('modal-appt-id').value = id;
@@ -174,8 +165,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (editTimeBlockModal) editTimeBlockModal.classList.add('hidden');
         document.body.classList.remove('modal-open');
     }
-
-    // --- 5. Funções de Manipulação de Dados (API Calls) ---
 
     async function handleSaveAppointment() {
         modalSaveBtn.textContent = 'Saving...';
@@ -307,8 +296,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- 6. Funções de Renderização do Calendário e Tabelas ---
-
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
         schedulerBody.innerHTML = '';
@@ -340,16 +327,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         renderAppointments(columnMap);
         renderTimeBlocks(columnMap);
-        renderShowedAppointmentsTable();
-        loadingOverlay.classList.toggle('hidden', !!selectedTechnician);
+        // renderShowedAppointmentsTable(); // Esta função foi removida pois não está no HTML
         updateWeekDisplay();
-        renderDayItineraryTable();
+        // renderDayItineraryTable(); // Esta função foi removida pois não está no HTML
     }
-
+    
     function renderAppointments(columnMap) {
         const weekEnd = new Date(currentWeekStart);
         weekEnd.setDate(currentWeekStart.getDate() + 7);
         const appointmentsToRender = allAppointments.filter(appt => appt.technician === selectedTechnician);
+
         appointmentsToRender.forEach(appt => {
             const apptDate = parseSheetDate(appt.appointmentDate);
             if (!apptDate || apptDate < currentWeekStart || apptDate >= weekEnd) return;
@@ -358,7 +345,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!colIndex) return;
             const startHour = apptDate.getHours();
             if (startHour < MIN_HOUR || startHour >= MAX_HOUR) return;
-            const topOffset = (startHour - MIN_HOUR) * SLOT_HEIGHT_PX + apptDate.getMinutes();
+            const topOffset = (startHour - MIN_HOUR) * SLOT_HEIGHT_PX + apptDate.getMinutes(); 
             const block = document.createElement('div');
             let bgColor = 'bg-custom-primary';
             if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
@@ -367,7 +354,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             block.dataset.id = appt.id;
             block.style.gridColumnStart = colIndex;
             block.style.top = `${topOffset}px`;
-            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
+            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000); 
             block.innerHTML = `<div>
                 <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p>
                 <p class="text-sm font-bold truncate">${appt.customers}</p>
@@ -412,117 +399,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             schedulerBody.appendChild(blockEl);
         });
     }
-    
+
     function updateWeekDisplay() {
         const endOfWeek = new Date(currentWeekStart);
         endOfWeek.setDate(currentWeekStart.getDate() + 6);
         currentWeekDisplay.textContent = `${currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}`;
     }
-
-    function renderShowedAppointmentsTable() {
-        // Esta função permanece idêntica à versão anterior.
-        if (!showedAppointmentsTableBody) return;
-        showedAppointmentsTableBody.innerHTML = '';
-        const weekEnd = new Date(currentWeekStart);
-        weekEnd.setDate(currentWeekStart.getDate() + 7);
-        const appointmentsForWeek = allAppointments
-            .filter(appt => {
-                const apptDate = parseSheetDate(appt.appointmentDate);
-                return appt.technician === selectedTechnician && apptDate >= currentWeekStart && apptDate < weekEnd;
-            })
-            .sort((a, b) => parseSheetDate(a.appointmentDate) - parseSheetDate(b.appointmentDate));
-        if (appointmentsForWeek.length === 0) {
-            showedAppointmentsTableBody.innerHTML = '<tr><td colspan="10" class="p-4 text-center text-muted-foreground">No appointments for this technician in the selected week.</td></tr>';
-            return;
-        }
-        appointmentsForWeek.forEach(appointment => {
-            const row = document.createElement('tr');
-            row.className = 'border-b border-border hover:bg-muted/50';
-            row.dataset.rowId = appointment.id;
-            row.innerHTML = `
-                <td class="p-4"><input type="datetime-local" value="${formatDateTimeForInput(appointment.appointmentDate)}" style="width: 160px;" class="bg-transparent border border-border rounded-md px-2" data-key="appointmentDate"></td>
-                <td class="p-4">${appointment.customers.length > 18 ? appointment.customers.substring(0, 15) + '...' : appointment.customers}</td>
-                <td class="p-4 code-cell">${appointment.code}</td>
-                <td class="p-4"><input type="text" value="${appointment.technician}" class="bg-transparent border border-border rounded-md px-2" data-key="technician" disabled></td>
-                <td class="p-4">
-                    <select style="width: 60px;" class="bg-transparent border border-border rounded-md px-2" data-key="petShowed">
-                        <option value="">Pets</option>
-                        ${Array.from({ length: 10 }, (_, i) => i + 1).map(num => `<option value="${num}" ${appointment.petShowed == String(num) ? 'selected' : ''}>${num}</option>`).join('')}
-                    </select>
-                </td>
-                <td class="p-4"><input type="text" value="${appointment.serviceShowed || ''}" style="width: 100px;" class="bg-transparent border border-border rounded-md px-2" data-key="serviceShowed"></td>
-                <td class="p-4"><input type="text" value="${appointment.tips || ''}" style="width: 80px;" class="bg-transparent border border-border rounded-md px-2" placeholder="$0.00" data-key="tips"></td>
-                <td class="p-4">
-                    <select style="width: 80px;" class="bg-transparent border border-border rounded-md px-2" data-key="percentage">
-                        <option value="">%</option>
-                        ${["20%", "25%"].map(option => `<option value="${option}" ${appointment.percentage === option ? 'selected' : ''}>${option}</option>`).join('')}
-                    </select>
-                </td>
-                <td class="p-4">
-                    <select style="width: 120px;" class="bg-transparent border border-border rounded-md px-2" data-key="paymentMethod">
-                        <option value="">Select...</option>
-                        ${["Check", "American Express", "Apple Pay", "Discover", "Master Card", "Visa", "Zelle", "Cash", "Invoice"].map(option => `<option value="${option}" ${appointment.paymentMethod === option ? 'selected' : ''}>${option}</option>`).join('')}
-                    </select>
-                </td>
-                <td class="p-4">
-                    <select style="width: 100px;" class="bg-transparent border border-border rounded-md px-2" data-key="verification">
-                        <option value="">Select...</option>
-                        ${["Scheduled", "Showed", "Canceled"].map(option => `<option value="${option}" ${appointment.verification === option ? 'selected' : ''}>${option}</option>`).join('')}
-                    </select>
-                </td>
-            `;
-            showedAppointmentsTableBody.appendChild(row);
-        });
-    }
-
-    function renderDayItineraryTable() {
-        if (!dayItineraryTableBody) return;
-        dayItineraryTableBody.innerHTML = '';
-        itineraryResultsList.innerHTML = 'No route calculated.';
-        schedulingControls.classList.add('hidden');
-        const selectedDayOfWeek = dayFilter.value;
-        const selectedTechName = techSelectDropdown.value;
-        optimizeItineraryBtn.disabled = true;
-        itineraryReverserBtn.disabled = true;
-        if (!selectedTechName || selectedDayOfWeek === '') {
-            dayItineraryTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-muted-foreground">Select a day and a technician to view appointments.</td></tr>';
-            return;
-        }
-        const targetDate = getDayOfWeekDate(currentWeekStart, parseInt(selectedDayOfWeek, 10));
-        const dateKey = formatDateToYYYYMMDD(targetDate);
-        dayAppointments = allAppointments
-            .filter(appt => {
-                const apptDate = parseSheetDate(appt.appointmentDate);
-                const apptDateKey = apptDate ? formatDateToYYYYMMDD(apptDate) : null;
-                return appt.technician === selectedTechName && apptDateKey === dateKey;
-            })
-            .sort((a, b) => (parseSheetDate(a.appointmentDate)?.getTime() || 0) - (parseSheetDate(b.appointmentDate)?.getTime() || 0));
-        if (dayAppointments.length === 0) {
-            dayItineraryTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-muted-foreground">No appointments found for the selected day.</td></tr>';
-            return;
-        }
-        dayAppointments.forEach(appt => {
-            const row = document.createElement('tr');
-            row.className = 'border-b border-border hover:bg-muted/50';
-            const apptDate = parseSheetDate(appt.appointmentDate);
-            row.innerHTML = `
-                <td class="p-4 font-bold">${getTimeHHMM(apptDate)}</td>
-                <td class="p-4">${appt.customers}</td>
-                <td class="p-4">${appt.phone || ''}</td>
-                <td class="p-4">${appt.zipCode || 'N/A'}</td>
-                <td class="p-4">${appt.code || ''}</td>
-                <td class="p-4">${appt.verification || ''}</td>
-                <td class="p-4">${appt.technician || ''}</td>
-            `;
-            dayItineraryTableBody.appendChild(row);
-        });
-        if (dayAppointments.some(appt => appt.zipCode)) {
-            optimizeItineraryBtn.disabled = false;
-            itineraryReverserBtn.disabled = false;
-        }
-    }
     
-    // --- 7. Inicialização e Event Listeners ---
+    // As funções `renderShowedAppointmentsTable` e `renderDayItineraryTable` foram removidas pois os elementos HTML não existem mais no `calendar.html`
+    function renderShowedAppointmentsTable() {}
+    function renderDayItineraryTable() {}
+
+    // --- 7. Inicialização ---
 
     async function loadInitialData() {
         try {
@@ -535,8 +423,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const apptsData = await appointmentsResponse.json();
             allTechnicians = techData.technicians || [];
             allAppointments = (apptsData.appointments || []).filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
-            populateTechSelects(); 
-            await fetchAvailabilityForSelectedTech();
+            populateTechSelects();
             renderScheduler(); 
         } catch (error) {
             console.error('CRITICAL ERROR during loadInitialData:', error);
@@ -550,7 +437,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             option.value = tech;
             option.textContent = tech;
             techSelectDropdown.appendChild(option.cloneNode(true));
-            if (techConfigSelect) techConfigSelect.appendChild(option.cloneNode(true));
         });
     }
     
@@ -559,7 +445,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         selectedTechDisplay.textContent = selectedTechnician || 'No Technician Selected';
         await fetchAvailabilityForSelectedTech();
         renderScheduler(); 
-        handleDayFilterChange();
     }
 
     async function fetchAvailabilityForSelectedTech() {
@@ -577,23 +462,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             techAvailabilityBlocks = [];
         }
     }
-
-    function handleDayFilterChange() { renderDayItineraryTable(); }
-    async function handleOptimizeItinerary() { console.log("Optimize Itinerary Clicked"); } // Placeholder
-    async function handleItineraryReverser() { console.log("Itinerary Reverser Clicked"); } // Placeholder
-    async function handleApplyRoute() { console.log("Apply Route Clicked"); } // Placeholder
     
-    // Adiciona todos os event listeners
+    // --- 8. Adicionar Event Listeners ---
+    
     techSelectDropdown.addEventListener('change', handleTechSelectionChange);
     prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
         renderScheduler();
-        handleDayFilterChange();
     });
     nextWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
         renderScheduler();
-        handleDayFilterChange();
     });
     
     // Listeners dos Modais
@@ -607,12 +486,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     editBlockDeleteBtn.addEventListener('click', handleDeleteTimeBlock);
     editBlockCancelBtn.addEventListener('click', closeEditTimeBlockModal);
 
-    // Outros Listeners
-    if (dayFilter) dayFilter.addEventListener('change', handleDayFilterChange);
-    if (optimizeItineraryBtn) optimizeItineraryBtn.addEventListener('click', handleOptimizeItinerary);
-    if (itineraryReverserBtn) itineraryReverserBtn.addEventListener('click', handleItineraryReverser);
-    if (applyRouteBtn) applyRouteBtn.addEventListener('click', handleApplyRoute);
-    
     // --- Carga Inicial ---
     loadInitialData();
 });
