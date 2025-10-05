@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/lucide-static@latest/dist/umd/lucide.js"></script>
     
     <style>
+        /* Estilos do Calendário */
         .scheduler-grid {
             display: grid;
             grid-template-columns: 80px repeat(7, minmax(150px, 1fr)); 
@@ -40,11 +41,14 @@
         .day-column-header {
             text-align: center;
         }
+
+        /* Cores dos Blocos */
         .bg-custom-primary { background-color: hsl(337 100% 67%); }
         .bg-green-600 { background-color: rgb(22 163 74); }
         .bg-cherry-red { background-color: hsl(0 84% 45%); }
         .bg-yellow-confirmed { background-color: #f9d872; }
         
+        /* Estilos do Modal */
         .modal-overlay-fixed {
             position: fixed;
             top: 0;
@@ -58,33 +62,29 @@
             padding: 1rem;
             z-index: 1000;
         }
-
         body.modal-open {
             overflow: hidden !important; 
         }
-        
         .hidden {
             display: none !important;
         }
 
-        tr.is-saving {
-            background-color: hsl(var(--secondary) / 0.1);
-            transition: background-color: 0.3s;
-        }
-        tr.is-success {
-            background-color: hsl(142.1 76.2% 36.3% / 0.15);
-            transition: background-color: 0.3s;
-        }
-        tr.is-error {
-            background-color: hsl(0 84.2% 60.2% / 0.15);
-            transition: background-color: 0.3s;
+        /* Feedback de Salvamento */
+        tr.is-saving { background-color: hsl(var(--secondary) / 0.1); transition: background-color 0.3s; }
+        tr.is-success { background-color: hsl(142.1 76.2% 36.3% / 0.15); transition: background-color 0.3s; }
+        tr.is-error { background-color: hsl(0 84.2% 60.2% / 0.15); transition: background-color 0.3s; }
+
+        /* NOVO: Container principal com margens laterais */
+        .main-content-container {
+            margin-left: 200px;
+            margin-right: 200px;
         }
     </style>
 </head>
 <body class="bg-background">
 
     <header class="bg-card shadow-large border-b border-border sticky top-0 z-40">
-        <div class="max-w-[98rem] mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="main-content-container px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-4">
                     <button id="today-btn" class="px-4 py-2 text-sm font-medium border rounded-md hover:bg-muted">Today</button>
@@ -122,7 +122,7 @@
     </header>
 
     <main class="p-8">
-        <div class="max-w-[98rem] mx-auto space-y-8">
+        <div class="main-content-container space-y-8">
             <section class="rounded-lg border bg-card text-card-foreground shadow-large">
                 <div class="flex">
                     <div id="tech-filter-panel" class="w-64 border-r border-border p-4 space-y-4 flex-shrink-0">
@@ -260,7 +260,6 @@
             <h3 class="text-xl font-bold text-foreground mb-4">Edit Appointment Details</h3>
             <form id="appointment-edit-form" class="space-y-4">
                 <input type="hidden" id="modal-appt-id" name="id">
-                
                 <div class="space-y-2">
                     <label for="modal-date" class="block text-sm font-semibold text-foreground">Date and Time</label>
                     <input type="datetime-local" id="modal-date" name="appointmentDate" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
@@ -276,7 +275,6 @@
             </div>
         </div>
     </div>
-
     <div id="time-block-modal" class="modal-overlay-fixed hidden">
         <div class="bg-card p-6 rounded-lg shadow-2xl w-full max-w-md relative">
             <h3 class="text-xl font-bold text-foreground mb-4">Add New Time Block</h3>
@@ -306,7 +304,6 @@
             </div>
         </div>
     </div>
-    
     <div id="edit-time-block-modal" class="modal-overlay-fixed hidden">
         <div class="bg-card p-6 rounded-lg shadow-2xl w-full max-w-md relative">
             <h3 class="text-xl font-bold text-foreground mb-4">Edit Time Block Details</h3>
@@ -331,15 +328,8 @@
                     <textarea id="edit-block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm" placeholder="Ex: Lunch, Personal appointment..."></textarea>
                 </div>
             </form>
-            
             <div class="mt-6 flex justify-between items-center">
-                <button id="edit-block-delete-btn" type="button" 
-                        class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 transition-colors"
-                        style="background-color: #DC2626; color: white;"
-                        onmouseover="this.style.backgroundColor='#B91C1C'"
-                        onmouseout="this.style.backgroundColor='#DC2626'">
-                    Delete
-                </button>
+                <button id="edit-block-delete-btn" type="button" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 transition-colors" style="background-color: #DC2626; color: white;" onmouseover="this.style.backgroundColor='#B91C1C'" onmouseout="this.style.backgroundColor='#DC2626'">Delete</button>
                 <div class="flex gap-3">
                     <button id="edit-block-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">Save Changes</button>
                     <button id="edit-block-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">Cancel</button>
