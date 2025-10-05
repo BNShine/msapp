@@ -12,12 +12,11 @@ const serviceAccountAuth = new JWT({
     scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
 });
 
-// CORREÇÃO: Definindo os 3 IDs de planilha diferentes usados no seu projeto
 const SPREADSHEET_ID_APPOINTMENTS = process.env.SHEET_ID_APPOINTMENTS;
 const SPREADSHEET_ID_DATA = process.env.SHEET_ID_DATA;
-const SPREADSHEET_ID_GENERAL = process.env.SHEET_ID; // Usado para Users, Roles, e Availability
+const SPREADSHEET_ID_GENERAL = process.env.SHEET_ID;
 
-// --- Funções Auxiliares (sem alterações) ---
+// --- Funções Auxiliares ---
 
 async function getCityFromZip(zipCode) {
     if (!zipCode || zipCode.length !== 5) return null;
@@ -62,10 +61,9 @@ export default async function handler(req, res) {
             return res.status(404).json({ success: false, message: 'Could not find the city for the provided Zip Code.' });
         }
 
-        // CORREÇÃO: Carregando as 3 planilhas necessárias
         const docAppointments = new GoogleSpreadsheet(SPREADSHEET_ID_APPOINTMENTS, serviceAccountAuth);
         const docData = new GoogleSpreadsheet(SPREADSHEET_ID_DATA, serviceAccountAuth);
-        const docGeneral = new GoogleSpreadsheet(SPREADSHEET_ID_GENERAL, serviceAccountAuth); // Planilha de Availability
+        const docGeneral = new GoogleSpreadsheet(SPREADSHEET_ID_GENERAL, serviceAccountAuth);
         
         await Promise.all([docAppointments.loadInfo(), docData.loadInfo(), docGeneral.loadInfo()]);
 
@@ -77,6 +75,7 @@ export default async function handler(req, res) {
             .map(row => ({
                 nome: row.get('Name'),
                 cidades: JSON.parse(row.get('Cities') || '[]'),
+                restrictions: row.get('Restrictions') || 'N/A', // <-- CAPTURA AS RESTRIÇÕES
             }))
             .filter(tech => tech.cidades.some(city => city.trim().toLowerCase() === customerCity.trim().toLowerCase()));
 
@@ -84,9 +83,8 @@ export default async function handler(req, res) {
             return res.status(404).json({ success: false, message: `No technicians available for the city: ${customerCity}.` });
         }
         
-        // CORREÇÃO: Buscando cada planilha do 'doc' correto
         const sheetAppointments = docAppointments.sheetsByTitle[SHEET_NAME_APPOINTMENTS];
-        const sheetAvailability = docGeneral.sheetsByTitle[SHEET_NAME_AVAILABILITY]; // Busca na planilha correta
+        const sheetAvailability = docGeneral.sheetsByTitle[SHEET_NAME_AVAILABILITY];
         
         if (!sheetAppointments || !sheetAvailability) {
             throw new Error('Appointments or Availability sheet not found.');
@@ -95,6 +93,8 @@ export default async function handler(req, res) {
         const allAppointmentsRows = await sheetAppointments.getRows();
         const allBlocksRows = await sheetAvailability.getRows();
 
+        // NOVA LÓGICA: Coleta todas as opções disponíveis
+        let availabilityOptions = [];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -137,14 +137,20 @@ export default async function handler(req, res) {
                 }
 
                 if (availableSlots.length > 0) {
-                    return res.status(200).json({
-                        success: true,
+                    // Adiciona a opção encontrada ao array
+                    availabilityOptions.push({
                         technician: tech.nome,
+                        restrictions: tech.restrictions, // <-- INCLUI AS RESTRIÇÕES
                         date: currentDate.toISOString().split('T')[0],
                         availableSlots: availableSlots,
                     });
                 }
             }
+        }
+        
+        if (availabilityOptions.length > 0) {
+            // Retorna o array completo de opções
+            return res.status(200).json({ success: true, options: availabilityOptions });
         }
         
         return res.status(404).json({ success: false, message: 'No available appointments found in the next 14 days.' });
