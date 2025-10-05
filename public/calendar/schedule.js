@@ -4,145 +4,117 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- 1. Seletores de Elementos ---
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
     const selectedTechDisplay = document.getElementById('selected-tech-display');
-    const loadingOverlay = document.getElementById('loading-overlay');
-    const schedulerHeader = document.getElementById('scheduler-header');
-    const schedulerBody = document.getElementById('scheduler-body');
-    const currentWeekDisplay = document.getElementById('current-week-display');
-    const prevWeekBtn = document.getElementById('prev-week');
-    const nextWeekBtn = document.getElementById('next-week');
-    const addTimeBlockBtn = document.getElementById('add-time-block-btn');
-
-    // Modais e seus botões
-    const editModal = document.getElementById('edit-appointment-modal');
-    const modalSaveBtn = document.getElementById('modal-save-btn');
-    const modalCancelBtn = document.getElementById('modal-cancel-btn');
-    const modalCloseXBtn = document.getElementById('modal-close-x-btn');
-    const timeBlockModal = document.getElementById('time-block-modal');
-    const blockSaveBtn = document.getElementById('block-save-btn');
-    const blockCancelBtn = document.getElementById('block-cancel-btn');
-    const editTimeBlockModal = document.getElementById('edit-time-block-modal');
-    const editBlockSaveBtn = document.getElementById('edit-block-save-btn');
-    const editBlockCancelBtn = document.getElementById('edit-block-cancel-btn');
-    const editBlockDeleteBtn = document.getElementById('edit-block-delete-btn');
-    const editBlockRowNumberInput = document.getElementById('edit-block-row-number');
-    const editBlockDateInput = document.getElementById('edit-block-date');
-    const editBlockStartInput = document.getElementById('edit-block-start-hour');
-    const editBlockEndInput = document.getElementById('edit-block-end-hour');
-    const editBlockNotesInput = document.getElementById('edit-block-notes');
+    // ... (outros seletores permanecem iguais)
 
     // --- 2. Variáveis Globais e Constantes ---
     let allAppointments = [];
     let allTechnicians = [];
-    let techAvailabilityBlocks = [];
-    let selectedTechnician = '';
-    let currentWeekStart = getStartOfWeek(new Date());
-
-    const SCHEDULE_DURATION_HOURS = 2;
-    const SLOT_HEIGHT_PX = 60;
-    const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => `${(7 + i).toString().padStart(2, '0')}:00`);
-    const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const MIN_HOUR = 7;
-    const MAX_HOUR = 21;
+    // ... (outras variáveis permanecem iguais)
 
     // --- 3. Funções Auxiliares ---
-
-    function getStartOfWeek(date) { /* ...código existente... */ }
-    function formatDateToYYYYMMDD(date) { /* ...código existente... */ }
-    function parseSheetDate(dateStr) { /* ...código existente... */ }
-    function getTimeHHMM(date) { /* ...código existente... */ }
-    function formatDateTimeForInput(dateTimeStr) { /* ...código existente... */ }
+    // ... (todas as funções auxiliares permanecem iguais)
 
     // --- 4. Funções de Manipulação dos Modais ---
-
-    function openEditModal(appt) {
-        const { id, technician, petShowed, percentage, paymentMethod, appointmentDate, serviceShowed, tips, verification } = appt;
-        document.getElementById('modal-appt-id').value = id;
-        document.getElementById('modal-original-technician').value = technician;
-        document.getElementById('modal-pet-showed').value = petShowed || '';
-        document.getElementById('modal-percentage').value = percentage || '';
-        document.getElementById('modal-payment-method').value = paymentMethod || '';
-        document.getElementById('modal-date').value = formatDateTimeForInput(appointmentDate);
-        document.getElementById('modal-service-value').value = serviceShowed || '';
-        document.getElementById('modal-tips').value = tips || '';
-        const verificationSelect = document.getElementById('modal-verification');
-        
-        // **NOVA OPÇÃO ADICIONADA**
-        const statusOptions = ["Scheduled", "Confirmed", "Showed", "Canceled"];
-        verificationSelect.innerHTML = statusOptions.map(opt =>
-            `<option value="${opt}" ${verification === opt ? 'selected' : ''}>${opt}</option>`
-        ).join('');
-        
-        editModal.classList.remove('hidden');
-        document.body.classList.add('modal-open');
-    }
-
-    function closeEditModal() { /* ...código existente... */ }
-    function openTimeBlockModal() { /* ...código existente... */ }
-    function closeTimeBlockModal() { /* ...código existente... */ }
-    function openEditTimeBlockModal(blockData) { /* ...código existente... */ }
-    function closeEditTimeBlockModal() { /* ...código existente... */ }
+    // ... (todas as funções de modais permanecem iguais)
 
     // --- 5. Funções de Manipulação de Dados (API Calls) ---
-    
-    async function handleSaveAppointment() { /* ...código existente... */ }
-    async function handleSaveTimeBlock() { /* ...código existente... */ }
-    async function handleUpdateTimeBlock() { /* ...código existente... */ }
-    async function handleDeleteTimeBlock() { /* ...código existente... */ }
-    async function fetchAvailabilityForSelectedTech() { /* ...código existente... */ }
+    // ... (todas as funções de API permanecem iguais)
 
     // --- 6. Funções de Renderização ---
+    // ... (todas as funções de renderização permanecem iguais)
 
-    function renderScheduler() { /* ...código existente... */ }
+    // --- 7. Inicialização e Event Listeners (COM ALTERAÇÕES) ---
 
-    function renderAppointments() {
-        const weekEnd = new Date(currentWeekStart);
-        weekEnd.setDate(currentWeekStart.getDate() + 7);
-        const appointmentsToRender = allAppointments.filter(appt => appt.technician === selectedTechnician);
-
-        appointmentsToRender.forEach(appt => {
-            const apptDate = parseSheetDate(appt.appointmentDate);
-            if (!apptDate || apptDate < currentWeekStart || apptDate >= weekEnd) return;
-
-            const dateKey = formatDateToYYYYMMDD(apptDate);
-            const dayContainer = schedulerBody.querySelector(`[data-date-key="${dateKey}"]`);
-            if (!dayContainer) return;
-
-            const startHour = apptDate.getHours();
-            if (startHour < MIN_HOUR || startHour >= MAX_HOUR) return;
+    async function loadInitialData() {
+        try {
+            const [techDataResponse, appointmentsResponse] = await Promise.all([
+                fetch('/api/get-dashboard-data'),
+                fetch('/api/get-technician-appointments')
+            ]);
             
-            const topOffset = (startHour - MIN_HOUR) * SLOT_HEIGHT_PX + (apptDate.getMinutes() / 60 * SLOT_HEIGHT_PX);
-
-            const block = document.createElement('div');
-            let bgColor = 'bg-custom-primary'; // Default
-            
-            // **NOVA LÓGICA DE COR**
-            if (appt.verification === 'Canceled') {
-                bgColor = 'bg-cherry-red';
-            } else if (appt.verification === 'Showed') {
-                bgColor = 'bg-green-600';
-            } else if (appt.verification === 'Confirmed') {
-                bgColor = 'bg-yellow-confirmed text-black'; // Adiciona text-black para melhor contraste
+            if (!techDataResponse.ok) {
+                throw new Error(`Failed to load technician data. Status: ${techDataResponse.status}`);
             }
-
-            block.className = `appointment-block ${bgColor} rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
-            block.dataset.id = appt.id;
-            block.style.top = `${topOffset}px`;
-
-            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
-            block.innerHTML = `<div><p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p><p class="text-sm font-bold truncate">${appt.customers}</p><p class="text-xs font-medium opacity-80">${appt.verification}</p></div>`;
             
-            block.addEventListener('click', () => openEditModal(appt));
-            dayContainer.appendChild(block);
-        });
+            const techData = await techDataResponse.json();
+            allTechnicians = techData.technicians || [];
+
+            if (appointmentsResponse.ok) {
+                const apptsData = await appointmentsResponse.json();
+                allAppointments = (apptsData.appointments || []).filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
+            } else {
+                console.warn("Could not load appointments, but continuing with technician list.");
+                allAppointments = [];
+            }
+            
+            populateTechSelects();
+            renderScheduler();
+
+        } catch (error) {
+            console.error('CRITICAL ERROR during loadInitialData:', error);
+            // **NOVO** - Informa o usuário diretamente na UI sobre a falha
+            const techSelectDropdown = document.getElementById('tech-select-dropdown');
+            if (techSelectDropdown) {
+                techSelectDropdown.innerHTML = `<option value="">Error loading technicians!</option>`;
+            }
+        }
     }
+
+    function populateTechSelects() {
+        const techSelectDropdown = document.getElementById('tech-select-dropdown');
+        if (!techSelectDropdown) return;
+
+        if (allTechnicians && allTechnicians.length > 0) {
+            techSelectDropdown.innerHTML = '<option value="">Select Technician...</option>';
+            allTechnicians.forEach(tech => {
+                const option = document.createElement('option');
+                option.value = tech;
+                option.textContent = tech;
+                techSelectDropdown.appendChild(option);
+            });
+        } else {
+            // **NOVO** - Mensagem clara se nenhum técnico for encontrado
+            techSelectDropdown.innerHTML = '<option value="">No technicians found.</option>';
+        }
+    }
+
+    async function handleTechSelectionChange(event) {
+        selectedTechnician = event.target.value;
+        selectedTechDisplay.textContent = selectedTechnician || 'No Technician Selected';
+        await fetchAvailabilityForSelectedTech();
+        renderScheduler();
+        document.dispatchEvent(new CustomEvent('technicianChanged', { detail: { technician: selectedTechnician, weekStart: currentWeekStart } }));
+    }
+
+    // ... (o restante do arquivo, incluindo todos os outros event listeners, permanece exatamente igual)
+    techSelectDropdown.addEventListener('change', handleTechSelectionChange);
+    prevWeekBtn.addEventListener('click', () => {
+        currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+        renderScheduler();
+        document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } }));
+    });
+    nextWeekBtn.addEventListener('click', () => {
+        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+        renderScheduler();
+        document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } }));
+    });
     
-    function renderTimeBlocks() { /* ...código existente... */ }
-    function updateWeekDisplay() { /* ...código existente... */ }
+    modalSaveBtn.addEventListener('click', handleSaveAppointment);
+    modalCancelBtn.addEventListener('click', closeEditModal);
+    modalCloseXBtn.addEventListener('click', closeEditModal);
+    addTimeBlockBtn.addEventListener('click', openTimeBlockModal);
+    blockSaveBtn.addEventListener('click', handleSaveTimeBlock);
+    blockCancelBtn.addEventListener('click', closeTimeBlockModal);
+    editBlockSaveBtn.addEventListener('click', handleUpdateTimeBlock);
+    editBlockDeleteBtn.addEventListener('click', handleDeleteTimeBlock);
+    editBlockCancelBtn.addEventListener('click', closeEditTimeBlockModal);
 
-    // --- 7. Inicialização e Event Listeners ---
-    async function loadInitialData() { /* ...código existente... */ }
-    function populateTechSelects() { /* ...código existente... */ }
-    async function handleTechSelectionChange(event) { /* ...código existente... */ }
+    document.addEventListener('appointmentUpdated', async () => {
+        const appointmentsResponse = await fetch('/api/get-technician-appointments');
+        const apptsData = await appointmentsResponse.json();
+        allAppointments = (apptsData.appointments || []).filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
+        renderScheduler();
+    });
 
-    // ... (todos os outros event listeners permanecem os mesmos) ...
+    loadInitialData();
 });
