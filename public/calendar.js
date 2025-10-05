@@ -87,35 +87,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         const [datePart, timePart] = dateStr.split(' ');
         if (!datePart || !timePart) return null; 
         const dateParts = datePart.split('/');
-        const timeParts = timePart.split(':');
-        if (dateParts.length !== 3 || timeParts.length < 2) return null;
+        if (dateParts.length !== 3) return null;
         const [month, day, year] = dateParts.map(Number);
-        const [hour, minute] = timeParts.map(Number);
+        const [hour, minute] = timePart.split(':').map(Number);
         if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
         return new Date(year, month - 1, day, hour, minute); 
     }
     
     function getTimeHHMM(date) {
         if (!date) return '';
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes}`;
+        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
     }
     
     function formatDateTimeForInput(dateTimeStr) {
         if (!dateTimeStr) return '';
-        const [datePart, timePart] = dateTimeStr.split(' ');
-        if (!datePart || !timePart) return '';
-        const [month, day, year] = datePart.split('/');
-        const [hour, minute] = timePart.split(':').map(Number);
-        if (year && month && day) {
-             const paddedHour = String(hour).padStart(2, '0');
-             const paddedMinute = String(minute).padStart(2, '0');
-            return `${year}-${month.toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}T${paddedHour}:${paddedMinute}`; 
-        }
-        return '';
+        const date = parseSheetDate(dateTimeStr);
+        if (!date) return '';
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const hour = date.getHours().toString().padStart(2, '0');
+        const minute = date.getMinutes().toString().padStart(2, '0');
+        return `${year}-${month}-${day}T${hour}:${minute}`;
     }
-
+    
     function getDayOfWeekDate(startOfWeekDate, dayOfWeek) {
         const date = new Date(startOfWeekDate);
         date.setDate(startOfWeekDate.getDate() + dayOfWeek);
@@ -140,6 +135,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
     }
 
+    async function fetchGoogleMapsApiKey() {
+        if (GOOGLE_MAPS_API_KEY) return;
+        try {
+            const response = await fetch('/api/get-google-maps-api-key');
+            if (response.ok) {
+                const data = await response.json();
+                GOOGLE_MAPS_API_KEY = data.apiKey;
+                if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
+                    document.head.appendChild(script);
+                } else {
+                    window.initMap();
+                }
+            } else {
+                console.error('Failed to fetch Google Maps API key.');
+            }
+        } catch (error) {
+            console.error('Error fetching Google Maps API key:', error);
+        }
+    }
+    
     // --- 4. Funções de Manipulação dos Modais ---
 
     function openEditModal(appt) {
@@ -341,8 +358,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             techAvailabilityBlocks = [];
         }
     }
-    
-    // --- 6. Funções de Renderização do Calendário e Tabelas ---
+
+    // --- 6. Funções de Renderização ---
 
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
@@ -456,7 +473,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function renderShowedAppointmentsTable() {
-        // ... (código da tabela)
+        // ... (código da tabela, sem alterações)
     }
 
     function renderDayItineraryTable() {
@@ -506,13 +523,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- 7. Lógica de Otimização de Rota ---
-
+    // --- 7. Lógica de Otimização de Rota Restaurada ---
     async function runItineraryOptimization(isReversed = false) {
         if (!directionsService) {
-            await fetchGoogleMapsApiKey(); // Tenta carregar se não estiver pronto
+            await fetchGoogleMapsApiKey();
             if (!directionsService) {
-                 itineraryResultsList.innerHTML = '<p class="text-red-600">Google Maps Service is not initialized. Please wait a moment and try again.</p>';
+                itineraryResultsList.innerHTML = '<p class="text-red-600">Google Maps Service is not initialized. Please wait and try again.</p>';
                 return;
             }
         }
@@ -534,9 +550,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         for (const appt of dayAppointments) {
             if (appt.zipCode) {
                 const [lat, lon] = await getLatLon(appt.zipCode);
-                if (lat !== null) {
-                    validAppointments.push({ ...appt, lat, lon });
-                }
+                if (lat !== null) validAppointments.push({ ...appt, lat, lon });
             }
         }
 
@@ -549,7 +563,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const [originLat, originLon] = await getLatLon(originZip);
         if (originLat === null) {
-            itineraryResultsList.innerHTML = '<p class="text-red-600">Error: Could not get coordinates for technician origin Zip Code.</p>';
+            itineraryResultsList.innerHTML = '<p class="text-red-600">Could not get coordinates for technician origin Zip Code.</p>';
             optimizeItineraryBtn.disabled = false;
             itineraryReverserBtn.disabled = false;
             return;
@@ -561,9 +575,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         while (unvisited.length > 0) {
             let closest = unvisited.reduce((closest, current) => {
                 const dist = calculateDistance(currentLat, currentLon, current.lat, current.lon);
-                if (dist < closest.minDistance) {
-                    return { minDistance: dist, client: current };
-                }
+                if (dist < closest.minDistance) return { minDistance: dist, client: current };
                 return closest;
             }, { minDistance: Infinity, client: null });
             
