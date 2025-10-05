@@ -3,6 +3,7 @@
 // Define initMap globalmente para ser usada como callback pelo script do Google Maps.
 window.initMap = function() {
     const itineraryMapContainer = document.getElementById('itinerary-map');
+    // Adiciona log de diagnóstico para verificar se o objeto Google Maps está pronto
     if (itineraryMapContainer && typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
         map = new google.maps.Map(itineraryMapContainer, {
             center: { lat: 39.8283, lng: -98.5795 }, // Centro dos EUA
@@ -16,7 +17,9 @@ window.initMap = function() {
             map: map,
             suppressMarkers: true // Suppress default A, B, C markers
         });
-        console.log('Google Maps services initialized.');
+        console.log('[MAP LOG 4/4 SUCESSO] Google Maps services initialized and variables set.');
+    } else {
+        console.error('[MAP LOG 4/4 FALHA] Google or google.maps object not available in initMap. Check network status for script.');
     }
 }
 
@@ -114,10 +117,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchGoogleMapsApiKey() {
         if (GOOGLE_MAPS_API_KEY) return;
         try {
+            console.log('[MAP LOG 1/4] Fetching API key from backend...');
             const response = await fetch('/api/get-google-maps-api-key');
             if (response.ok) {
                 const data = await response.json();
                 GOOGLE_MAPS_API_KEY = data.apiKey;
+                console.log('[MAP LOG 2/4] API Key received. Injecting script...');
                 
                 // Inject script only if it's not present
                 if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
@@ -126,8 +131,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     script.async = true;
                     script.defer = true;
                     document.head.appendChild(script);
+                    console.log('[MAP LOG 3/4] Script injected. Waiting for callback (initMap)...');
                 } else {
                     window.initMap(); // Call it immediately if API is already loaded
+                    console.log('[MAP LOG 3/4] Script already loaded. Calling initMap directly.');
                 }
             } else {
                 console.error('Falha ao buscar a chave da API do Google Maps.');
