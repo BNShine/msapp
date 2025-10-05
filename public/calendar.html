@@ -21,8 +21,10 @@
             position: relative;
         }
         .appointment-block {
+            /* NOTA: A largura dos blocos de agendamento e de tempo é fixada em 150px para consistência visual. */
+            /* Se as colunas do calendário mudarem, este valor pode precisar de ajuste. */
+            width: 150px;
             height: 120px; 
-            width: 100%; /* Alterado para ocupar a largura total da coluna */
             position: absolute;
             left: 0;
             top: 0; 
@@ -237,27 +239,6 @@
                     No route calculated.
                 </div>
             </section>
-            <section class="rounded-lg border bg-card text-card-foreground shadow-large p-6">
-                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">Technician Availability Configuration</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="space-y-2 col-span-2">
-                        <label for="tech-config-select" class="block text-sm font-semibold text-foreground">Select Technician to Configure</label>
-                        <select id="tech-config-select" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                            <option value="">Select Technician</option>
-                        </select>
-                    </div>
-                    <div class="space-y-2">
-                        <label for="save-availability-btn" class="block text-sm font-semibold text-foreground opacity-0">Action</label>
-                        <button id="save-availability-btn" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
-                            Save Availability
-                        </button>
-                    </div>
-                </div>
-                
-                <div id="availability-form-container" class="mt-6 space-y-4">
-                    <p class="text-muted-foreground p-4 border rounded-lg bg-muted/10">Select a technician above to manage their weekly working hours (8:00 to 18:00 range).</p>
-                </div>
-            </section>
         </div>
     </main>
     
@@ -362,5 +343,6 @@
             </div>
         </div>
     </div>
-    </body>
+
+</body>
 </html>
