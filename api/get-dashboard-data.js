@@ -34,7 +34,7 @@ export default async function handler(req, res) {
         await Promise.all([docAppointments.loadInfo(), docData.loadInfo()]);
         console.log('[API LOG] Spreadsheets info loaded.');
 
-        // --- Busca de Técnicos (com logs detalhados) ---
+        // --- LÓGICA DE BUSCA DE TÉCNICOS (MAIS ROBUSTA) ---
         console.log(`[API LOG] Attempting to find sheet: "${SHEET_NAME_TECHNICIANS}"`);
         const sheetTechnicians = docData.sheetsByTitle[SHEET_NAME_TECHNICIANS];
         
@@ -43,22 +43,25 @@ export default async function handler(req, res) {
             const rows = await sheetTechnicians.getRows();
             console.log(`[API LOG] Found ${rows.length} rows in Technicians sheet.`);
             
-            // Supondo que o nome do técnico está na primeira coluna (cabeçalho deve existir)
-            const header = sheetTechnicians.headerValues[0];
-            if (header) {
+            // Procura por um cabeçalho chamado "Technician" ou "Name" (case-insensitive)
+            const headerValue = sheetTechnicians.headerValues.find(h => h.toLowerCase() === 'technician' || h.toLowerCase() === 'name');
+
+            if (headerValue) {
+                 console.log(`[API LOG] Found technician header: "${headerValue}"`);
                  rows.forEach(row => {
-                    const techName = row.get(header);
+                    const techName = row.get(headerValue);
                     if (techName) {
                         technicians.push(techName);
                     }
                 });
                 console.log(`[API LOG] Extracted ${technicians.length} technicians.`);
             } else {
-                 console.error(`[API ERROR] No header found in the first column of "${SHEET_NAME_TECHNICIANS}" sheet.`);
+                 console.error(`[API ERROR] Could not find a 'Technician' or 'Name' column in the "${SHEET_NAME_TECHNICIANS}" sheet.`);
             }
         } else {
-            console.error(`[API ERROR] FAILED to find sheet "${SHEET_NAME_TECHNICIANS}". Please check the sheet name in your Google Sheets and in 'api/configs/sheets-config.js'.`);
+            console.error(`[API ERROR] FAILED to find sheet "${SHEET_NAME_TECHNICIANS}".`);
         }
+        // --- FIM DA LÓGICA DE BUSCA DE TÉCNICOS ---
 
         // --- Buscas Resilientes (sem alterações) ---
         const sheetEmployees = docData.sheetsByTitle[SHEET_NAME_EMPLOYEES];
