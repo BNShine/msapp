@@ -23,20 +23,18 @@ export default async function handler(req, res) {
     try {
         const { type, data, pets, closer1, closer2, customers, phone, oldNew, appointmentDate, serviceValue, franchise, city, source, week, month, year, code, reminderDate, verification, zipCode, technician } = req.body;
 
-        // Validação de campos essenciais (inclusão de 'technician' aqui)
-        if (!type || !data || !customers || !phone || !appointmentDate || !serviceValue || !franchise || !city || !source) {
-            return res.status(400).json({ success: false, message: 'Todos os campos obrigatórios precisam ser preenchidos.' });
+        // Validação de campos essenciais
+        if (!type || !data || !customers || !phone || !appointmentDate || !serviceValue || !franchise || !city || !source || !code) {
+            return res.status(400).json({ success: false, message: 'Todos os campos obrigatórios, incluindo o código, precisam ser preenchidos.' });
         }
         
         if (!verification) {
              return res.status(400).json({ success: false, message: 'O campo de verificação está faltando.' });
         }
         
-        // --- NOVA VALIDAÇÃO OBRIGATÓRIA (Suggested Technician) ---
         if (!technician) {
             return res.status(400).json({ success: false, message: 'O campo Suggested Technician é obrigatório.' });
         }
-        // --------------------------------------------------------
 
         await doc.loadInfo();
         const sheet = doc.sheetsByTitle[SHEET_NAME_APPOINTMENTS];
@@ -44,9 +42,18 @@ export default async function handler(req, res) {
             return res.status(500).json({ success: false, message: `Planilha "${SHEET_NAME_APPOINTMENTS}" não encontrada.` });
         }
 
+        // --- NOVA LÓGICA DE VERIFICAÇÃO DE CÓDIGO ---
+        const rows = await sheet.getRows();
+        const codeExists = rows.some(row => row.get('Code') === code);
+
+        if (codeExists) {
+            // Retorna um erro 409 Conflict se o código já existir
+            return res.status(409).json({ success: false, message: `Erro: O código de confirmação "${code}" já existe. O agendamento pode ser um duplicado.` });
+        }
+        // --- FIM DA NOVA LÓGICA ---
+
         const newRow = {
             'Type': type,
-            // 'Date' is YYYY-MM-DD from form; saving it directly to Sheets relies on Google's automatic format interpretation.
             'Date': data,
             'Pets': pets,
             'Closer (1)': closer1, 
@@ -54,7 +61,7 @@ export default async function handler(req, res) {
             'Customers': customers,
             'Phone': phone,
             'Old/New': oldNew,
-            'Date (Appointment)': appointmentDate, // MM/DD/YYYY HH:MM (sent from frontend)
+            'Date (Appointment)': appointmentDate,
             'Service Value': serviceValue,
             'Franchise': franchise,
             'City': city,
@@ -63,10 +70,10 @@ export default async function handler(req, res) {
             'Month': month,
             'Year': year,
             'Code': code,
-            'Reminder Date': reminderDate, // MM/DD/YYYY (sent from frontend)
+            'Reminder Date': reminderDate,
             'Verification': verification, 
             'Zip Code': zipCode,
-            'Technician': technician, // Campo salvo
+            'Technician': technician,
         };
 
         await sheet.addRow(newRow);
