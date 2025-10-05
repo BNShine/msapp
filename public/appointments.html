@@ -100,71 +100,42 @@
 
     <main class="flex-1 p-8 overflow-y-auto">
         <div class="max-w-7xl mx-auto space-y-8">
-
             <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-gradient-subtle p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-medium text-muted-foreground">Today's Appointments</h3>
-                        <div class="h-8 w-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
-                        </div>
-                    </div>
-                    <div class="flex flex-col space-y-2">
-                        <p id="todayAppointmentsCount" class="text-4xl font-bold text-foreground">0</p>
-                        <p id="appointmentDifference" class="text-sm font-medium text-green-600"></p>
-                    </div>
-                </div>
+                 </section>
 
-                <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-gradient-subtle p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-medium text-muted-foreground">Customers This Month</h3>
-                        <div class="h-8 w-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                        </div>
-                    </div>
-                    <div class="flex flex-col space-y-2">
-                        <p id="customersThisMonthCount" class="text-4xl font-bold text-foreground">0</p>
-                        <p id="customersThisMonthPercentage" class="text-sm font-medium text-green-600"></p>
-                    </div>
-                </div>
-
-                <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-gradient-subtle p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-medium text-muted-foreground">Pets Scheduled</h3>
-                        <div class="h-8 w-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-paw-print"><path d="M12.636 18.257l-1.414 1.414a2 2 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.828 0z"/><path d="M15.414 19.671l-1.414 1.414a2 2 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.828 0z"/><path d="M18.192 21.085l-1.414 1.414a2 2 0 0 1-2.828 0l-1.414-1.414a2 2 0 0 1 0-2.828l1.414-1.414a2 2 0 0 1 2.828 0z"/><path d="M5.5 17.5a4 4 0 1 1-2.828 6.828"/><path d="M18.5 17.5a4 4 0 1 1-6.828 2.828"/></svg>
-                        </div>
-                    </div>
-                    <div class="flex flex-col space-y-2">
-                        <p id="petsThisMonthCount" class="text-4xl font-bold text-foreground">0</p>
-                        <p id="petsThisMonthPercentage" class="text-sm font-medium text-green-600"></p>
-                    </div>
-                </div>
-
-                <div class="rounded-lg border bg-card text-card-foreground shadow-sm bg-gradient-subtle p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-medium text-muted-foreground">Top Closer</h3>
-                        <div class="h-8 w-8 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-award"><circle cx="12" cy="8" r="6"/><path d="M15.4 14.8c-.8 1.4-2.1 2.2-3.4 2.2s-2.6-.8-3.4-2.2c-.4-.7-1-1-1.6-1s-1.2.3-1.6 1c-.8 1.4-2.1 2.2-3.4 2.2s-2.6-.8-3.4-2.2"/><path d="M12 2v4"/></svg>
-                        </div>
-                    </div>
-                    <div class="flex flex-col space-y-2">
-                        <p id="bestSellerName" class="text-4xl font-bold text-foreground">--</p>
-                        <p class="text-sm font-medium text-muted-foreground">This month's top performer</p>
-                    </div>
-                </div>
-            </section>
-
-            <section class="rounded-lg border bg-card text-card-foreground shadow-large">
+            <section id="availability-checker-section" class="rounded-lg border bg-card text-card-foreground shadow-large">
                 <div class="flex flex-col space-y-1.5 p-6 border-b border-border">
                     <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                        Register New Appointment (E2E Lead Track)
+                        1. Smart Availability Check
+                    </h2>
+                    <p class="text-sm text-muted-foreground">Enter the customer's Zip Code to find the nearest technician and the next available date.</p>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                        <div class="space-y-2 md:col-span-1">
+                            <label for="customer-zip-code" class="block text-sm font-semibold text-foreground">Customer Zip Code</label>
+                            <input type="text" id="customer-zip-code" name="customer-zip-code" required class="input-style" placeholder="Enter 5-digit Zip Code">
+                        </div>
+                        <div class="space-y-2">
+                            <button type="button" id="verify-availability-btn" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-base font-bold bg-gradient-secondary text-secondary-foreground hover:shadow-brand hover:-translate-y-0.5 transform transition-all duration-300 h-12 px-8">
+                                Check Availability
+                            </button>
+                        </div>
+                    </div>
+                    <div id="availability-results" class="mt-6 p-4 border-t border-border">
+                        </div>
+                </div>
+            </section>
+            
+            <section id="main-appointment-form" class="hidden rounded-lg border bg-card text-card-foreground shadow-large">
+                <div class="flex flex-col space-y-1.5 p-6 border-b border-border">
+                    <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                        2. Register New Appointment
                     </h2>
                     <p class="text-sm text-muted-foreground">Fill in all mandatory fields to create a new Lead in the Sales Pipeline.</p>
                 </div>
                 
                 <form id="scheduleForm" class="p-6">
-                    
                     <div class="mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
                         <h3 class="text-xl font-semibold mb-6 text-foreground/80 flex items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-check"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 11 2 2 4-4"/></svg>
@@ -253,7 +224,6 @@
                     </div>
                     
                     <div class="mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
-                        
                         <div class="space-y-2 hidden">
                             <input type="date" id="data" name="data" class="input-style">
                             <select id="type" name="type"><option value="Central">Central</option></select>
@@ -261,24 +231,19 @@
                             <select id="month" name="month"><option value="1">1</option></select>
                             <select id="year" name="year"><option value="2025">2025</option></select>
                         </div>
-
                         <div class="flex flex-wrap md:flex-nowrap gap-6 mb-6">
-                            
                             <div class="w-full md:w-1/4 space-y-2">
                                 <label for="codePassDisplay" class="block text-sm font-semibold text-foreground">Confirmation Code (Generated)</label>
                                 <div id="codePassDisplay" class="h-12 flex items-center input-display-style text-foreground/80">--/--/----</div>
                             </div>
-                            
                             <div class="w-full md:w-1/4 space-y-2">
                                 <label for="statusDisplay" class="block text-sm font-semibold text-foreground">Status</label>
                                 <div id="statusDisplay" class="h-12 flex items-center input-display-style text-green-600 font-bold">Scheduled</div>
                             </div>
-                            
                             <div class="w-full md:w-1/4 space-y-2">
                                 <label for="reminderDateDisplay" class="block text-sm font-semibold text-foreground">Reminder Date (5 Months)</label>
                                 <div id="reminderDateDisplay" class="h-12 flex items-center input-display-style text-foreground/80">--/--/----</div>
                             </div>
-
                             <div class="w-full md:w-1/4 space-y-2">
                                 <label for="suggestedTechDisplay" class="block text-sm font-semibold text-foreground">Suggested Technician</label>
                                 <div id="suggestedTechDisplay" class="h-12 w-full flex items-center input-display-style text-muted-foreground font-medium">--/--/----</div>
@@ -299,30 +264,21 @@
 
     <style>
         .input-style {
-            /* Borda cinza escura para ser visível mesmo quando inativo */
             @apply mt-1 block w-full h-12 rounded-xl border-2 border-foreground/80 hover:border-brand-primary transition-colors bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
         }
         .input-display-style {
-            /* Estilo da div de display baseado no input-style, garantindo padding e borda */
             @apply mt-1 w-full rounded-xl border-2 border-foreground/80 bg-muted/50 px-3 py-2 text-sm font-mono;
         }
-
-        /* Forces text color for datetime-local to appear */
         input[type="datetime-local"] {
             color: hsl(var(--foreground));
         }
-        
-        /* [FIX] Fix para preenchimento automático do navegador (auto-fill) */
         input:-webkit-autofill,
         input:-webkit-autofill:hover, 
         input:-webkit-autofill:focus, 
         input:-webkit-autofill:active  {
-            /* Usa uma sombra interna para forçar o background-color */
             -webkit-box-shadow: 0 0 0px 1000px hsl(var(--muted) / 0.5) inset !important;
-            /* Garante que a cor do texto seja foreground e a borda seja visível */
             -webkit-text-fill-color: hsl(var(--foreground)) !important;
             border-color: hsl(var(--foreground) / 0.8) !important;
-            /* Mantém a transição suave */
             transition: background-color 5000s ease-in-out 0s !important;
         }
     </style>
