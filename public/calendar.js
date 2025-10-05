@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- 3. Declaração de Todas as Funções ---
 
+    // Funções Auxiliares (Datas, Geo, Formatação)
     function getStartOfWeek(date) {
         const d = new Date(date);
         d.setHours(0, 0, 0, 0);
@@ -114,6 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return date;
     }
 
+    // Funções de Manipulação dos Modais
     function openEditModal(appt) {
         const { id, technician, petShowed, percentage, paymentMethod, appointmentDate, serviceShowed, tips, verification } = appt;
         document.getElementById('modal-appt-id').value = id;
@@ -166,6 +168,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.classList.remove('modal-open');
     }
 
+    // Funções de Manipulação de Dados (API Calls)
     async function handleSaveAppointment() {
         modalSaveBtn.textContent = 'Saving...';
         modalSaveBtn.disabled = true;
@@ -296,6 +299,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Funções de Renderização
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
         schedulerBody.innerHTML = '';
@@ -327,9 +331,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         renderAppointments(columnMap);
         renderTimeBlocks(columnMap);
-        // renderShowedAppointmentsTable(); // Esta função foi removida pois não está no HTML
+        renderShowedAppointmentsTable();
         updateWeekDisplay();
-        // renderDayItineraryTable(); // Esta função foi removida pois não está no HTML
+        renderDayItineraryTable();
+        loadingOverlay.classList.toggle('hidden', !!selectedTechnician);
     }
     
     function renderAppointments(columnMap) {
@@ -406,12 +411,93 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentWeekDisplay.textContent = `${currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}`;
     }
     
-    // As funções `renderShowedAppointmentsTable` e `renderDayItineraryTable` foram removidas pois os elementos HTML não existem mais no `calendar.html`
-    function renderShowedAppointmentsTable() {}
-    function renderDayItineraryTable() {}
+    function renderShowedAppointmentsTable() {
+        if (!showedAppointmentsTableBody) return;
+        showedAppointmentsTableBody.innerHTML = '';
+        const weekEnd = new Date(currentWeekStart);
+        weekEnd.setDate(currentWeekStart.getDate() + 7);
+        const appointmentsForWeek = allAppointments.filter(appt => {
+            const apptDate = parseSheetDate(appt.appointmentDate);
+            return appt.technician === selectedTechnician && apptDate >= currentWeekStart && apptDate < weekEnd;
+        }).sort((a, b) => (parseSheetDate(a.appointmentDate)?.getTime() || 0) - (parseSheetDate(b.appointmentDate)?.getTime() || 0));
+        
+        if (appointmentsForWeek.length === 0) {
+            showedAppointmentsTableBody.innerHTML = '<tr><td colspan="10" class="p-4 text-center text-muted-foreground">No appointments for this technician in the selected week.</td></tr>';
+            return;
+        }
+        
+        appointmentsForWeek.forEach(appointment => {
+            const row = document.createElement('tr');
+            row.className = 'border-b border-border hover:bg-muted/50';
+            row.dataset.rowId = appointment.id;
+            row.innerHTML = `
+                <td class="p-4"><input type="datetime-local" value="${formatDateTimeForInput(appointment.appointmentDate)}" style="width: 160px;" class="bg-transparent border border-border rounded-md px-2" data-key="appointmentDate"></td>
+                <td class="p-4">${appointment.customers.length > 18 ? appointment.customers.substring(0, 15) + '...' : appointment.customers}</td>
+                <td class="p-4">${appointment.code}</td>
+                <td class="p-4"><input type="text" value="${appointment.technician}" class="bg-transparent border border-border rounded-md px-2" data-key="technician" disabled></td>
+                <td class="p-4"><select style="width: 60px;" class="bg-transparent border border-border rounded-md px-2" data-key="petShowed"><option value="">Pets</option>${Array.from({ length: 10 }, (_, i) => i + 1).map(num => `<option value="${num}" ${appointment.petShowed == String(num) ? 'selected' : ''}>${num}</option>`).join('')}</select></td>
+                <td class="p-4"><input type="text" value="${appointment.serviceShowed || ''}" style="width: 100px;" class="bg-transparent border border-border rounded-md px-2" data-key="serviceShowed"></td>
+                <td class="p-4"><input type="text" value="${appointment.tips || ''}" style="width: 80px;" class="bg-transparent border border-border rounded-md px-2" data-key="tips"></td>
+                <td class="p-4"><select style="width: 80px;" class="bg-transparent border border-border rounded-md px-2" data-key="percentage"><option value="">%</option>${["20%", "25%"].map(opt => `<option value="${opt}" ${appointment.percentage === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select></td>
+                <td class="p-4"><select style="width: 120px;" class="bg-transparent border border-border rounded-md px-2" data-key="paymentMethod"><option value="">Select...</option>${["Check", "American Express", "Apple Pay", "Discover", "Master Card", "Visa", "Zelle", "Cash", "Invoice"].map(opt => `<option value="${opt}" ${appointment.paymentMethod === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select></td>
+                <td class="p-4"><select style="width: 100px;" class="bg-transparent border border-border rounded-md px-2" data-key="verification"><option value="">Select...</option>${["Scheduled", "Showed", "Canceled"].map(opt => `<option value="${opt}" ${appointment.verification === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select></td>
+            `;
+            showedAppointmentsTableBody.appendChild(row);
+        });
+    }
 
-    // --- 7. Inicialização ---
+    function renderDayItineraryTable() {
+        if (!dayItineraryTableBody) return;
+        dayItineraryTableBody.innerHTML = '';
+        itineraryResultsList.innerHTML = 'No route calculated.';
+        schedulingControls.classList.add('hidden');
+        const selectedDayOfWeek = dayFilter.value;
+        const selectedTechName = techSelectDropdown.value;
+        optimizeItineraryBtn.disabled = true;
+        itineraryReverserBtn.disabled = true;
+        if (!selectedTechName || selectedDayOfWeek === '') {
+            dayItineraryTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-muted-foreground">Select a day and a technician to view appointments.</td></tr>';
+            return;
+        }
+        const targetDate = getDayOfWeekDate(currentWeekStart, parseInt(selectedDayOfWeek, 10));
+        const dateKey = formatDateToYYYYMMDD(targetDate);
+        dayAppointments = allAppointments
+            .filter(appt => {
+                const apptDate = parseSheetDate(appt.appointmentDate);
+                const apptDateKey = apptDate ? formatDateToYYYYMMDD(apptDate) : null;
+                return appt.technician === selectedTechName && apptDateKey === dateKey;
+            })
+            .sort((a, b) => (parseSheetDate(a.appointmentDate)?.getTime() || 0) - (parseSheetDate(b.appointmentDate)?.getTime() || 0));
+        if (dayAppointments.length === 0) {
+            dayItineraryTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-muted-foreground">No appointments found for the selected day.</td></tr>';
+            return;
+        }
+        dayAppointments.forEach(appt => {
+            const row = document.createElement('tr');
+            row.className = 'border-b border-border hover:bg-muted/50';
+            const apptDate = parseSheetDate(appt.appointmentDate);
+            row.innerHTML = `
+                <td class="p-4 font-bold">${getTimeHHMM(apptDate)}</td>
+                <td class="p-4">${appt.customers}</td>
+                <td class="p-4">${appt.phone || ''}</td>
+                <td class="p-4">${appt.zipCode || 'N/A'}</td>
+                <td class="p-4">${appt.code || ''}</td>
+                <td class="p-4">${appt.verification || ''}</td>
+                <td class="p-4">${appt.technician || ''}</td>
+            `;
+            dayItineraryTableBody.appendChild(row);
+        });
+        if (dayAppointments.some(appt => appt.zipCode)) {
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+        }
+    }
+    
+    async function handleOptimizeItinerary() { /* Placeholder */ }
+    async function handleItineraryReverser() { /* Placeholder */ }
 
+    // --- Inicialização e Event Listeners ---
+    
     async function loadInitialData() {
         try {
             const [techDataResponse, appointmentsResponse] = await Promise.all([
@@ -423,7 +509,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const apptsData = await appointmentsResponse.json();
             allTechnicians = techData.technicians || [];
             allAppointments = (apptsData.appointments || []).filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
-            populateTechSelects();
+            populateTechSelects(); 
             renderScheduler(); 
         } catch (error) {
             console.error('CRITICAL ERROR during loadInitialData:', error);
@@ -447,6 +533,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderScheduler(); 
     }
 
+    function handleDayFilterChange() {
+        renderDayItineraryTable();
+    }
+
     async function fetchAvailabilityForSelectedTech() {
         if (!selectedTechnician) {
             techAvailabilityBlocks = [];
@@ -463,19 +553,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // --- 8. Adicionar Event Listeners ---
-    
+    // Adiciona todos os event listeners
     techSelectDropdown.addEventListener('change', handleTechSelectionChange);
     prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
         renderScheduler();
+        handleDayFilterChange();
     });
     nextWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
         renderScheduler();
+        handleDayFilterChange();
     });
     
-    // Listeners dos Modais
     modalSaveBtn.addEventListener('click', handleSaveAppointment);
     modalCancelBtn.addEventListener('click', closeEditModal); 
     modalCloseXBtn.addEventListener('click', closeEditModal);
@@ -485,6 +575,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     editBlockSaveBtn.addEventListener('click', handleUpdateTimeBlock);
     editBlockDeleteBtn.addEventListener('click', handleDeleteTimeBlock);
     editBlockCancelBtn.addEventListener('click', closeEditTimeBlockModal);
+    if (dayFilter) dayFilter.addEventListener('change', handleDayFilterChange);
+    if (optimizeItineraryBtn) optimizeItineraryBtn.addEventListener('click', handleOptimizeItinerary);
+    if (itineraryReverserBtn) itineraryReverserBtn.addEventListener('click', handleItineraryReverser);
 
     // --- Carga Inicial ---
     loadInitialData();
