@@ -11,7 +11,7 @@ window.initMap = function() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', async () => { // CORREÇÃO: Bloco aberto
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
     const selectedTechDisplay = document.getElementById('selected-tech-display');
     const loadingOverlay = document.getElementById('loading-overlay');
