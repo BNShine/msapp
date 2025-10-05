@@ -635,3 +635,391 @@ document.addEventListener('DOMContentLoaded', async () => {
             row.innerHTML = `
                 <td class="p-4 font-bold">${apptTime}</td>
                 <td class="p-4">${appt.customers}</td>
+                <td class="p-4">${appt.phone || ''}</td>
+                <td class="p-4 zip-code-cell">${appt.zipCode || 'N/A'}</td>
+                <td class="p-4">${appt.code || ''}</td>
+                <td class="p-4">${appt.verification || ''}</td>
+                <td class="p-4">${appt.technician || ''}</td>
+            `;
+            dayItineraryTableBody.appendChild(row);
+        });
+
+        // Enable buttons if there are appointments with zip codes
+        if (dayAppointments.some(appt => appt.zipCode && appt.zipCode.length > 0)) {
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+        }
+    }
+
+    // --- NEW: Itinerary Optimization Logic ---
+
+    function clearCustomMarkers() {
+        // Marcadores customizados removidos, esta função fica vazia
+    }
+
+    async function runItineraryOptimization(appointments, isReversed = false) {
+        // Verifica se o DirectionsService está disponível
+        if (typeof google === 'undefined' || typeof google.maps === 'undefined' || typeof google.maps.DirectionsService === 'undefined') {
+            itineraryResultsList.innerHTML = '<p class="text-red-600">Google Maps Service is not initialized. Não é possível calcular tempo/distância. Verifique a chave API.</p>';
+            return;
+        } else {
+             directionsService = new google.maps.DirectionsService();
+        }
+        
+        const techCoverageResponse = await fetch('/api/get-tech-coverage');
+        const techCoverageData = techCoverageResponse.ok ? await techCoverageResponse.json() : [];
+        const selectedTechObj = techCoverageData.find(t => t.nome === selectedTechnician);
+        const originZip = selectedTechObj?.zip_code;
+
+        if (!originZip) {
+            itineraryResultsList.innerHTML = '<p class="text-red-600">Technician origin Zip Code not found. Please register it in the Technician Registration section.</p>';
+            return;
+        }
+
+        itineraryResultsList.innerHTML = 'Calculating route...';
+        optimizeItineraryBtn.disabled = true;
+        itineraryReverserBtn.disabled = true;
+
+        // 1. Filter appointments with valid Zip Code
+        const validAppointments = [];
+        for (const appt of appointments) {
+            if (appt.zipCode) {
+                const [lat, lon] = await getLatLon(appt.zipCode);
+                if (lat !== null) {
+                    validAppointments.push({ ...appt, lat, lon });
+                } else {
+                    console.warn(`Ignoring appointment with invalid zip: ${appt.zipCode}`);
+                }
+            }
+        }
+
+        if (validAppointments.length < 1) {
+            itineraryResultsList.innerHTML = '<p class="text-red-600">No appointments with valid Zip Codes to optimize.</p>';
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+            return;
+        }
+        
+        // 2. Get Origin Coords
+        const originCoords = await getLatLon(originZip);
+        const [originLat, originLon] = originCoords;
+        if (originLat === null) {
+            itineraryResultsList.innerHTML = '<p class="text-red-600">Error: Could not get coordinates for technician origin Zip Code.</p>';
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+            return;
+        }
+
+        // 3. Nearest Neighbor Approximation Algorithm (Builds the shortest path from origin)
+        let currentLat = originLat;
+        let currentLon = originLon;
+
+        let unvisited = [...validAppointments];
+        let optimizedItinerary = []; // This will hold the NEAREST-FIRST sequence
+
+        // Start the Nearest Neighbor search from the Technician's origin.
+        while (unvisited.length > 0) {
+            let closestClient = null;
+            let minDistance = Infinity;
+
+            for (const client of unvisited) {
+                const distance = calculateDistance(currentLat, currentLon, client.lat, client.lon);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestClient = client;
+                }
+            }
+            optimizedItinerary.push(closestClient);
+            // Move current position to the new client's location
+            currentLat = closestClient.lat;
+            currentLon = closestClient.lon;
+            unvisited = unvisited.filter(c => c !== closestClient);
+        }
+        
+        // 4. Handle Routing Logic & Reversal:
+        let shouldOptimizeWaypoints = true;
+        let stopsForGoogleMaps = [...optimizedItinerary]; // Start with the shortest path calculated
+
+        if (isReversed) {
+            // Reverser: We reverse the NEAREST-FIRST path to get the FARTHEST-FIRST path.
+            stopsForGoogleMaps.reverse(); 
+            // CRITICAL: We MUST set optimizeWaypoints to false to force Google to use the user-defined order.
+            shouldOptimizeWaypoints = false; 
+        }
+        
+        // Clear previous route and markers
+        // directionsRenderer.setDirections({ routes: [] }); // REMOVIDO
+        clearCustomMarkers(); // REMOVIDO
+
+        // 5. Google Maps Directions Request
+        const origin = originZip;
+        const destination = originZip; // Technician's zip is the final destination (round trip)
+        const waypoints = stopsForGoogleMaps.map(c => ({
+            location: c.zipCode,
+            stopover: true
+        }));
+        
+        const request = {
+            origin: origin,
+            destination: destination,
+            waypoints: waypoints.slice(0, 23), 
+            optimizeWaypoints: shouldOptimizeWaypoints, // Use the determined flag
+            travelMode: google.maps.TravelMode.DRIVING
+        };
+        
+        // 6. Display Route
+        directionsService.route(request, (response, status) => {
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+
+            // CRITICAL FIX: Check for the existence of waypoint_order which confirms a valid route was found
+            if (status === 'OK' && response && response.routes && response.routes.length > 0) {
+                
+                const route = response.routes[0];
+                // directionsRenderer.setDirections(response); // REMOVIDO MAPA
+
+                let totalDistance = 0;
+                let totalDuration = 0;
+                
+                itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (Starting from ${isReversed ? 'Farthest' : 'Nearest'}):</p>`;
+                
+                // Determine the final ordered stops based on Google's final route (which might be the waypoints themselves if optimizeWaypoints is false)
+                // When optimizeWaypoints=false, route.waypoint_order is generally empty or sequential [0, 1, 2...].
+                const finalOrderedStops = (shouldOptimizeWaypoints && route.waypoint_order && route.waypoint_order.length > 0)
+                    ? route.waypoint_order.map((i) => optimizedItinerary[i]) // If Google optimized, use its order against the NEAREST-FIRST list
+                    : stopsForGoogleMaps; // If optimization was off (Reverser), use the manually ordered list
+                
+                // Add the stops in their final order to the full sequence, including origin/destination markers.
+                const fullSequence = [
+                    { name: 'HOME (Start)', zipCode: originZip, lat: originLat, lng: originLon, apptTime: 'N/A' },
+                    ...finalOrderedStops.map(appt => ({ 
+                        name: appt.customers, 
+                        zipCode: appt.zipCode, 
+                        lat: appt.lat, 
+                        lng: appt.lon, 
+                        apptTime: getTimeHHMM(parseSheetDate(appt.appointmentDate)) 
+                    })),
+                    { name: 'HOME (End)', zipCode: originZip, lat: originLat, lng: originLon, apptTime: 'N/A' }
+                ];
+                
+                // --- CUSTOM MARKER RENDERING REMOVIDO ---
+
+                const legs = route.legs;
+
+                legs.forEach((leg, i) => {
+                    totalDistance += leg.distance.value;
+                    totalDuration += leg.duration.value;
+                    
+                    const destinationName = fullSequence[i + 1].name;
+                    const destinationTime = fullSequence[i + 1].apptTime;
+                    const destinationIndex = i + 1;
+
+
+                    itineraryResultsList.innerHTML += `
+                        <div class="border-b border-muted py-2">
+                            <p class="font-bold text-base">${destinationIndex}. Go to: ${destinationName}</p>
+                            <p class="ml-4 text-sm">Target Appt Time: ${destinationTime} | Travel Time: ${leg.duration.text} | Distance: ${leg.distance.text}</p>
+                        </div>
+                    `;
+                });
+                
+                // Final Summary
+                itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-lg text-brand-primary">Total Round Trip: ${Math.round(totalDuration / 60)} min / ${(totalDistance / 1000).toFixed(2)} km</div>`;
+                
+            } else {
+                // Reinicia os marcadores em caso de falha para garantir que não haja sobras
+                clearCustomMarkers(); // REMOVIDO
+                itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}. Motivo: O Google Maps não conseguiu traçar a rota com os Zips fornecidos, ou o Zip de Origem é inválido.</p>`;
+            }
+        });
+    }
+
+
+    function handleOptimizeItinerary() {
+        runItineraryOptimization(dayAppointments, false);
+    }
+    
+    function handleItineraryReverser() {
+        runItineraryOptimization(dayAppointments, true);
+    }
+
+
+    function handleDayFilterChange() {
+        // Clear previous route data whenever day or technician changes
+        renderDayItineraryTable();
+    }
+
+    // --- Data Fetching and Initialization ---
+
+    async function fetchAvailabilityForSelectedTech() {
+        if (!selectedTechnician) {
+            techAvailabilityBlocks = [];
+            return;
+        }
+        try {
+            const response = await fetch(`/api/manage-technician-availability?technicianName=${encodeURIComponent(selectedTechnician)}`);
+            if (!response.ok) throw new Error('Could not fetch availability.');
+            const data = await response.json();
+            techAvailabilityBlocks = data.availability || [];
+        } catch (error) {
+            console.error('Error fetching availability:', error);
+            techAvailabilityBlocks = [];
+        }
+    }
+
+    async function loadInitialData() {
+        try {
+            const [techDataResponse, appointmentsResponse] = await Promise.all([
+                fetch('/api/get-dashboard-data'),
+                fetch('/api/get-technician-appointments')
+            ]);
+            if (!techDataResponse.ok || !appointmentsResponse.ok) throw new Error('Failed to load initial data.');
+            const techData = await techDataResponse.json();
+            const apptsData = await appointmentsResponse.json();
+            allTechnicians = techData.technicians || [];
+            allAppointments = (apptsData.appointments || []).filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
+            
+            // Popula os dropdowns de técnico (calendar.html e techConfigSelect)
+            populateTechSelects(); 
+            
+            await fetchAvailabilityForSelectedTech();
+            renderScheduler(); 
+            
+            // NEW: Inicializa DirectionsService (sem mapa)
+            await fetchGoogleMapsApiKey();
+            
+        } catch (error) {
+            console.error('CRITICAL ERROR during loadInitialData:', error);
+        }
+    }
+    
+    function populateTechSelects() {
+        // Populates both dropdowns with the fetched technician list
+        techSelectDropdown.innerHTML = '<option value="">Select Technician...</option>';
+        allTechnicians.forEach(tech => {
+            const option = document.createElement('option');
+            option.value = tech;
+            option.textContent = tech;
+            techSelectDropdown.appendChild(option.cloneNode(true));
+            if (techConfigSelect) techConfigSelect.appendChild(option.cloneNode(true));
+        });
+    }
+    
+    async function handleTechSelectionChange(event) {
+        selectedTechnician = event.target.value;
+        selectedTechDisplay.textContent = selectedTechnician || 'No Technician Selected';
+        
+        await fetchAvailabilityForSelectedTech();
+        renderScheduler(); 
+        handleDayFilterChange();
+    }
+    
+    // --- Event Listeners ---
+    // Remove existing listener before adding the comprehensive one
+    techSelectDropdown.removeEventListener('change', handleTechSelectionChange);
+    techSelectDropdown.addEventListener('change', handleTechSelectionChange);
+
+    prevWeekBtn.addEventListener('click', () => {
+        currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+        renderScheduler();
+        handleDayFilterChange(); // Update itinerary view when week changes
+    });
+    nextWeekBtn.addEventListener('click', () => {
+        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+        renderScheduler();
+        handleDayFilterChange(); // Update itinerary view when week changes
+    });
+    modalSaveBtn.addEventListener('click', handleSaveAppointment);
+    modalCancelBtn.addEventListener('click', closeEditModal); 
+    modalCloseXBtn.addEventListener('click', closeEditModal);
+
+    addTimeBlockBtn.addEventListener('click', openTimeBlockModal);
+    blockSaveBtn.addEventListener('click', handleSaveTimeBlock);
+    blockCancelBtn.addEventListener('click', closeTimeBlockModal);
+    
+    // NEW Event Listeners
+    if (dayFilter) dayFilter.addEventListener('change', handleDayFilterChange);
+    if (optimizeItineraryBtn) optimizeItineraryBtn.addEventListener('click', handleOptimizeItinerary);
+    if (itineraryReverserBtn) itineraryReverserBtn.addEventListener('click', handleItineraryReverser);
+    
+    if (showedAppointmentsTableBody) {
+        // ... (Existing table change listener, kept for completeness) ...
+        showedAppointmentsTableBody.addEventListener('change', async (event) => {
+            const target = event.target;
+            if (target.matches('input, select')) {
+                const row = target.closest('tr');
+                const apptId = row.dataset.rowId;
+
+                if (isSaving[apptId]) return;
+                
+                isSaving[apptId] = true;
+                row.classList.add('is-saving');
+                
+                const appointmentDateLocal = row.querySelector('[data-key="appointmentDate"]').value; // YYYY-MM-DDTHH:MM
+                const [datePart, timePart] = appointmentDateLocal.split('T');
+                const [year, month, day] = datePart.split('-');
+                const apiFormattedDate = `${month}/${day}/${year} ${timePart}`; // MM/DD/YYYY HH:MM
+
+                const dataToUpdate = {
+                    rowIndex: parseInt(apptId, 10),
+                    appointmentDate: apiFormattedDate, 
+                    technician: row.querySelector('[data-key="technician"]').value,
+                    petShowed: row.querySelector('[data-key="petShowed"]').value,
+                    serviceShowed: row.querySelector('[data-key="serviceShowed"]').value,
+                    tips: row.querySelector('[data-key="tips"]').value,
+                    percentage: row.querySelector('[data-key="percentage"]').value,
+                    paymentMethod: row.querySelector('[data-key="paymentMethod"]').value,
+                    verification: row.querySelector('[data-key="verification"]').value,
+                };
+                
+                // MODIFICATION 5: Add Hour Validation to Table Change
+                const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
+                const minute = parseInt(appointmentDateLocal.substring(14, 16), 10);
+                const MIN_HOUR = 7;
+                const MAX_HOUR = 21;
+
+                if (hour < MIN_HOUR || hour > MAX_HOUR || (hour === MAX_HOUR && minute > 0)) {
+                    alert(`Save Error: Appointments must be scheduled between ${MIN_HOUR}:00 and ${MAX_HOUR}:00.`);
+                    row.classList.remove('is-saving');
+                    row.classList.add('is-error');
+                    setTimeout(() => {
+                        row.classList.remove('is-error');
+                        isSaving[apptId] = false;
+                    }, 2000);
+                    // Re-render the row/table to show original value
+                    renderScheduler(); 
+                    return;
+                }
+                // END MODIFICATION 5
+
+                try {
+                    const response = await fetch('/api/update-appointment-showed-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataToUpdate),
+                    });
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.message);
+                    
+                    const localAppt = allAppointments.find(a => String(a.id) === String(apptId));
+                    if(localAppt) Object.assign(localAppt, dataToUpdate, {
+                        appointmentDate: apiFormattedDate
+                    });
+
+                    renderScheduler();
+                    row.classList.add('is-success');
+                } catch (error) {
+                    console.error('Error saving from table:', error);
+                    row.classList.add('is-error');
+                } finally {
+                    setTimeout(() => {
+                        row.classList.remove('is-saving', 'is-success', 'is-error');
+                        isSaving[apptId] = false;
+                    }, 2000);
+                }
+            }
+        });
+    }
+
+    loadInitialData();
+});
