@@ -541,20 +541,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 // =======================================================================
-// INÍCIO DO NOVO CÓDIGO PARA VERIFICAÇÃO DE DISPONIBILIDADE
+// INÍCIO DO NOVO CÓDIGO PARA VERIFICAÇÃO DE DISPONIBILIDADE (VERSÃO COM OPÇÕES MÚLTIPLAS)
 // =======================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Seletores para a nova funcionalidade
     const availabilitySection = document.getElementById('availability-checker-section');
+    if (!availabilitySection) return;
+
     const mainFormSection = document.getElementById('main-appointment-form');
     const zipCodeInput = document.getElementById('customer-zip-code');
     const verifyBtn = document.getElementById('verify-availability-btn');
     const resultsDiv = document.getElementById('availability-results');
 
-    if (verifyBtn) {
-        verifyBtn.addEventListener('click', handleVerifyAvailability);
-    }
+    // Estado para gerenciar as opções
+    let availabilityData = [];
+    let currentOptionIndex = 0;
+
+    verifyBtn.addEventListener('click', handleVerifyAvailability);
 
     async function handleVerifyAvailability() {
         const zipCode = zipCodeInput.value.trim();
@@ -573,15 +576,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ zipCode }),
             });
+            
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || 'An unknown error occurred.');
+                }
+                
+                // Salva os dados e exibe a primeira opção
+                availabilityData = result.options;
+                currentOptionIndex = 0;
+                displayCurrentOption(zipCode);
 
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.message || 'An unknown error occurred.');
-            }
-
-            if (result.success) {
-                renderAvailabilityResults(result, zipCode);
+            } else {
+                const textResponse = await response.text();
+                throw new Error("Server returned an unexpected response. " + textResponse);
             }
 
         } catch (error) {
@@ -592,10 +602,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderAvailabilityResults(data, originalZip) {
-        const { technician, date, availableSlots } = data;
+    function displayCurrentOption(originalZip) {
+        if (availabilityData.length === 0) {
+            resultsDiv.innerHTML = `<p class="text-red-600 font-semibold">No available options found.</p>`;
+            return;
+        }
+
+        const data = availabilityData[currentOptionIndex];
+        const { technician, restrictions, date, availableSlots } = data;
         
-        // Formata a data para uma leitura mais amigável
         const friendlyDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
         });
@@ -605,16 +620,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${slot}
             </button>`
         ).join('');
+        
+        // Botões de navegação
+        const prevButtonHtml = currentOptionIndex > 0 ? `<button id="prev-option-btn" class="text-sm font-semibold text-brand-primary hover:underline">&larr; Previous Option</button>` : `<div></div>`;
+        const nextButtonHtml = currentOptionIndex < availabilityData.length - 1 ? `<button id="next-option-btn" class="text-sm font-semibold text-brand-primary hover:underline">Next Option &rarr;</button>` : `<div></div>`;
 
         resultsDiv.innerHTML = `
-            <div class="space-y-3">
-                <p class="text-lg font-bold text-green-600">Good news! We found an available technician.</p>
-                <div>
-                    <p class="text-sm font-semibold text-foreground">Technician:</p>
-                    <p class="text-base">${technician}</p>
+            <div class="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <div class="flex justify-between items-center">
+                    <p class="text-lg font-bold text-green-600">Option ${currentOptionIndex + 1} of ${availabilityData.length}</p>
+                    <div class="flex gap-4">
+                        ${prevButtonHtml}
+                        ${nextButtonHtml}
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm font-semibold text-foreground">Technician:</p>
+                        <p class="text-base">${technician}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-foreground">Restrictions:</p>
+                        <p class="text-base font-medium text-amber-700">${restrictions}</p>
+                    </div>
                 </div>
                 <div>
-                    <p class="text-sm font-semibold text-foreground">Next Available Date:</p>
+                    <p class="text-sm font-semibold text-foreground">Date:</p>
                     <p class="text-base">${friendlyDate}</p>
                 </div>
                 <div>
@@ -626,44 +657,55 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        // Adiciona event listeners aos novos botões de slot
-        document.querySelectorAll('.slot-btn').forEach(button => {
-            button.addEventListener('click', handleSlotSelection);
-        });
+        // Adiciona event listeners aos botões
+        document.querySelectorAll('.slot-btn').forEach(button => button.addEventListener('click', handleSlotSelection));
+        
+        const prevBtn = document.getElementById('prev-option-btn');
+        const nextBtn = document.getElementById('next-option-btn');
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                currentOptionIndex--;
+                displayCurrentOption(originalZip);
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                currentOptionIndex++;
+                displayCurrentOption(originalZip);
+            });
+        }
     }
 
     async function handleSlotSelection(event) {
         const { slot, date, tech, zip } = event.currentTarget.dataset;
         
-        // 1. Ocultar a seção de verificação e mostrar o formulário principal
-        availabilitySection.classList.add('hidden');
+        availabilitySection.style.display = 'none';
         mainFormSection.classList.remove('hidden');
 
-        // 2. Preencher os campos do formulário
         document.getElementById('appointmentDate').value = `${date}T${slot}`;
         document.getElementById('zipCode').value = zip;
 
-        // Dispara o evento de input no zipCode para preencher a cidade automaticamente
         document.getElementById('zipCode').dispatchEvent(new Event('input', { bubbles: true }));
 
-        // Forçar a atualização do `suggestedTechDisplay` (que agora é um select)
-        // A função updateSuggestedTechnician será chamada pelo evento de input do zipCode.
-        // Precisamos esperar um pouco para que o select seja criado e então podemos selecionar o valor.
         setTimeout(() => {
             const techSelect = document.getElementById('suggestedTechSelect');
             if (techSelect) {
                 techSelect.value = tech;
             } else {
-                 // Fallback caso o select não seja criado, preenche o campo oculto.
-                 const hiddenTechInput = document.querySelector('input[name="technician"]');
-                 if(hiddenTechInput) hiddenTechInput.value = tech;
+                 const techDisplay = document.getElementById('suggestedTechDisplay');
+                 if(techDisplay) techDisplay.textContent = tech;
             }
-        }, 1500); // Espera 1.5s para a API do zippopotam e a renderização do select terminarem.
+        }, 1500);
 
-        // Rola a página suavemente até o formulário
         mainFormSection.scrollIntoView({ behavior: 'smooth' });
         
-        // Dispara manualmente o evento de input da data para atualizar o reminder
         document.getElementById('appointmentDate').dispatchEvent(new Event('input', { bubbles: true }));
     }
 });
+// =======================================================================
+// FIM DO NOVO CÓDIGO
+// =======================================================================
+    }
+});
+
