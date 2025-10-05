@@ -22,7 +22,6 @@
         }
         .appointment-block {
             /* NOTA: A largura dos blocos de agendamento e de tempo é fixada em 150px para consistência visual. */
-            /* Se as colunas do calendário mudarem, este valor pode precisar de ajuste. */
             width: 150px;
             height: 120px; 
             position: absolute;
@@ -67,19 +66,6 @@
         .hidden {
             display: none !important;
         }
-
-        tr.is-saving {
-            background-color: hsl(var(--secondary) / 0.1);
-            transition: background-color: 0.3s;
-        }
-        tr.is-success {
-            background-color: hsl(142.1 76.2% 36.3% / 0.15);
-            transition: background-color: 0.3s;
-        }
-        tr.is-error {
-            background-color: hsl(0 84.2% 60.2% / 0.15);
-            transition: background-color: 0.3s;
-        }
     </style>
 </head>
 <body class="bg-background">
@@ -100,7 +86,6 @@
 
     <main class="p-8">
         <div class="max-w-[98rem] mx-auto space-y-8">
-
             <section class="rounded-lg border bg-card text-card-foreground shadow-large">
                 <div class="p-6 border-b border-border flex justify-between items-center flex-wrap gap-4">
                     <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">Weekly Schedule</h2>
@@ -110,7 +95,6 @@
                         <button id="next-week" class="p-2 border rounded-md hover:bg-muted">Next</button>
                     </div>
                 </div>
-                
                 <div class="flex">
                     <div id="tech-filter-panel" class="w-64 border-r border-border p-4 space-y-4 flex-shrink-0">
                         <h3 class="text-lg font-semibold">Select Technician</h3>
@@ -122,121 +106,17 @@
                             + Add Time Block
                         </button>
                     </div>
-                    
                     <div class="flex-1 overflow-x-auto">
                         <div id="scheduler-header" class="scheduler-grid border-b border-border">
                             <div class="timeline-header p-2 font-semibold">Time</div>
                         </div>
                         <div id="scheduler-body-wrapper" class="relative">
-                            <div id="scheduler-body" class="scheduler-grid relative min-w-full">
-                                </div>
+                            <div id="scheduler-body" class="scheduler-grid relative min-w-full"></div>
                             <div id="loading-overlay" class="absolute inset-0 bg-white/70 flex items-center justify-center hidden z-30">
                                 <p class="text-xl font-semibold text-muted-foreground">Please select a technician.</p>
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
-
-            <section class="rounded-lg border bg-card text-card-foreground shadow-large">
-                <div class="flex flex-col space-y-1.5 p-6 pb-8">
-                    <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                        Manage Showed Appointments (Current Week)
-                    </h2>
-                </div>
-                <div class="p-6 pt-0 overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-muted text-muted-foreground uppercase text-xs font-semibold">
-                            <tr>
-                                <th class="p-4 border-b border-border">Appointment Date</th>
-                                <th class="p-4 border-b border-border">Customers</th>
-                                <th class="p-4 border-b border-border">Code</th>
-                                <th class="p-4 border-b border-border">Technician</th>
-                                <th class="p-4 border-b border-border">Pet Showed</th>
-                                <th class="p-4 border-b border-border">Service Showed</th>
-                                <th class="p-4 border-b border-border">Tips</th>
-                                <th class="p-4 border-b border-border">Percentage</th>
-                                <th class="p-4 border-b border-border">Method</th>
-                                <th class="p-4 border-b border-border">Verification</th>
-                            </tr>
-                        </thead>
-                        <tbody id="showed-appointments-table-body" class="text-foreground text-sm">
-                            <tr>
-                                <td colspan="10" class="p-4 text-center">Select a technician to see appointments for the current week.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section id="day-itinerary-section" class="rounded-lg border bg-card text-card-foreground shadow-large p-6">
-                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">4. Daily Itinerary and Optimization</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                    <div class="space-y-2">
-                        <label for="day-filter" class="block text-sm font-semibold text-foreground">Select Day (of the current week)</label>
-                        <select id="day-filter" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                            <option value="">Select a Day...</option>
-                            <option value="1">Monday</option>
-                            <option value="2">Tuesday</option>
-                            <option value="3">Wednesday</option>
-                            <option value="4">Thursday</option>
-                            <option value="5">Friday</option>
-                            <option value="6">Saturday</option>
-                            <option value="0">Sunday</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="flex gap-4 mt-4 mb-4">
-                    <button id="optimize-itinerary-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand disabled:opacity-50" disabled>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-route w-4 h-4"><path d="M3 3v18h18"/><path d="m21 7-5 5h5"/><path d="m11 11-3 3h3"/><path d="m11 7-5 5h5"/></svg>
-                        Itinerary Optimizer (Nearest)
-                    </button>
-                    <button id="itinerary-reverser-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand disabled:opacity-50" disabled>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-down-up w-4 h-4"><path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/></svg>
-                        Itinerary Reverser (Farthest)
-                    </button>
-                </div>
-                
-                <h3 class="text-xl font-bold text-foreground mt-8 mb-4">Appointments for the Day</h3>
-                <div class="p-6 pt-0 overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-muted text-muted-foreground uppercase text-xs font-semibold whitespace-nowrap">
-                            <tr>
-                                <th class="p-4 border-b border-border">Time</th>
-                                <th class="p-4 border-b border-border">Customers</th>
-                                <th class="p-4 border-b border-border">Phone</th>
-                                <th class="p-4 border-b border-border">Zip Code</th>
-                                <th class="p-4 border-b border-border">Code</th>
-                                <th class="p-4 border-b border-border">Verification</th>
-                                <th class="p-4 border-b border-border">Technician</th>
-                            </tr>
-                        </thead>
-                        <tbody id="day-itinerary-table-body" class="text-foreground text-sm">
-                            <tr>
-                                <td colspan="7" class="p-4 text-center text-muted-foreground">Select a day and a technician to view appointments.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                
-                <h3 class="text-xl font-bold text-foreground mt-8 mb-4">Optimized Route Results</h3>
-                
-                <div id="scheduling-controls" class="p-4 border border-border rounded-lg bg-muted/30 mb-6 hidden">
-                    <h4 class="text-lg font-semibold mb-3">Apply Optimized Route to Calendar</h4>
-                    <div class="flex flex-wrap items-end gap-4">
-                        <div class="space-y-2 flex-1 min-w-[200px]">
-                            <label for="first-schedule-select" class="block text-sm font-semibold text-foreground">First Schedule Slot (07:00 - 21:00)</label>
-                            <select id="first-schedule-select" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                                </select>
-                        </div>
-                        <button id="apply-route-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-green-600 text-white hover:shadow-medium disabled:opacity-50">
-                            Apply Route
-                        </button>
-                    </div>
-                </div>
-                <div id="itinerary-results-list" class="mt-4 space-y-2 text-sm text-muted-foreground">
-                    No route calculated.
                 </div>
             </section>
         </div>
@@ -245,32 +125,28 @@
     <script src="calendar.js"></script>
 
     <div id="edit-appointment-modal" class="modal-overlay-fixed hidden">
-        <div class="bg-card p-6 rounded-lg shadow-2xl w-full max-w-md relative" style="z-index: 1001;">
+        <div class="bg-card p-6 rounded-lg shadow-2xl w-full max-w-md relative">
             <button type="button" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800" id="modal-close-x-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
             <h3 class="text-xl font-bold text-foreground mb-4">Edit Appointment Details</h3>
             <form id="appointment-edit-form" class="space-y-4">
-                <input type="hidden" id="modal-appt-id" name="id">
-                <input type="hidden" id="modal-original-technician" name="technician">
-                <input type="hidden" id="modal-pet-showed" name="petShowed">
-                <input type="hidden" id="modal-percentage" name="percentage">
-                <input type="hidden" id="modal-payment-method" name="paymentMethod">
+                <input type="hidden" id="modal-appt-id"><input type="hidden" id="modal-original-technician"><input type="hidden" id="modal-pet-showed"><input type="hidden" id="modal-percentage"><input type="hidden" id="modal-payment-method">
                 <div class="space-y-2">
                     <label for="modal-date" class="block text-sm font-semibold text-foreground">Date and Time</label>
-                    <input type="datetime-local" id="modal-date" name="appointmentDate" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    <input type="datetime-local" id="modal-date" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
                 </div>
                 <div class="space-y-2">
                     <label for="modal-verification" class="block text-sm font-semibold text-foreground">Status</label>
-                    <select id="modal-verification" name="verification" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"></select>
+                    <select id="modal-verification" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"></select>
                 </div>
                 <div class="space-y-2">
                     <label for="modal-service-value" class="block text-sm font-semibold text-foreground">Service Value</label>
-                    <input type="text" id="modal-service-value" name="serviceShowed" placeholder="Ex: 150.00" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    <input type="text" id="modal-service-value" placeholder="Ex: 150.00" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
                 </div>
                 <div class="space-y-2">
                     <label for="modal-tips" class="block text-sm font-semibold text-foreground">Tips</label>
-                    <input type="text" id="modal-tips" name="tips" placeholder="Ex: 20.00" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                    <input type="text" id="modal-tips" placeholder="Ex: 20.00" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
                 </div>
             </form>
             <div class="mt-6 flex justify-end gap-3">
@@ -289,18 +165,12 @@
                     <input type="date" id="block-date" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                        <label for="block-start-hour" class="block text-sm font-semibold text-foreground">Start Time</label>
-                        <input type="time" id="block-start-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                    </div>
-                    <div class="space-y-2">
-                        <label for="block-end-hour" class="block text-sm font-semibold text-foreground">End Time</label>
-                        <input type="time" id="block-end-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                    </div>
+                    <div class="space-y-2"><label for="block-start-hour" class="block text-sm font-semibold text-foreground">Start Time</label><input type="time" id="block-start-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"></div>
+                    <div class="space-y-2"><label for="block-end-hour" class="block text-sm font-semibold text-foreground">End Time</label><input type="time" id="block-end-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"></div>
                 </div>
                 <div class="space-y-2">
                     <label for="block-notes" class="block text-sm font-semibold text-foreground">Notes (Reason)</label>
-                    <textarea id="block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm" placeholder="Ex: Lunch, Personal appointment..."></textarea>
+                    <textarea id="block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm" placeholder="Ex: Lunch..."></textarea>
                 </div>
             </form>
             <div class="mt-6 flex justify-end gap-3">
@@ -315,23 +185,14 @@
             <h3 class="text-xl font-bold text-foreground mb-4">Edit Time Block Details</h3>
             <form id="edit-time-block-form" class="space-y-4">
                 <input type="hidden" id="edit-block-row-number">
-                <div class="space-y-2">
-                    <label for="edit-block-date" class="block text-sm font-semibold text-foreground">Date</label>
-                    <input type="date" id="edit-block-date" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                </div>
+                <div class="space-y-2"><label for="edit-block-date" class="block text-sm font-semibold text-foreground">Date</label><input type="date" id="edit-block-date" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"></div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                        <label for="edit-block-start-hour" class="block text-sm font-semibold text-foreground">Start Time</label>
-                        <input type="time" id="edit-block-start-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                    </div>
-                    <div class="space-y-2">
-                        <label for="edit-block-end-hour" class="block text-sm font-semibold text-foreground">End Time</label>
-                        <input type="time" id="edit-block-end-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                    </div>
+                    <div class="space-y-2"><label for="edit-block-start-hour" class="block text-sm font-semibold text-foreground">Start Time</label><input type="time" id="edit-block-start-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"></div>
+                    <div class="space-y-2"><label for="edit-block-end-hour" class="block text-sm font-semibold text-foreground">End Time</label><input type="time" id="edit-block-end-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"></div>
                 </div>
                 <div class="space-y-2">
                     <label for="edit-block-notes" class="block text-sm font-semibold text-foreground">Notes (Reason)</label>
-                    <textarea id="edit-block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm" placeholder="Ex: Lunch, Personal appointment..."></textarea>
+                    <textarea id="edit-block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm" placeholder="Ex: Lunch..."></textarea>
                 </div>
             </form>
             <div class="mt-6 flex justify-between gap-3">
@@ -343,6 +204,5 @@
             </div>
         </div>
     </div>
-
 </body>
 </html>
