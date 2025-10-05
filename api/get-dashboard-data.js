@@ -17,6 +17,7 @@ const SPREADSHEET_ID_APPOINTMENTS = process.env.SHEET_ID_APPOINTMENTS;
 const SPREADSHEET_ID_DATA = process.env.SHEET_ID_DATA;
 
 export default async function handler(req, res) {
+    console.log('[API LOG] /api/get-dashboard-data endpoint hit.');
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -29,80 +30,75 @@ export default async function handler(req, res) {
         const docAppointments = new GoogleSpreadsheet(SPREADSHEET_ID_APPOINTMENTS, serviceAccountAuth);
         const docData = new GoogleSpreadsheet(SPREADSHEET_ID_DATA, serviceAccountAuth);
 
+        console.log('[API LOG] Loading spreadsheet info...');
         await Promise.all([docAppointments.loadInfo(), docData.loadInfo()]);
+        console.log('[API LOG] Spreadsheets info loaded.');
 
-        // Busca Técnicos (de forma resiliente)
+        // --- Busca de Técnicos (com logs detalhados) ---
+        console.log(`[API LOG] Attempting to find sheet: "${SHEET_NAME_TECHNICIANS}"`);
         const sheetTechnicians = docData.sheetsByTitle[SHEET_NAME_TECHNICIANS];
+        
         if (sheetTechnicians) {
-            await sheetTechnicians.loadCells('A1:A' + sheetTechnicians.rowCount);
-            for (let i = 1; i < sheetTechnicians.rowCount; i++) {
-                const cell = sheetTechnicians.getCell(i, 0);
-                if (cell.value) {
-                    technicians.push(cell.value);
-                }
+            console.log(`[API LOG] SUCCESS: Found sheet "${SHEET_NAME_TECHNICIANS}". Reading rows...`);
+            const rows = await sheetTechnicians.getRows();
+            console.log(`[API LOG] Found ${rows.length} rows in Technicians sheet.`);
+            
+            // Supondo que o nome do técnico está na primeira coluna (cabeçalho deve existir)
+            const header = sheetTechnicians.headerValues[0];
+            if (header) {
+                 rows.forEach(row => {
+                    const techName = row.get(header);
+                    if (techName) {
+                        technicians.push(techName);
+                    }
+                });
+                console.log(`[API LOG] Extracted ${technicians.length} technicians.`);
+            } else {
+                 console.error(`[API ERROR] No header found in the first column of "${SHEET_NAME_TECHNICIANS}" sheet.`);
             }
         } else {
-            console.warn(`[API WARN] Planilha "${SHEET_NAME_TECHNICIANS}" não encontrada.`);
+            console.error(`[API ERROR] FAILED to find sheet "${SHEET_NAME_TECHNICIANS}". Please check the sheet name in your Google Sheets and in 'api/configs/sheets-config.js'.`);
         }
 
-        // Busca Employees (de forma resiliente)
+        // --- Buscas Resilientes (sem alterações) ---
         const sheetEmployees = docData.sheetsByTitle[SHEET_NAME_EMPLOYEES];
         if (sheetEmployees) {
-            await sheetEmployees.loadCells('A1:A' + sheetEmployees.rowCount);
-            for (let i = 1; i < sheetEmployees.rowCount; i++) {
-                const cell = sheetEmployees.getCell(i, 0);
-                if (cell.value) {
-                    employees.push(cell.value);
-                }
-            }
-        } else {
-            console.warn(`[API WARN] Planilha "${SHEET_NAME_EMPLOYEES}" não encontrada.`);
+            const rows = await sheetEmployees.getRows();
+            const header = sheetEmployees.headerValues[0];
+            if(header) rows.forEach(row => { if(row.get(header)) employees.push(row.get(header)) });
         }
         
-        // Busca Franchises (de forma resiliente)
         const sheetFranchises = docData.sheetsByTitle[SHEET_NAME_FRANCHISES];
         if (sheetFranchises) {
-            await sheetFranchises.loadCells('A1:A' + sheetFranchises.rowCount);
-            for (let i = 1; i < sheetFranchises.rowCount; i++) {
-                const cell = sheetFranchises.getCell(i, 0);
-                if (cell.value) {
-                    franchises.push(cell.value);
-                }
-            }
-        } else {
-            console.warn(`[API WARN] Planilha "${SHEET_NAME_FRANCHISES}" não encontrada.`);
+            const rows = await sheetFranchises.getRows();
+            const header = sheetFranchises.headerValues[0];
+            if(header) rows.forEach(row => { if(row.get(header)) franchises.push(row.get(header)) });
         }
 
-        // Busca Appointments (de forma resiliente)
         const sheetAppointments = docAppointments.sheetsByTitle[SHEET_NAME_APPOINTMENTS];
         if (sheetAppointments) {
-            await sheetAppointments.loadCells('B1:E' + sheetAppointments.rowCount);
-            for (let i = 1; i < sheetAppointments.rowCount; i++) {
-                const dateCell = sheetAppointments.getCell(i, 1);
-                if (dateCell.value) {
+            const rows = await sheetAppointments.getRows();
+            rows.forEach(row => {
+                if (row.get('Date')) {
                     appointments.push({ 
-                        date: excelDateToYYYYMMDD(dateCell.value),
-                        pets: sheetAppointments.getCell(i, 2).value,
-                        closer1: sheetAppointments.getCell(i, 3).value,
-                        closer2: sheetAppointments.getCell(i, 4).value
+                        date: excelDateToYYYYMMDD(row.get('Date')),
+                        pets: row.get('Pets'),
+                        closer1: row.get('Closer (1)'),
+                        closer2: row.get('Closer (2)')
                     });
                 }
-            }
-        } else {
-            console.warn(`[API WARN] Planilha "${SHEET_NAME_APPOINTMENTS}" não encontrada.`);
+            });
         }
 
         const responseData = { appointments, employees, technicians, franchises };
+        console.log(`[API LOG] Sending response with ${technicians.length} technicians.`);
         return res.status(200).json(responseData);
 
     } catch (error) {
-        console.error('[API LOG] CRITICAL ERROR in /api/get-dashboard-data:', error);
+        console.error('[API CRITICAL ERROR] in /api/get-dashboard-data:', error);
         res.status(500).json({ 
-            error: 'A critical server error occurred.',
-            appointments: [],
-            employees: [],
-            technicians: [],
-            franchises: []
+            error: `A critical server error occurred: ${error.message}`,
+            appointments: [], employees: [], technicians: [], franchises: []
         });
     }
 }
