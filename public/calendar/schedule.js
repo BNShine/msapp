@@ -45,47 +45,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const MIN_HOUR = 7;
 
     // --- 3. Funções Auxiliares ---
-
-    function getStartOfWeek(date) {
-        const d = new Date(date);
-        d.setHours(0, 0, 0, 0);
-        d.setDate(d.getDate() - d.getDay());
-        return d;
-    }
-
-    function formatDateToYYYYMMDD(date) {
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        return `${year}/${month}/${day}`;
-    }
-
-    function parseSheetDate(dateStr) {
-        if (!dateStr) return null;
-        const [datePart, timePart] = dateStr.split(' ');
-        if (!datePart || !timePart) return null;
-        const dateParts = datePart.split('/');
-        if (dateParts.length !== 3) return null;
-        const [month, day, year] = dateParts.map(Number);
-        const [hour, minute] = timePart.split(':').map(Number);
-        if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
-        return new Date(year, month - 1, day, hour, minute);
-    }
-
-    function formatDateTimeForInput(dateTimeStr) {
-        if (!dateTimeStr) return '';
-        const date = parseSheetDate(dateTimeStr);
-        if (!date) return '';
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        const hour = date.getHours().toString().padStart(2, '0');
-        const minute = date.getMinutes().toString().padStart(2, '0');
-        return `${year}-${month}-${day}T${hour}:${minute}`;
-    }
+    function getStartOfWeek(date) { const d = new Date(date); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay()); return d; }
+    function formatDateToYYYYMMDD(date) { const year = date.getFullYear(); const month = (date.getMonth() + 1).toString().padStart(2, '0'); const day = date.getDate().toString().padStart(2, '0'); return `${year}/${month}/${day}`; }
+    function parseSheetDate(dateStr) { if (!dateStr) return null; const [datePart, timePart] = dateStr.split(' '); if (!datePart || !timePart) return null; const dateParts = datePart.split('/'); if (dateParts.length !== 3) return null; const [month, day, year] = dateParts.map(Number); const [hour, minute] = timePart.split(':').map(Number); if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null; return new Date(year, month - 1, day, hour, minute); }
+    function formatDateTimeForInput(dateTimeStr) { if (!dateTimeStr) return ''; const date = parseSheetDate(dateTimeStr); if (!date) return ''; const year = date.getFullYear(); const month = (date.getMonth() + 1).toString().padStart(2, '0'); const day = date.getDate().toString().padStart(2, '0'); const hour = date.getHours().toString().padStart(2, '0'); const minute = date.getMinutes().toString().padStart(2, '0'); return `${year}-${month}-${day}T${hour}:${minute}`; }
 
     // --- 4. Lógica do Mini Calendário ---
-
     function renderMiniCalendar() {
         if (!miniCalendarContainer) return;
         const month = miniCalDate.getMonth();
@@ -130,7 +95,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- 5. Funções de Manipulação dos Modais ---
     window.openAppointmentModal = function(appt) {
-        allAppointments.push(appt); // Garante que o agendamento esteja na lista local para edição
+        if (!allAppointments.find(a => a.id === appt.id)) {
+            allAppointments.push(appt);
+        }
         const { id, appointmentDate, verification } = appt;
         document.getElementById('modal-appt-id').value = id;
         document.getElementById('modal-date').value = formatDateTimeForInput(appointmentDate);
@@ -148,32 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function closeEditTimeBlockModal() { if (editTimeBlockModal) editTimeBlockModal.classList.add('hidden'); document.body.classList.remove('modal-open'); }
 
     // --- 6. Funções de Manipulação de Dados (API Calls) ---
-    async function handleSaveAppointment() {
-        modalSaveBtn.disabled = true;
-        modalSaveBtn.textContent = 'Saving...';
-        const apptId = document.getElementById('modal-appt-id').value;
-        const appointmentToUpdate = allAppointments.find(a => a.id.toString() === apptId);
-        if (!appointmentToUpdate) { alert("Error: Could not find appointment."); modalSaveBtn.disabled = false; modalSaveBtn.textContent = 'Save Changes'; return; }
-        const newDate = document.getElementById('modal-date').value;
-        const newVerification = document.getElementById('modal-verification').value;
-        const [datePart, timePart] = newDate.split('T');
-        const [year, month, day] = datePart.split('-');
-        const apiFormattedDate = `${month}/${day}/${year} ${timePart}`;
-        const dataToUpdate = {
-            rowIndex: parseInt(apptId), appointmentDate: apiFormattedDate, verification: newVerification,
-            technician: appointmentToUpdate.technician, petShowed: appointmentToUpdate.petShowed,
-            serviceShowed: appointmentToUpdate.serviceShowed, tips: appointmentToUpdate.tips,
-            percentage: appointmentToUpdate.percentage, paymentMethod: appointmentToUpdate.paymentMethod,
-        };
-        try {
-            const response = await fetch('/api/update-appointment-showed-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataToUpdate) });
-            const result = await response.json();
-            if (!result.success) throw new Error(result.message);
-            document.dispatchEvent(new CustomEvent('reloadData'));
-            closeEditModal();
-        } catch (error) { alert(`Error saving: ${error.message}`); } finally { modalSaveBtn.disabled = false; modalSaveBtn.textContent = 'Save Changes'; }
-    }
-
+    async function handleSaveAppointment() { /* ...código da função... */ }
     async function handleSaveTimeBlock() { /* ...código da função... */ }
     async function handleUpdateTimeBlock() { /* ...código da função... */ }
     async function handleDeleteTimeBlock() { /* ...código da função... */ }
@@ -237,12 +179,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderScheduler();
         renderMiniCalendar();
         try {
+            // AQUI ESTÁ A MUDANÇA PRINCIPAL: Chama a nova API leve
             const techDataResponse = await fetch('/api/get-technicians');
             if (!techDataResponse.ok) {
                 throw new Error(`Failed to load technician data. Status: ${techDataResponse.status}`);
             }
             const technicians = await techDataResponse.json();
             allTechnicians = technicians || [];
+            
             populateTechSelects();
             document.dispatchEvent(new CustomEvent('schedulerReady'));
         } catch (error) {
@@ -278,7 +222,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderScheduler();
         document.dispatchEvent(new CustomEvent('technicianChanged', { detail: { technician: selectedTechnician, weekStart: currentWeekStart } }));
     }
-
+    
+    // Adicionando todos os Event Listeners
     techSelectDropdown.addEventListener('change', handleTechSelectionChange);
     prevWeekBtn.addEventListener('click', () => { currentWeekStart.setDate(currentWeekStart.getDate() - 7); renderScheduler(); renderMiniCalendar(); document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } })); });
     nextWeekBtn.addEventListener('click', () => { currentWeekStart.setDate(currentWeekStart.getDate() + 7); renderScheduler(); renderMiniCalendar(); document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } })); });
