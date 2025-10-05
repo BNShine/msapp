@@ -7,10 +7,11 @@ import { SHEET_NAME_APPOINTMENTS, SHEET_NAME_EMPLOYEES, SHEET_NAME_FRANCHISES, S
 
 dotenv.config();
 
-const serviceAccountAuth = new JWT({
+// Recria a autenticação para cada requisição para garantir segurança em ambientes serverless
+const getAuth = () => new JWT({
     email: process.env.CLIENT_EMAIL,
     key: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'], // Usar escopo de apenas leitura
 });
 
 const SPREADSHEET_ID_APPOINTMENTS = process.env.SHEET_ID_APPOINTMENTS;
@@ -26,58 +27,74 @@ export default async function handler(req, res) {
     let employees = [];
     let franchises = [];
 
+    // --- Busca de Técnicos (em bloco isolado para resiliência) ---
     try {
-        const docAppointments = new GoogleSpreadsheet(SPREADSHEET_ID_APPOINTMENTS, serviceAccountAuth);
-        const docData = new GoogleSpreadsheet(SPREADSHEET_ID_DATA, serviceAccountAuth);
-
-        console.log('[API LOG] Loading spreadsheet info...');
-        await Promise.all([docAppointments.loadInfo(), docData.loadInfo()]);
-        console.log('[API LOG] Spreadsheets info loaded.');
-
-        // --- LÓGICA DE BUSCA DE TÉCNICOS (MAIS ROBUSTA) ---
-        console.log(`[API LOG] Attempting to find sheet: "${SHEET_NAME_TECHNICIANS}"`);
+        if (!SPREADSHEET_ID_DATA) throw new Error("A variável de ambiente SPREADSHEET_ID_DATA não está definida.");
+        const docData = new GoogleSpreadsheet(SPREADSHEET_ID_DATA, getAuth());
+        await docData.loadInfo();
         const sheetTechnicians = docData.sheetsByTitle[SHEET_NAME_TECHNICIANS];
         
         if (sheetTechnicians) {
-            console.log(`[API LOG] SUCCESS: Found sheet "${SHEET_NAME_TECHNICIANS}". Reading rows...`);
             const rows = await sheetTechnicians.getRows();
-            console.log(`[API LOG] Found ${rows.length} rows in Technicians sheet.`);
-            
-            // Procura por um cabeçalho chamado "Technician" ou "Name" (case-insensitive)
             const headerValue = sheetTechnicians.headerValues.find(h => h.toLowerCase() === 'technician' || h.toLowerCase() === 'name');
-
+            
             if (headerValue) {
-                 console.log(`[API LOG] Found technician header: "${headerValue}"`);
-                 rows.forEach(row => {
+                rows.forEach(row => {
                     const techName = row.get(headerValue);
-                    if (techName) {
-                        technicians.push(techName);
-                    }
+                    if (techName) technicians.push(techName);
                 });
-                console.log(`[API LOG] Extracted ${technicians.length} technicians.`);
+                console.log(`[API LOG] Sucesso: Extraídos ${technicians.length} técnicos.`);
             } else {
-                 console.error(`[API ERROR] Could not find a 'Technician' or 'Name' column in the "${SHEET_NAME_TECHNICIANS}" sheet.`);
+                console.error(`[API ERROR] Nenhum cabeçalho 'Technician' ou 'Name' encontrado na aba "${SHEET_NAME_TECHNICIANS}".`);
             }
         } else {
-            console.error(`[API ERROR] FAILED to find sheet "${SHEET_NAME_TECHNICIANS}".`);
+            console.error(`[API ERROR] Aba "${SHEET_NAME_TECHNICIANS}" não encontrada na planilha com ID ${SPREADSHEET_ID_DATA}.`);
         }
-        // --- FIM DA LÓGICA DE BUSCA DE TÉCNICOS ---
+    } catch (error) {
+        console.error('[API CATCH - Technicians] Falha ao buscar técnicos:', error.message);
+    }
 
-        // --- Buscas Resilientes (sem alterações) ---
+    // --- Busca de Funcionários (em bloco isolado) ---
+    try {
+        if (!SPREADSHEET_ID_DATA) throw new Error("SPREADSHEET_ID_DATA não está definida.");
+        const docData = new GoogleSpreadsheet(SPREADSHEET_ID_DATA, getAuth());
+        await docData.loadInfo();
         const sheetEmployees = docData.sheetsByTitle[SHEET_NAME_EMPLOYEES];
         if (sheetEmployees) {
             const rows = await sheetEmployees.getRows();
             const header = sheetEmployees.headerValues[0];
-            if(header) rows.forEach(row => { if(row.get(header)) employees.push(row.get(header)) });
+            if (header) rows.forEach(row => { if (row.get(header)) employees.push(row.get(header)) });
+            console.log(`[API LOG] Sucesso: Extraídos ${employees.length} funcionários.`);
+        } else {
+            console.error(`[API ERROR] Aba "${SHEET_NAME_EMPLOYEES}" não encontrada.`);
         }
-        
+    } catch (error) {
+        console.error('[API CATCH - Employees] Falha ao buscar funcionários:', error.message);
+    }
+
+    // --- Busca de Franquias (em bloco isolado) ---
+    try {
+        if (!SPREADSHEET_ID_DATA) throw new Error("SPREADSHEET_ID_DATA não está definida.");
+        const docData = new GoogleSpreadsheet(SPREADSHEET_ID_DATA, getAuth());
+        await docData.loadInfo();
         const sheetFranchises = docData.sheetsByTitle[SHEET_NAME_FRANCHISES];
         if (sheetFranchises) {
             const rows = await sheetFranchises.getRows();
             const header = sheetFranchises.headerValues[0];
-            if(header) rows.forEach(row => { if(row.get(header)) franchises.push(row.get(header)) });
+            if (header) rows.forEach(row => { if (row.get(header)) franchises.push(row.get(header)) });
+            console.log(`[API LOG] Sucesso: Extraídas ${franchises.length} franquias.`);
+        } else {
+            console.error(`[API ERROR] Aba "${SHEET_NAME_FRANCHISES}" não encontrada.`);
         }
+    } catch (error) {
+        console.error('[API CATCH - Franchises] Falha ao buscar franquias:', error.message);
+    }
 
+    // --- Busca de Agendamentos (em bloco isolado) ---
+    try {
+        if (!SPREADSHEET_ID_APPOINTMENTS) throw new Error("SPREADSHEET_ID_APPOINTMENTS não está definida.");
+        const docAppointments = new GoogleSpreadsheet(SPREADSHEET_ID_APPOINTMENTS, getAuth());
+        await docAppointments.loadInfo();
         const sheetAppointments = docAppointments.sheetsByTitle[SHEET_NAME_APPOINTMENTS];
         if (sheetAppointments) {
             const rows = await sheetAppointments.getRows();
@@ -91,17 +108,14 @@ export default async function handler(req, res) {
                     });
                 }
             });
+            console.log(`[API LOG] Sucesso: Extraídos ${appointments.length} agendamentos.`);
+        } else {
+            console.error(`[API ERROR] Aba "${SHEET_NAME_APPOINTMENTS}" não encontrada.`);
         }
-
-        const responseData = { appointments, employees, technicians, franchises };
-        console.log(`[API LOG] Sending response with ${technicians.length} technicians.`);
-        return res.status(200).json(responseData);
-
     } catch (error) {
-        console.error('[API CRITICAL ERROR] in /api/get-dashboard-data:', error);
-        res.status(500).json({ 
-            error: `A critical server error occurred: ${error.message}`,
-            appointments: [], employees: [], technicians: [], franchises: []
-        });
+        console.error('[API CATCH - Appointments] Falha ao buscar agendamentos:', error.message);
     }
+
+    // Sempre retorna uma resposta 200 OK com os dados que conseguiu buscar
+    res.status(200).json({ appointments, employees, technicians, franchises });
 }
