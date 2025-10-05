@@ -413,30 +413,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderTimeBlocks(columnMap) {
         const weekEnd = new Date(currentWeekStart);
         weekEnd.setDate(currentWeekStart.getDate() + 7);
-        
+
         techAvailabilityBlocks.forEach(block => {
             if (!block || typeof block.date !== 'string' || block.date.trim() === '') return;
+            
             const parts = block.date.split('/');
             if (parts.length !== 3) return; 
             const [M, D, Y] = parts;
             const blockDate = new Date(`${Y}-${M}-${D}T00:00:00`);
+
             if (isNaN(blockDate.getTime())) return;
             if (blockDate < currentWeekStart || blockDate >= weekEnd) return;
+
             const dateKey = formatDateToYYYYMMDD(blockDate);
             const colIndex = columnMap[dateKey];
             if (!colIndex) return;
+
             const [startH, startM] = block.startHour.split(':').map(Number);
             const [endH, endM] = block.endHour.split(':').map(Number);
+            
             const topOffset = ((startH - MIN_HOUR) * SLOT_HEIGHT_PX) + (startM / 60 * SLOT_HEIGHT_PX);
             const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
             const height = (durationMinutes / 60) * SLOT_HEIGHT_PX;
+
             const blockEl = document.createElement('div');
-            blockEl.className = 'absolute w-full p-2 box-border rounded-md';
+            
+            // --- INÍCIO DA ALTERAÇÃO ---
+            // Aplica a classe base 'appointment-block' e depois customiza o que for necessário.
+            blockEl.className = 'appointment-block'; // Garante a mesma largura, padding, etc.
+            
+            // Sobrescreve/adiciona estilos específicos para o time-block
+            blockEl.style.height = `${height}px`; // Altura dinâmica é fundamental
+            blockEl.style.backgroundColor = 'rgba(107, 114, 128, 0.7)'; // Cor cinza translúcida
+            blockEl.style.zIndex = '5'; // Fica atrás dos agendamentos
+            blockEl.style.cursor = 'default'; // Não é clicável como um agendamento
             blockEl.style.gridColumnStart = colIndex;
             blockEl.style.top = `${topOffset}px`;
-            blockEl.style.height = `${height}px`;
-            blockEl.style.backgroundColor = 'rgba(107, 114, 128, 0.7)';
-            blockEl.style.zIndex = '5';
+            // --- FIM DA ALTERAÇÃO ---
+
             blockEl.innerHTML = `
                 <p class="text-xs font-semibold text-white truncate">${block.notes || 'Blocked'}</p>
                 <p class="text-xs text-white/80">${block.startHour} - ${block.endHour}</p>
@@ -504,12 +518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!dayItineraryTableBody) return;
         dayItineraryTableBody.innerHTML = '';
         itineraryResultsList.innerHTML = 'No route calculated.';
-        
-        // --- INÍCIO DA ALTERAÇÃO ---
-        // Garante que a seção de aplicar a rota comece oculta
         schedulingControls.classList.add('hidden');
-        // --- FIM DA ALTERAÇÃO ---
-
         const selectedDayOfWeek = dayFilter.value;
         const selectedTechName = techSelectDropdown.value; 
         optimizeItineraryBtn.disabled = true;
@@ -690,20 +699,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     `;
                 });
                 itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-lg text-brand-primary">Total Round Trip: ${Math.round(totalDuration / 60)} min / ${(totalDistance / 1000).toFixed(2)} km</div>`;
-                
-                // --- INÍCIO DA ALTERAÇÃO ---
-                // Mostra a seção de agendamento após o cálculo bem-sucedido
                 schedulingControls.classList.remove('hidden');
-                // --- FIM DA ALTERAÇÃO ---
-
             } else {
                 clearCustomMarkers();
                 itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}. Motivo: O Google Maps não conseguiu traçar a rota com os Zips fornecidos, ou o Zip de Origem é inválido.</p>`;
-                
-                // --- INÍCIO DA ALTERAÇÃO ---
-                // Garante que a seção de agendamento fique oculta em caso de erro
                 schedulingControls.classList.add('hidden');
-                // --- FIM DA ALTERAÇÃO ---
             }
         });
     }
