@@ -10,14 +10,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const schedulingControls = document.getElementById('scheduling-controls');
     const firstScheduleSelect = document.getElementById('first-schedule-select');
     const applyRouteBtn = document.getElementById('apply-route-btn');
-    
+    const techSelectDropdown = document.getElementById('tech-select-dropdown');
+
     // --- Variáveis Globais de Estado ---
     let allAppointments = [];
     let dayAppointments = [];
     let techAvailabilityBlocks = [];
     let orderedClientStops = [];
     let currentWeekStart = getStartOfWeek(new Date());
-    let selectedTechnician = ''; // **CORREÇÃO: Variável local para rastrear o técnico**
+    let selectedTechnician = '';
 
     const MIN_HOUR = 7;
     const MAX_HOUR = 21;
@@ -59,6 +60,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         const date = new Date(startOfWeekDate);
         date.setDate(startOfWeekDate.getDate() + dayOfWeek);
         return date;
+    }
+
+    async function getLatLon(zipCode) {
+        if (!zipCode) return [null, null];
+        try {
+            const response = await fetch(`https://api.zippopotam.us/us/${zipCode}`);
+            if (!response.ok) return [null, null];
+            const data = await response.json();
+            const place = data.places[0];
+            return [parseFloat(place.latitude), parseFloat(place.longitude)];
+        } catch (error) {
+            console.error('Erro ao buscar dados de zip code:', error);
+            return [null, null];
+        }
+    }
+    
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
     }
     
     // --- Lógica da Aplicação da Rota e Dropdown ---
@@ -202,7 +221,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         optimizeItineraryBtn.disabled = true;
         itineraryReverserBtn.disabled = true;
 
-        // **CORREÇÃO: Usa a variável de estado local 'selectedTechnician'**
         if (!selectedTechnician || selectedDayOfWeek === '') {
             dayItineraryTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-muted-foreground">Select a day and a technician to view appointments.</td></tr>';
             return;
@@ -247,7 +265,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function runItineraryOptimization(isReversed = false) {
-        // A lógica desta função permanece a mesma, pois já estava correta
         itineraryResultsList.innerHTML = 'Calculating route...';
         optimizeItineraryBtn.disabled = true;
         itineraryReverserBtn.disabled = true;
@@ -270,24 +287,75 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        const validWaypoints = dayAppointments.filter(appt => appt.zipCode).map(appt => ({
-            id: appt.id,
-            zipCode: appt.zipCode,
-            customerName: appt.customers
-        }));
+        const validAppointments = [];
+        for (const appt of dayAppointments) {
+            if (appt.zipCode) {
+                const [lat, lon] = await getLatLon(appt.zipCode);
+                if (lat !== null) validAppointments.push({ ...appt, lat, lon });
+            }
+        }
 
-        if (validWaypoints.length < 1) {
+        if (validAppointments.length < 1) {
             itineraryResultsList.innerHTML = '<p class="text-red-600">No appointments with valid Zip Codes to optimize.</p>';
             optimizeItineraryBtn.disabled = false;
             itineraryReverserBtn.disabled = false;
             return;
         }
+        
+        const [originLat, originLon] = await getLatLon(originZip);
+        if (originLat === null) {
+            itineraryResultsList.innerHTML = '<p class="text-red-600">Could not get coordinates for technician origin Zip Code.</p>';
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+            return;
+        }
+
+        // --- **LÓGICA DE ORDENAÇÃO CORRIGIDA** ---
+        let orderedPath = [];
+        let unvisited = [...validAppointments];
+        let currentLat = originLat, currentLon = originLon;
+
+        while (unvisited.length > 0) {
+            let nextStop = null;
+
+            if (isReversed) {
+                // Algoritmo "Farthest Neighbor"
+                nextStop = unvisited.reduce((farthest, current) => {
+                    const dist = calculateDistance(currentLat, currentLon, current.lat, current.lon);
+                    if (dist > farthest.maxDistance) return { maxDistance: dist, client: current };
+                    return farthest;
+                }, { maxDistance: -1, client: null });
+            } else {
+                // Algoritmo "Nearest Neighbor"
+                nextStop = unvisited.reduce((closest, current) => {
+                    const dist = calculateDistance(currentLat, currentLon, current.lat, current.lon);
+                    if (dist < closest.minDistance) return { minDistance: dist, client: current };
+                    return closest;
+                }, { minDistance: Infinity, client: null });
+            }
+            
+            orderedPath.push(nextStop.client);
+            currentLat = nextStop.client.lat;
+            currentLon = nextStop.client.lon;
+            unvisited = unvisited.filter(c => c.id !== nextStop.client.id);
+        }
+
+        const waypointsForApi = orderedPath.map(stop => ({
+            id: stop.id,
+            zipCode: stop.zipCode,
+            customerName: stop.customers
+        }));
 
         try {
             const response = await fetch('/api/optimize-route', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ originZip, waypoints: validWaypoints, isReversed }),
+                body: JSON.stringify({
+                    originZip: originZip,
+                    waypoints: waypointsForApi,
+                    // 'isReversed' agora controla a otimização do Google, não a nossa ordenação local
+                    isReversed: !isReversed 
+                }),
             });
             const result = await response.json();
             if (!result.success) throw new Error(result.message);
@@ -296,7 +364,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (${isReversed ? 'Farthest First' : 'Nearest First'}):</p>`;
             let totalDuration = 0, totalDistance = 0;
             
-            const finalOrder = route.waypoint_order ? route.waypoint_order.map(i => validWaypoints[i]) : validWaypoints;
+            // A ordem final vem do Google se otimizada, senão é a nossa ordem calculada
+            const finalOrder = route.waypoint_order ? route.waypoint_order.map(i => waypointsForApi[i]) : waypointsForApi;
             orderedClientStops = finalOrder;
             
             route.legs.forEach((leg, i) => {
@@ -316,7 +385,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             itineraryReverserBtn.disabled = false;
         }
     }
-
 
     // --- Inicialização e Event Listeners ---
     async function loadAppointmentData() {
@@ -347,10 +415,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    // **LISTENER CORRIGIDO**
-    document.addEventListener('technicianChanged', (e) => {
-        selectedTechnician = e.detail.technician; // Atualiza a variável de estado local
+    document.addEventListener('technicianChanged', async (e) => {
+        selectedTechnician = e.detail.technician;
         currentWeekStart = e.detail.weekStart;
+        await fetchAvailabilityForSelectedTech(selectedTechnician);
         renderDayItineraryTable();
     });
 
