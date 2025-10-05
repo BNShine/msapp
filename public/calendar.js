@@ -174,10 +174,92 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     // --- 4. Funções de Manipulação dos Modais ---
-    // (O código para os modais permanece o mesmo)
+
+    function openEditModal(appt) {
+        const { id, technician, petShowed, percentage, paymentMethod, appointmentDate, serviceShowed, tips, verification } = appt;
+        document.getElementById('modal-appt-id').value = id;
+        document.getElementById('modal-original-technician').value = technician;
+        document.getElementById('modal-pet-showed').value = petShowed || '';
+        document.getElementById('modal-percentage').value = percentage || '';
+        document.getElementById('modal-payment-method').value = paymentMethod || '';
+        document.getElementById('modal-date').value = formatDateTimeForInput(appointmentDate);
+        document.getElementById('modal-service-value').value = serviceShowed || '';
+        document.getElementById('modal-tips').value = tips || '';
+        const verificationSelect = document.getElementById('modal-verification');
+        verificationSelect.innerHTML = ["Scheduled", "Showed", "Canceled"].map(opt => 
+            `<option value="${opt}" ${verification === opt ? 'selected' : ''}>${opt}</option>`
+        ).join('');
+        editModal.classList.remove('hidden');
+        document.body.classList.add('modal-open');
+    }
+
+    function closeEditModal() {
+        if (editModal) editModal.classList.add('hidden');
+        document.body.classList.remove('modal-open');
+    }
+    
+    function openTimeBlockModal() {
+        if (!selectedTechnician) {
+            alert('Please select a technician first.');
+            return;
+        }
+        document.getElementById('time-block-form').reset();
+        timeBlockModal.classList.remove('hidden');
+    }
+
+    function closeTimeBlockModal() {
+        timeBlockModal.classList.add('hidden');
+    }
+
+    function openEditTimeBlockModal(blockData) {
+        editBlockRowNumberInput.value = blockData.rowNumber;
+        const [month, day, year] = blockData.date.split('/');
+        editBlockDateInput.value = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        editBlockStartInput.value = blockData.startHour;
+        editBlockEndInput.value = blockData.endHour;
+        editBlockNotesInput.value = blockData.notes;
+        editTimeBlockModal.classList.remove('hidden');
+        document.body.classList.add('modal-open');
+    }
+
+    function closeEditTimeBlockModal() {
+        if (editTimeBlockModal) editTimeBlockModal.classList.add('hidden');
+        document.body.classList.remove('modal-open');
+    }
 
     // --- 5. Funções de Manipulação de Dados (API Calls) ---
-    // (O código para as chamadas de API permanece o mesmo)
+    
+    async function handleSaveAppointment() {
+        // ... (código para salvar agendamento)
+    }
+    
+    async function handleSaveTimeBlock() {
+        // ... (código para criar time block)
+    }
+
+    async function handleUpdateTimeBlock() {
+        // ... (código para atualizar time block)
+    }
+
+    async function handleDeleteTimeBlock() {
+        // ... (código para deletar time block)
+    }
+
+    async function fetchAvailabilityForSelectedTech() {
+        if (!selectedTechnician) {
+            techAvailabilityBlocks = [];
+            return;
+        }
+        try {
+            const response = await fetch(`/api/manage-technician-availability?technicianName=${encodeURIComponent(selectedTechnician)}`);
+            if (!response.ok) throw new Error('Could not fetch availability.');
+            const data = await response.json();
+            techAvailabilityBlocks = data.availability || [];
+        } catch (error) {
+            console.error('Error fetching availability:', error);
+            techAvailabilityBlocks = [];
+        }
+    }
 
     // --- 6. Funções de Renderização ---
 
