@@ -2,27 +2,21 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
     const scheduleForm = document.getElementById('scheduleForm');
-    if (!scheduleForm) return; // Só executa se o formulário existir na página
+    if (!scheduleForm) return;
 
     // --- Funções Auxiliares do Formulário ---
     function populateDropdowns(selectElement, items) {
         if (!selectElement) return;
-        while (selectElement.options.length > 1) {
-            selectElement.remove(1);
-        }
+        while (selectElement.options.length > 1) selectElement.remove(1);
         if (items && Array.isArray(items)) {
-            items.forEach(item => {
-                if (item) selectElement.add(new Option(item, item));
-            });
+            items.forEach(item => { if (item) selectElement.add(new Option(item, item)) });
         }
     }
 
     function generateAlphanumericCode(length = 5) {
         const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let result = '';
-        for (let i = 0; i < length; i++) {
-            result += characters.charAt(Math.floor(Math.random() * characters.length));
-        }
+        for (let i = 0; i < length; i++) result += characters.charAt(Math.floor(Math.random() * characters.length));
         return result;
     }
 
@@ -44,18 +38,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const inputStyle = 'block w-full h-full rounded-xl border-2 border-foreground/80 hover:border-brand-primary bg-muted/50 px-3 py-2 text-sm';
         suggestedTechDisplay.className = 'h-12 w-full flex items-center bg-muted/50 px-3 py-2 text-muted-foreground font-medium rounded-xl border-2 border-foreground/80';
         suggestedTechDisplay.innerHTML = 'Procurando...';
-
         if (!customerState) {
             suggestedTechDisplay.textContent = '--/--/----';
             return;
         }
-
         try {
             const response = await fetch('/api/get-tech-coverage');
             if (!response.ok) throw new Error('Falha ao buscar cobertura.');
             const techCoverageData = await response.json();
             const centralTechs = techCoverageData.filter(t => t.categoria?.toLowerCase() === 'central');
-
             const techsWithState = (await Promise.all(centralTechs.map(async tech => {
                 if (tech.zip_code?.length === 5) {
                     const loc = await getCityFromZip(tech.zip_code);
@@ -63,9 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 return null;
             }))).filter(Boolean);
-
             const suggestedTechs = techsWithState.filter(t => t.state === customerState).map(t => t.name);
-
             if (suggestedTechs.length > 0) {
                 suggestedTechDisplay.className = 'h-12 w-full';
                 let dropdown = `<select id="suggestedTechSelect" name="technician" required class="${inputStyle}"><option value="">Selecione um técnico</option>`;
@@ -82,7 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- Seletores do Formulário ---
+    // --- Seletores e Configuração Inicial do Formulário ---
     const customersInput = document.getElementById('customers');
     const codePassDisplay = document.getElementById('codePassDisplay');
     const appointmentDateInput = document.getElementById('appointmentDate');
@@ -90,8 +79,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const zipCodeInputForm = document.getElementById('zipCode');
     const cityInput = document.getElementById('city');
     const suggestedTechDisplay = document.getElementById('suggestedTechDisplay');
-
-    // Adiciona campos hidden
+    
+    // Adiciona campos hidden e valores padrão
     if (!document.getElementById('codePass')) {
         const codePassInput = document.createElement('input');
         codePassInput.type = 'hidden';
@@ -106,6 +95,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         reminderDateInput.name = 'reminderDate';
         scheduleForm.appendChild(reminderDateInput);
     }
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    document.getElementById('data').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('month').value = currentMonth;
+    document.getElementById('year').value = currentYear;
 
     // --- Lógica de Submissão ---
     async function handleFormSubmission(event) {
@@ -118,20 +112,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             alert(`Error: Appointments must be between 07:00 and 21:00.`);
             return;
         }
-
         const [datePart, timePart] = appointmentDateLocal.split('T');
         const [year, month, day] = datePart.split('-');
         const apiFormattedDate = `${month}/${day}/${year} ${timePart}`;
         const [rYear, rMonth, rDay] = document.getElementById('reminderDate').value.split('-');
         const apiFormattedReminderDate = `${rMonth}/${rDay}/${rYear}`;
         const formattedData = { ...data, appointmentDate: apiFormattedDate, reminderDate: apiFormattedReminderDate, verification: 'Scheduled', code: document.getElementById('codePass').value };
-
         try {
-            const response = await fetch('/api/register-appointment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formattedData),
-            });
+            const response = await fetch('/api/register-appointment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formattedData) });
             const result = await response.json();
             if (result.success) {
                 alert('Agendamento registrado com sucesso!');
