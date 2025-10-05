@@ -11,7 +11,7 @@ window.initMap = function() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', async () => { // CORREÇÃO: Bloco aberto
+document.addEventListener('DOMContentLoaded', async () => {
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
     const selectedTechDisplay = document.getElementById('selected-tech-display');
     const loadingOverlay = document.getElementById('loading-overlay');
@@ -815,7 +815,7 @@ document.addEventListener('DOMContentLoaded', async () => { // CORREÇÃO: Bloco
                 
                 // Add the stops in their final order to the full sequence, including origin/destination markers.
                 const fullSequence = [
-                    { name: 'HOME (Start)', zipCode: originZip, lat: originLat, lng: originLon, apptTime: 'N/A' },
+                    { name: 'HOME (Start)', zipCode: originZip, apptTime: 'N/A' },
                     ...finalOrderedStops.map(appt => ({ 
                         name: appt.customers, 
                         zipCode: appt.zipCode, 
