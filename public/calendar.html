@@ -9,168 +9,170 @@
     <script src="https://cdn.jsdelivr.net/npm/lucide-static@latest/dist/umd/lucide.js"></script>
     
     <style>
+        /* --- ESTILOS GERAIS PARA O NOVO LAYOUT --- */
+        body {
+            background-color: #f7f8fa; /* Um fundo ligeiramente mais suave */
+        }
+
+        .calendar-container {
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            background-color: hsl(var(--card));
+            box-shadow: var(--shadow-soft);
+            overflow: hidden; /* Garante que os cantos arredondados sejam aplicados a tudo */
+        }
+        
+        /* --- ESTILOS DOS CARDS DE AGENDAMENTO --- */
+        .appointment-card {
+            position: absolute;
+            left: 2px;
+            right: 2px;
+            background-color: #f8f9fc; /* Cor de fundo neutra e clara */
+            border-left: 4px solid; /* Borda colorida para status */
+            padding: 4px 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            color: #333; /* Texto mais escuro para melhor legibilidade */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .appointment-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+            z-index: 15;
+        }
+
+        .appointment-card p {
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .card-title { font-weight: 600; font-size: 0.8rem; }
+        .card-time, .card-details { font-size: 0.75rem; color: #555; }
+
+        /* Cores da borda para cada status (usando a sua paleta) */
+        .status-scheduled { border-color: hsl(var(--brand-primary)); }
+        .status-confirmed { border-color: #f9d872; }
+        .status-showed   { border-color: rgb(22 163 74); }
+        .status-canceled  { border-color: hsl(0 84% 45%); }
+
+        /* --- ESTILOS DO CALENDÁRIO GRID --- */
         .scheduler-grid {
             display: grid;
-            grid-template-columns: 80px repeat(7, minmax(150px, 1fr)); 
-            grid-auto-rows: minmax(60px, auto); 
-            overflow-x: auto;
-            min-width: 100%;
+            grid-template-columns: 60px repeat(7, 1fr); /* Coluna de tempo mais estreita */
+            grid-auto-rows: 30px; /* Slots de 30 minutos (60px por hora) */
         }
-        .time-slot {
-            height: 60px;
-            position: relative;
-        }
-        .appointment-block {
-            width: 150px;
-            height: 120px; 
-            position: absolute;
-            left: 0;
-            top: 0; 
-            padding: 8px; 
-            box-sizing: border-box;
-            z-index: 10;
-        }
-        .timeline-header {
+        .time-label {
             grid-column: 1;
-            position: sticky;
-            left: 0;
-            background-color: hsl(var(--card));
-            z-index: 20;
+            text-align: right;
+            padding-right: 10px;
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
+            position: relative;
+            top: -8px; /* Alinha o texto com a linha */
         }
-        .day-column-header {
+        .day-column {
+            position: relative;
+            border-right: 1px solid hsl(var(--border));
+        }
+        .day-column:last-child {
+            border-right: none;
+        }
+        .hour-line {
+            border-top: 1px solid hsl(var(--border));
+            grid-column: 2 / span 7;
+        }
+        .day-header {
             text-align: center;
+            padding: 12px 0;
+            font-weight: 500;
+            border-bottom: 1px solid hsl(var(--border));
         }
-        .bg-custom-primary { background-color: hsl(337 100% 67%); }
-        .bg-green-600 { background-color: rgb(22 163 74); }
-        .bg-cherry-red { background-color: hsl(0 84% 45%); }
-        .bg-yellow-confirmed { background-color: #f9d872; }
-        
-        .modal-overlay-fixed {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            z-index: 1000;
-        }
-
-        body.modal-open {
-            overflow: hidden !important; 
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-
-        tr.is-saving {
-            background-color: hsl(var(--secondary) / 0.1);
-            transition: background-color: 0.3s;
-        }
-        tr.is-success {
-            background-color: hsl(142.1 76.2% 36.3% / 0.15);
-            transition: background-color: 0.3s;
-        }
-        tr.is-error {
-            background-color: hsl(0 84.2% 60.2% / 0.15);
-            transition: background-color: 0.3s;
+        .day-header.today {
+            background-color: hsl(var(--brand-primary) / 0.1);
+            color: hsl(var(--brand-primary));
+            border-radius: 50px;
+            padding: 2px 6px;
         }
     </style>
 </head>
-<body class="bg-background">
+<body class="bg-background text-foreground">
 
-    <header class="bg-card shadow-large border-b border-border">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <div class="flex items-center gap-4">
-            <h1 class="text-xl font-bold text-foreground">Technician Scheduler</h1>
-          </div>
-          <a href="../appointments.html" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">
-             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus w-4 h-4"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-             New Appointment
-          </a>
-        </div>
-      </div>
-    </header>
-
-    <main class="p-8">
-        <div class="max-w-[98rem] mx-auto space-y-8">
-
-            <section class="rounded-lg border bg-card text-card-foreground shadow-large">
-                <div class="p-6 border-b border-border flex justify-between items-center flex-wrap gap-4">
-                    <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">Weekly Schedule</h2>
-                    <div class="flex items-center gap-4">
-                        <button id="prev-week" class="p-2 border rounded-md hover:bg-muted">Prev</button>
-                        <span id="current-week-display" class="font-bold text-lg flex items-center">Loading...</span>
-                        <button id="next-week" class="p-2 border rounded-md hover:bg-muted">Next</button>
-                    </div>
-                </div>
+    <header class="bg-card border-b border-border sticky top-0 z-20">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex items-center justify-between">
                 
-                <div class="flex">
-                    <div id="tech-filter-panel" class="w-64 border-r border-border p-4 space-y-4 flex-shrink-0">
-                        <h3 class="text-lg font-semibold">Select Technician</h3>
-                        <select id="tech-select-dropdown" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                             <option value="">Loading Technicians...</option>
-                        </select>
-                        <p id="selected-tech-display" class="text-sm font-bold text-brand-primary">No Technician Selected</p>
-                        <button id="add-time-block-btn" class="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold h-9 px-4 py-2 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white transition-colors">
-                            + Add Time Block
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <button id="prev-week-btn" class="p-2 rounded-md hover:bg-muted transition-colors">
+                            <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                        </button>
+                        <button id="next-week-btn" class="p-2 rounded-md hover:bg-muted transition-colors">
+                            <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
                         </button>
                     </div>
-                    
-                    <div class="flex-1 overflow-x-auto">
-                        <div id="scheduler-header" class="scheduler-grid border-b border-border">
-                            <div class="timeline-header p-2 font-semibold">Time</div>
-                        </div>
-                        <div id="scheduler-body-wrapper" class="relative">
-                            <div id="scheduler-body" class="scheduler-grid relative min-w-full">
-                                </div>
-                            <div id="loading-overlay" class="absolute inset-0 bg-white/70 flex items-center justify-center hidden z-30">
-                                <p class="text-xl font-semibold text-muted-foreground">Please select a technician.</p>
-                            </div>
-                        </div>
-                    </div>
+                    <button id="today-btn" class="h-10 px-4 rounded-lg border border-border text-sm font-semibold hover:bg-muted transition-colors">Today</button>
+                    <h2 id="current-week-display" class="text-xl font-semibold text-gray-700">Loading...</h2>
                 </div>
-            </section>
 
-            <section class="rounded-lg border bg-card text-card-foreground shadow-large">
-                <div class="flex flex-col space-y-1.5 p-6 pb-8">
-                    <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                        Manage Showed Appointments (Current Week)
-                    </h2>
+                <div class="flex items-center gap-4">
+                    <div id="tech-filter-panel" class="flex items-center gap-2">
+                        <label for="tech-select-dropdown" class="text-sm font-medium">Technician:</label>
+                        <select id="tech-select-dropdown" class="rounded-lg border-border text-sm focus:ring-brand-primary focus:border-brand-primary">
+                             <option value="">Loading...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="bg-muted p-1 rounded-lg flex items-center text-sm">
+                        <button class="px-3 py-1 rounded-md bg-white shadow-sm">Week</button>
+                        <button class="px-3 py-1 rounded-md text-muted-foreground">Month</button>
+                        <button class="px-3 py-1 rounded-md text-muted-foreground">Day</button>
+                    </div>
+
+                    <a href="../appointments.html" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-10 px-4 py-2 bg-brand-primary text-white hover:shadow-brand transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                        New
+                    </a>
                 </div>
-                <div class="p-6 pt-0 overflow-x-auto">
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-screen-2xl mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <div class="calendar-container">
+            <div id="scheduler-header" class="grid grid-cols-[60px_repeat(7,1fr)]">
+                <div class="grid-col-1"></div>
+            </div>
+            <div id="scheduler-body" class="scheduler-grid relative">
+                </div>
+        </div>
+
+        <div class="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-12">
+            
+            <div>
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Manage Appointments (Current Week)</h2>
+                <div class="bg-card border border-border rounded-lg shadow-sm overflow-x-auto">
                     <table class="w-full text-left">
                         <thead class="bg-muted text-muted-foreground uppercase text-xs font-semibold">
                             <tr>
-                                <th class="p-4 border-b border-border">Appointment Date</th>
-                                <th class="p-4 border-b border-border">Customers</th>
-                                <th class="p-4 border-b border-border">Code</th>
-                                <th class="p-4 border-b border-border">Technician</th>
-                                <th class="p-4 border-b border-border">Pet Showed</th>
-                                <th class="p-4 border-b border-border">Service Showed</th>
-                                <th class="p-4 border-b border-border">Tips</th>
-                                <th class="p-4 border-b border-border">Percentage</th>
-                                <th class="p-4 border-b border-border">Method</th>
-                                <th class="p-4 border-b border-border">Verification</th>
+                                <th class="p-3">Date</th>
+                                <th class="p-3">Customer</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="showed-appointments-table-body" class="text-foreground text-sm">
-                            <tr>
-                                <td colspan="10" class="p-4 text-center">Select a technician to see appointments for the current week.</td>
-                            </tr>
+                            <tr><td colspan="4" class="p-4 text-center text-muted-foreground">Select a technician.</td></tr>
                         </tbody>
                     </table>
                 </div>
-            </section>
-
-            <section id="day-itinerary-section" class="rounded-lg border bg-card text-card-foreground shadow-large p-6">
-                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">Daily Itinerary and Optimization</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            </div>
+            
+            <div>
+                 <h2 class="text-xl font-bold text-gray-800 mb-4">Daily Itinerary & Optimization</h2>
+                <div class="bg-card border border-border rounded-lg shadow-sm p-6">
                     <div class="space-y-2">
                         <label for="day-filter" class="block text-sm font-semibold text-foreground">Select Day (of the current week)</label>
                         <select id="day-filter" class="w-full rounded-xl border-2 border-border hover:border-brand-primary transition-colors bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
@@ -184,156 +186,23 @@
                             <option value="0">Sunday</option>
                         </select>
                     </div>
-                </div>
-                
-                <div class="flex gap-4 mt-4 mb-4">
-                    <button id="optimize-itinerary-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand disabled:opacity-50" disabled>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-route w-4 h-4"><path d="M3 3v18h18"/><path d="m21 7-5 5h5"/><path d="m11 11-3 3h3"/><path d="m11 7-5 5h5"/></svg>
-                        Itinerary Optimizer (Nearest)
-                    </button>
-                    <button id="itinerary-reverser-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand disabled:opacity-50" disabled>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-down-up w-4 h-4"><path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/></svg>
-                        Itinerary Reverser (Farthest)
-                    </button>
-                </div>
-                
-                <h3 class="text-xl font-bold text-foreground mt-8 mb-4">Appointments for the Day</h3>
-                <div class="p-6 pt-0 overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-muted text-muted-foreground uppercase text-xs font-semibold whitespace-nowrap">
-                            <tr>
-                                <th class="p-4 border-b border-border">Time</th>
-                                <th class="p-4 border-b border-border">Customers</th>
-                                <th class="p-4 border-b border-border">Phone</th>
-                                <th class="p-4 border-b border-border">Zip Code</th>
-                                <th class="p-4 border-b border-border">Code</th>
-                                <th class="p-4 border-b border-border">Verification</th>
-                                <th class="p-4 border-b border-border">Technician</th>
-                            </tr>
-                        </thead>
-                        <tbody id="day-itinerary-table-body" class="text-foreground text-sm">
-                            <tr>
-                                <td colspan="7" class="p-4 text-center text-muted-foreground">Select a day and a technician to view appointments.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                
-                <h3 class="text-xl font-bold text-foreground mt-8 mb-4">Optimized Route Results</h3>
-                
-                <div id="scheduling-controls" class="p-4 border border-border rounded-lg bg-muted/30 mb-6 hidden">
-                    <h4 class="text-lg font-semibold mb-3">Apply Optimized Route to Calendar</h4>
-                    <div class="flex flex-wrap items-end gap-4">
-                        <div class="space-y-2 flex-1 min-w-[200px]">
-                            <label for="first-schedule-select" class="block text-sm font-semibold text-foreground">First Schedule Slot (07:00 - 21:00)</label>
-                            <select id="first-schedule-select" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                                </select>
-                        </div>
-                        <button id="apply-route-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-green-600 text-white hover:shadow-medium disabled:opacity-50">
-                            Apply Route
-                        </button>
+                    <div id="itinerary-results-list" class="mt-4 space-y-2 text-sm text-muted-foreground">
+                        Select a day to see the itinerary.
                     </div>
                 </div>
-                <div id="itinerary-results-list" class="mt-4 space-y-2 text-sm text-muted-foreground">
-                    No route calculated.
-                </div>
-            </section>
+            </div>
+
         </div>
+
     </main>
-
+    
     <div id="edit-appointment-modal" class="modal-overlay-fixed hidden">
-        <div class="bg-card p-6 rounded-lg shadow-2xl w-full max-w-md relative" style="z-index: 1001;">
-            <h3 class="text-xl font-bold text-foreground mb-4">Edit Appointment Details</h3>
-            <form id="appointment-edit-form" class="space-y-4">
-                <input type="hidden" id="modal-appt-id" name="id">
-                
-                <div class="space-y-2">
-                    <label for="modal-date" class="block text-sm font-semibold text-foreground">Date and Time</label>
-                    <input type="datetime-local" id="modal-date" name="appointmentDate" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                </div>
-                <div class="space-y-2">
-                    <label for="modal-verification" class="block text-sm font-semibold text-foreground">Status</label>
-                    <select id="modal-verification" name="verification" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"></select>
-                </div>
-            </form>
-            <div class="mt-6 flex justify-end gap-3">
-                <button id="modal-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">Save Changes</button>
-                <button id="modal-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">Cancel</button>
-            </div>
         </div>
-    </div>
-
     <div id="time-block-modal" class="modal-overlay-fixed hidden">
-        <div class="bg-card p-6 rounded-lg shadow-2xl w-full max-w-md relative">
-            <h3 class="text-xl font-bold text-foreground mb-4">Add New Time Block</h3>
-            <form id="time-block-form" class="space-y-4">
-                <div class="space-y-2">
-                    <label for="block-date" class="block text-sm font-semibold text-foreground">Date</label>
-                    <input type="date" id="block-date" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                        <label for="block-start-hour" class="block text-sm font-semibold text-foreground">Start Time</label>
-                        <input type="time" id="block-start-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                    </div>
-                    <div class="space-y-2">
-                        <label for="block-end-hour" class="block text-sm font-semibold text-foreground">End Time</label>
-                        <input type="time" id="block-end-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                    </div>
-                </div>
-                <div class="space-y-2">
-                    <label for="block-notes" class="block text-sm font-semibold text-foreground">Notes (Reason)</label>
-                    <textarea id="block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm" placeholder="Ex: Lunch, Personal appointment..."></textarea>
-                </div>
-            </form>
-            <div class="mt-6 flex justify-end gap-3">
-                <button id="block-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">Save Block</button>
-                <button id="block-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">Cancel</button>
-            </div>
         </div>
-    </div>
-    
     <div id="edit-time-block-modal" class="modal-overlay-fixed hidden">
-        <div class="bg-card p-6 rounded-lg shadow-2xl w-full max-w-md relative">
-            <h3 class="text-xl font-bold text-foreground mb-4">Edit Time Block Details</h3>
-            <form id="edit-time-block-form" class="space-y-4">
-                <input type="hidden" id="edit-block-row-number">
-                <div class="space-y-2">
-                    <label for="edit-block-date" class="block text-sm font-semibold text-foreground">Date</label>
-                    <input type="date" id="edit-block-date" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                        <label for="edit-block-start-hour" class="block text-sm font-semibold text-foreground">Start Time</label>
-                        <input type="time" id="edit-block-start-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                    </div>
-                    <div class="space-y-2">
-                        <label for="edit-block-end-hour" class="block text-sm font-semibold text-foreground">End Time</label>
-                        <input type="time" id="edit-block-end-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
-                    </div>
-                </div>
-                <div class="space-y-2">
-                    <label for="edit-block-notes" class="block text-sm font-semibold text-foreground">Notes (Reason)</label>
-                    <textarea id="edit-block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm" placeholder="Ex: Lunch, Personal appointment..."></textarea>
-                </div>
-            </form>
-            
-            <div class="mt-6 flex justify-between items-center">
-                <button id="edit-block-delete-btn" type="button" 
-                        class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 transition-colors"
-                        style="background-color: #DC2626; color: white;"
-                        onmouseover="this.style.backgroundColor='#B91C1C'"
-                        onmouseout="this.style.backgroundColor='#DC2626'">
-                    Delete
-                </button>
-                <div class="flex gap-3">
-                    <button id="edit-block-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">Save Changes</button>
-                    <button id="edit-block-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">Cancel</button>
-                </div>
-            </div>
         </div>
-    </div>
-    
+
     <script src="calendar/schedule.js"></script>
     <script src="calendar/manageShowed.js"></script>
     <script src="calendar/itinerary.js"></script>
