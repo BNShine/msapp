@@ -71,11 +71,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleSlotSelection(event) {
         const { slot, date, tech, zip, pets } = event.currentTarget.dataset;
+        const margin = document.getElementById('appointment-margin').value;
+
         availabilitySection.style.display = 'none';
         mainFormSection.classList.remove('hidden');
+
         document.getElementById('appointmentDate').value = `${date}T${slot}`;
         document.getElementById('zipCode').value = zip;
         document.getElementById('pets').value = pets;
+        document.getElementById('appointmentMargin').value = margin;
+
         document.getElementById('zipCode').dispatchEvent(new Event('input', { bubbles: true }));
         setTimeout(() => {
             const techSelect = document.getElementById('suggestedTechSelect');
