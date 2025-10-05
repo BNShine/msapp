@@ -28,7 +28,7 @@ export default async function handler(req, res) {
         const sheet = doc.sheetsByTitle[SHEET_NAME_TECHNICIANS];
         if (!sheet) {
             console.error(`[API ERROR] A aba "${SHEET_NAME_TECHNICIANS}" não foi encontrada.`);
-            return res.status(200).json([]); // Retorna array vazio se a aba não existe
+            return res.status(200).json([]); // Retorna array vazio, mas sem erro
         }
 
         const rows = await sheet.getRows();
@@ -48,7 +48,6 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('[API FATAL /get-technicians] Falha ao buscar técnicos:', error);
-        // Retorna um erro 500 para que o frontend possa exibir a mensagem "Error loading!"
         return res.status(500).json({ error: 'Falha ao conectar com a planilha de técnicos.' });
     }
 }
