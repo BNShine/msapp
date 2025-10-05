@@ -330,8 +330,13 @@
                     <textarea id="edit-block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm" placeholder="Ex: Lunch, Personal appointment..."></textarea>
                 </div>
             </form>
+            
             <div class="mt-6 flex justify-between items-center">
-                <button id="edit-block-delete-btn" type="button" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-red-600 text-white hover:bg-red-700 transition-colors">
+                <button id="edit-block-delete-btn" type="button" 
+                        class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 transition-colors"
+                        style="background-color: #DC2626; color: white;"
+                        onmouseover="this.style.backgroundColor='#B91C1C'"
+                        onmouseout="this.style.backgroundColor='#DC2626'">
                     Delete
                 </button>
                 <div class="flex gap-3">
