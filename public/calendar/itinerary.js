@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const schedulingControls = document.getElementById('scheduling-controls');
     const firstScheduleSelect = document.getElementById('first-schedule-select');
     const applyRouteBtn = document.getElementById('apply-route-btn');
-    const techSelectDropdown = document.getElementById('tech-select-dropdown'); // Para obter o técnico selecionado
+    const techSelectDropdown = document.getElementById('tech-select-dropdown');
 
     // --- Variáveis Globais ---
     let allAppointments = [];
@@ -76,10 +76,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
     }
 
-    // --- Lógica do Google Maps ---
+    // --- Lógica do Google Maps (CORRIGIDA) ---
     window.initMap = function() {
         if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
             directionsService = new google.maps.DirectionsService();
+            if (googleMapsPromise && typeof googleMapsPromise.resolve === 'function') {
+                googleMapsPromise.resolve();
+            }
         }
     }
 
@@ -92,14 +95,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return resolve();
             }
 
-            window.initMap = () => {
-                if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
-                    directionsService = new google.maps.DirectionsService();
-                    resolve();
-                } else {
-                    reject(new Error('Google Maps API failed to load.'));
+            // Atribui a função de resolução à promise para que o callback a chame
+            googleMapsPromise.resolve = resolve;
+
+            // **NOVA VERIFICAÇÃO DE ERRO**
+            // Adiciona um timeout para verificar se a API foi bloqueada
+            setTimeout(() => {
+                if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                    reject(new Error('Google Maps API failed to load. It might be blocked by an ad-blocker or network issue.'));
                 }
-            };
+            }, 3000); // Espera 3 segundos
 
             try {
                 const response = await fetch('/api/get-google-maps-api-key');
@@ -178,15 +183,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     async function runItineraryOptimization(isReversed = false) {
+        itineraryResultsList.innerHTML = 'Loading Google Maps API...';
         try {
             await fetchGoogleMapsApi();
         } catch (error) {
-            itineraryResultsList.innerHTML = `<p class="text-red-600">${error.message}</p>`;
+            itineraryResultsList.innerHTML = `<p class="text-red-600 font-bold">${error.message}</p>`;
+            // Habilita os botões novamente em caso de erro
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
             return;
         }
 
         if (!directionsService) {
-            itineraryResultsList.innerHTML = '<p class="text-red-600">Google Maps Service could not be initialized.</p>';
+            itineraryResultsList.innerHTML = '<p class="text-red-600 font-bold">Google Maps Service could not be initialized. Please check your internet connection and disable any ad-blockers.</p>';
             return;
         }
 
@@ -220,7 +229,70 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
-        // ... (resto da lógica de otimização idêntica ao arquivo original)
+        const [originLat, originLon] = await getLatLon(originZip);
+        if (originLat === null) {
+            itineraryResultsList.innerHTML = '<p class="text-red-600">Could not get coordinates for technician origin Zip Code.</p>';
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+            return;
+        }
+
+        let currentLat = originLat, currentLon = originLon;
+        let unvisited = [...validAppointments];
+        let nearestPath = [];
+        while (unvisited.length > 0) {
+            let closest = unvisited.reduce((closest, current) => {
+                const dist = calculateDistance(currentLat, currentLon, current.lat, current.lon);
+                if (dist < closest.minDistance) return { minDistance: dist, client: current };
+                return closest;
+            }, { minDistance: Infinity, client: null });
+            
+            nearestPath.push(closest.client);
+            currentLat = closest.client.lat;
+            currentLon = closest.client.lon;
+            unvisited = unvisited.filter(c => c.id !== closest.client.id);
+        }
+
+        const stopsForGoogle = isReversed ? [...nearestPath].reverse() : nearestPath;
+        orderedClientStops = stopsForGoogle;
+
+        const request = {
+            origin: { query: originZip },
+            destination: { query: originZip },
+            waypoints: stopsForGoogle.map(c => ({ location: { query: c.zipCode } })),
+            travelMode: 'DRIVING',
+            optimizeWaypoints: !isReversed,
+        };
+
+        directionsService.route(request, (response, status) => {
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+            if (status === 'OK') {
+                const route = response.routes[0];
+                itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (${isReversed ? 'Farthest First' : 'Nearest First'}):</p>`;
+                let totalDuration = 0, totalDistance = 0;
+                
+                const finalOrder = route.waypoint_order ? route.waypoint_order.map(i => stopsForGoogle[i]) : stopsForGoogle;
+                orderedClientStops = finalOrder;
+
+                route.legs.forEach((leg, i) => {
+                    const clientName = (finalOrder[i] || {}).customers || 'Destination';
+                    itineraryResultsList.innerHTML += `
+                        <div class="border-b border-muted py-2">
+                            <p class="font-bold text-base">${i + 1}. Go to: ${leg.end_address} (${clientName})</p>
+                            <p class="ml-4 text-sm">Travel: ${leg.duration.text} | ${leg.distance.text}</p>
+                        </div>
+                    `;
+                    totalDuration += leg.duration.value;
+                    totalDistance += leg.distance.value;
+                });
+                itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-lg text-brand-primary">Total Travel: ${Math.round(totalDuration / 60)} min / ${(totalDistance / 1000 * 0.621371).toFixed(1)} mi</div>`;
+                schedulingControls.classList.remove('hidden');
+            } else {
+                itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}.</p>`;
+                schedulingControls.classList.add('hidden');
+            }
+        });
     }
 
 
@@ -252,5 +324,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (applyRouteBtn) applyRouteBtn.addEventListener('click', () => { /* Lógica para aplicar a rota */ });
     
     loadAppointmentData();
-    fetchGoogleMapsApi();
 });
