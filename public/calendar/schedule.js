@@ -147,20 +147,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- 5. Funções de Manipulação de Dados (API Calls) ---
     
     async function handleSaveAppointment() {
-        // Implementação movida para manageShowed.js, mas a estrutura do modal permanece
+        // A lógica de salvamento foi movida para manageShowed.js
+        // Dispara um evento para notificar o outro script que uma atualização pode ser necessária
+        document.dispatchEvent(new CustomEvent('appointmentUpdated'));
     }
 
-    async function handleSaveTimeBlock() {
-        // ... (código para criar time block)
-    }
-
-    async function handleUpdateTimeBlock() {
-        // ... (código para atualizar time block)
-    }
-
-    async function handleDeleteTimeBlock() {
-        // ... (código para deletar time block)
-    }
+    async function handleSaveTimeBlock() { /* ... Lógica para salvar bloco de tempo ... */ }
+    async function handleUpdateTimeBlock() { /* ... Lógica para atualizar bloco de tempo ... */ }
+    async function handleDeleteTimeBlock() { /* ... Lógica para deletar bloco de tempo ... */ }
 
     async function fetchAvailabilityForSelectedTech() {
         if (!selectedTechnician) {
@@ -179,44 +173,61 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
-    // --- 6. Funções de Renderização ---
+    // --- 6. Funções de Renderização (CORRIGIDAS) ---
 
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
-        schedulerBody.innerHTML = '';
-        const columnMap = {};
-        DAY_NAMES.forEach((dayName, dayIndex) => {
-            const date = new Date(currentWeekStart);
-            date.setDate(currentWeekStart.getDate() + dayIndex);
-            const dateKey = formatDateToYYYYMMDD(date);
-            columnMap[dateKey] = dayIndex + 2;
-            const header = document.createElement('div');
-            header.className = 'day-column-header p-2 font-semibold border-l border-border';
-            header.style.gridColumn = columnMap[dateKey];
-            header.textContent = `${dayName} ${date.getDate()}`;
-            schedulerHeader.appendChild(header);
-        });
+        schedulerBody.innerHTML = ''; // Limpa o corpo do calendário
+
+        // 1. Renderiza a coluna de horários
         TIME_SLOTS.forEach((time, rowIndex) => {
             const timeDiv = document.createElement('div');
             timeDiv.className = 'time-slot timeline-header p-2 text-xs font-medium border-t border-border flex items-center justify-center';
             timeDiv.textContent = time;
-            timeDiv.style.gridRow = rowIndex + 1;
+            timeDiv.style.gridRow = `${rowIndex + 1} / span 1`;
             schedulerBody.appendChild(timeDiv);
-            Object.keys(columnMap).forEach(dateKey => {
-                const emptySlot = document.createElement('div');
-                emptySlot.className = 'time-slot border-t border-r border-border hover:bg-muted/10';
-                emptySlot.style.gridRow = rowIndex + 1;
-                emptySlot.style.gridColumn = columnMap[dateKey];
-                schedulerBody.appendChild(emptySlot);
-            });
         });
-        renderAppointments(columnMap);
-        renderTimeBlocks(columnMap);
+        
+        // 2. Renderiza os cabeçalhos dos dias e os contêineres para os agendamentos
+        DAY_NAMES.forEach((dayName, dayIndex) => {
+            const date = new Date(currentWeekStart);
+            date.setDate(currentWeekStart.getDate() + dayIndex);
+            const dateKey = formatDateToYYYYMMDD(date);
+            const column = dayIndex + 2;
+
+            // Cabeçalho
+            const header = document.createElement('div');
+            header.className = 'day-column-header p-2 font-semibold border-l border-border';
+            header.style.gridColumn = column;
+            header.textContent = `${dayName} ${date.getDate()}`;
+            schedulerHeader.appendChild(header);
+
+            // Contêiner do Dia (ESSA É A CORREÇÃO PRINCIPAL)
+            const dayContainer = document.createElement('div');
+            dayContainer.className = 'relative border-r border-border'; // position: relative é a chave
+            dayContainer.style.gridColumn = column;
+            dayContainer.style.gridRow = `1 / span ${TIME_SLOTS.length}`; // Ocupa todas as linhas de horário
+            dayContainer.dataset.dateKey = dateKey; // Atributo para encontrar este contêiner depois
+            
+            // Adiciona linhas de grade horizontais dentro de cada contêiner de dia
+            TIME_SLOTS.forEach((_, rowIndex) => {
+                 const line = document.createElement('div');
+                 line.className = 'absolute w-full border-t border-border/50';
+                 line.style.height = '1px';
+                 line.style.top = `${(rowIndex + 1) * SLOT_HEIGHT_PX}px`;
+                 dayContainer.appendChild(line);
+            });
+
+            schedulerBody.appendChild(dayContainer);
+        });
+
+        renderAppointments();
+        renderTimeBlocks();
         updateWeekDisplay();
         loadingOverlay.classList.toggle('hidden', !!selectedTechnician);
     }
 
-    function renderAppointments(columnMap) {
+    function renderAppointments() {
         const weekEnd = new Date(currentWeekStart);
         weekEnd.setDate(currentWeekStart.getDate() + 7);
         const appointmentsToRender = allAppointments.filter(appt => appt.technician === selectedTechnician);
@@ -226,32 +237,74 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!apptDate || apptDate < currentWeekStart || apptDate >= weekEnd) return;
 
             const dateKey = formatDateToYYYYMMDD(apptDate);
-            const colIndex = columnMap[dateKey];
-            if (!colIndex) return;
+            
+            // Encontra o contêiner do dia correto usando o data-attribute
+            const dayContainer = schedulerBody.querySelector(`[data-date-key="${dateKey}"]`);
+            if (!dayContainer) return;
 
             const startHour = apptDate.getHours();
             if (startHour < MIN_HOUR || startHour >= MAX_HOUR) return;
-
+            
+            // O `topOffset` agora é relativo ao topo do contêiner do dia, que começa no topo do grid
             const topOffset = (startHour - MIN_HOUR) * SLOT_HEIGHT_PX + (apptDate.getMinutes() / 60 * SLOT_HEIGHT_PX);
+
             const block = document.createElement('div');
             let bgColor = 'bg-custom-primary';
             if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
             else if (appt.verification === 'Showed') bgColor = 'bg-green-600';
 
+            // A propriedade `gridColumnStart` não é mais necessária
             block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
             block.dataset.id = appt.id;
-            block.style.gridColumnStart = colIndex;
             block.style.top = `${topOffset}px`;
 
             const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
             block.innerHTML = `<div><p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p><p class="text-sm font-bold truncate">${appt.customers}</p><p class="text-xs font-medium text-white/80">${appt.verification}</p></div>`;
+            
             block.addEventListener('click', () => openEditModal(appt));
-            schedulerBody.appendChild(block);
+            
+            // Adiciona o bloco ao contêiner do dia específico
+            dayContainer.appendChild(block);
         });
     }
     
-    function renderTimeBlocks(columnMap) {
-        // ... (código para renderizar time blocks)
+    function renderTimeBlocks() {
+        const weekEnd = new Date(currentWeekStart);
+        weekEnd.setDate(currentWeekStart.getDate() + 7);
+
+        techAvailabilityBlocks.forEach(block => {
+            if (!block || typeof block.date !== 'string' || block.date.trim() === '') return;
+            
+            const parts = block.date.split('/');
+            if (parts.length !== 3) return;
+            const [M, D, Y] = parts;
+            const blockDate = new Date(`${Y}-${M}-${D}T00:00:00`);
+
+            if (isNaN(blockDate.getTime()) || blockDate < currentWeekStart || blockDate >= weekEnd) return;
+
+            const dateKey = formatDateToYYYYMMDD(blockDate);
+            const dayContainer = schedulerBody.querySelector(`[data-date-key="${dateKey}"]`);
+            if (!dayContainer) return;
+
+            const [startH, startM] = block.startHour.split(':').map(Number);
+            const [endH, endM] = block.endHour.split(':').map(Number);
+
+            const topOffset = ((startH - MIN_HOUR) * SLOT_HEIGHT_PX) + (startM / 60 * SLOT_HEIGHT_PX);
+            const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+            const height = (durationMinutes / 60) * SLOT_HEIGHT_PX;
+
+            const blockEl = document.createElement('div');
+            blockEl.className = 'appointment-block';
+            blockEl.style.height = `${height}px`;
+            blockEl.style.backgroundColor = 'rgba(107, 114, 128, 0.7)';
+            blockEl.style.zIndex = '5';
+            blockEl.style.cursor = 'pointer';
+            blockEl.style.top = `${topOffset}px`;
+            blockEl.innerHTML = `<p class="text-xs font-semibold text-white truncate">${block.notes || 'Blocked'}</p><p class="text-xs text-white/80">${block.startHour} - ${block.endHour}</p>`;
+            
+            blockEl.addEventListener('click', () => openEditTimeBlockModal(block));
+            dayContainer.appendChild(blockEl);
+        });
     }
 
     function updateWeekDisplay() {
@@ -295,7 +348,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         selectedTechDisplay.textContent = selectedTechnician || 'No Technician Selected';
         await fetchAvailabilityForSelectedTech();
         renderScheduler();
-        // Dispara um evento customizado para notificar outros scripts da mudança
         document.dispatchEvent(new CustomEvent('technicianChanged', { detail: { technician: selectedTechnician, weekStart: currentWeekStart } }));
     }
 
@@ -311,7 +363,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } }));
     });
     
-    // Listeners dos Modais
     modalSaveBtn.addEventListener('click', handleSaveAppointment);
     modalCancelBtn.addEventListener('click', closeEditModal);
     modalCloseXBtn.addEventListener('click', closeEditModal);
@@ -322,6 +373,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     editBlockDeleteBtn.addEventListener('click', handleDeleteTimeBlock);
     editBlockCancelBtn.addEventListener('click', closeEditTimeBlockModal);
 
-    // Carga Inicial
+    // Listener para recarregar dados quando um agendamento for atualizado em outro módulo
+    document.addEventListener('appointmentUpdated', async () => {
+        // Recarrega os dados dos agendamentos e renderiza o calendário novamente
+        const appointmentsResponse = await fetch('/api/get-technician-appointments');
+        const apptsData = await appointmentsResponse.json();
+        allAppointments = (apptsData.appointments || []).filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
+        renderScheduler();
+    });
+
     loadInitialData();
 });
