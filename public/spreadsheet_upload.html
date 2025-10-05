@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spreadsheet Upload and Process</title>
+    <link href="output.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="min-h-screen bg-background flex flex-col">
+
+    <header class="bg-card shadow-large border-b border-border">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-gradient-subtle rounded-lg flex items-center justify-center shadow-soft">
+              <img 
+                src="https://i.imgur.com/XamnfOc.png" 
+                alt="Company Logo" 
+                class="max-w-full max-h-full object-contain rounded"
+              />
+            </div>
+            <h1 class="text-xl font-bold text-foreground hidden sm:block">
+              Spreadsheet Processor
+            </h1>
+          </div>
+          <nav class="hidden md:flex items-center space-x-1">
+            <a href="finance.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-muted hover:text-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-wallet w-4 h-4"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h12a2 2 0 0 1 0 4H5a2 2 0 0 1 0 4h12a2 2 0 0 1 0 4H3"/><path d="M21 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h12a2 2 0 0 1 0 4H5a2 2 0 0 1 0 4h12a2 2 0 0 1 0 4H3"/></svg>
+                <span class="hidden lg:inline">Finance</span>
+            </a>
+             <a href="spreadsheet_upload.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 bg-muted text-foreground" aria-current="page">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload w-4 h-4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                <span class="hidden lg:inline">Upload</span>
+            </a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 p-8 overflow-y-auto">
+        <div class="max-w-[86rem] mx-auto">
+            <div class="rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle p-6 mb-8">
+                <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">
+                    Upload and Process Spreadsheets
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="file-upload" class="block text-sm font-medium text-foreground mb-2">Select Spreadsheet(s):</label>
+                        <input type="file" id="file-upload" multiple accept=".xlsx, .xls" class="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-primary/10 file:text-brand-primary hover:file:bg-brand-primary/20"/>
+                    </div>
+                    <div class="md:col-span-2 flex items-end gap-4">
+                        <button id="process-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand transition-all duration-300">
+                            Process Files
+                        </button>
+                        <button id="export-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand transition-all duration-300">
+                            Export to CSV
+                        </button>
+                    </div>
+                </div>
+                 <div id="loading-spinner" class="hidden mt-4 flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
+                    <p class="ml-2 text-muted-foreground">Processing...</p>
+                </div>
+            </div>
+
+            <div class="rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle">
+                <div class="p-6 pt-0 overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead id="results-table-head">
+                            </thead>
+                        <tbody id="results-table-body" class="text-foreground text-sm">
+                            <tr>
+                                <td colspan="12" class="p-4 text-center">Upload a file and click "Process" to see the data.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="spreadsheet_upload.js"></script>
+</body>
+</html>
