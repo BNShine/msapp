@@ -1,6 +1,7 @@
 // public/calendar/dynamic-rendering.js
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Variáveis Globais do Módulo ---
     let allAppointments = [];
     let techCoverageData = [];
     let currentTechnician = '';
@@ -8,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const SLOT_HEIGHT_PX = 60;
     const MIN_HOUR = 7;
+    const SCHEDULE_DURATION_HOURS = 2; // Mantido para o cálculo do tempo final no bloco
 
     // --- Funções Auxiliares (independentes do outro script) ---
     function getStartOfWeek(date) { const d = new Date(date); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay()); return d; }
@@ -39,7 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const schedulerBody = document.getElementById('scheduler-body');
         if (!schedulerBody || !currentTechnician) return;
 
-        schedulerBody.querySelectorAll('.appointment-block').forEach(el => el.remove());
+        // Limpa apenas os blocos de agendamento, preservando os blocos de tempo
+        schedulerBody.querySelectorAll('.appointment-block[data-id]').forEach(el => el.remove());
 
         const techInfo = techCoverageData.find(t => t.nome === currentTechnician);
         if (!techInfo || !techInfo.zip_code) {
@@ -74,8 +77,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const dayContainer = schedulerBody.querySelector(`[data-date-key="${dateKey}"]`);
                 if (!dayContainer) continue;
 
+                // A lógica de altura e posição dinâmica foi movida para cá
                 const travelTime = await getTravelTime(previousZip, appt.zipCode);
-                const serviceDuration = (parseInt(appt.pets, 10) || 1) * 60;
+                const serviceDuration = (parseInt(appt.pets, 10) || 1) * 60; // Usando o dado de 'pets'
                 const margin = parseInt(appt.margin, 10) || 30;
                 const totalBlockDuration = travelTime + serviceDuration + margin;
                 const blockHeight = (totalBlockDuration / 60) * SLOT_HEIGHT_PX;
@@ -92,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (appt.verification === 'Confirmed') { bgColor = 'bg-yellow-confirmed'; textColor = 'text-black'; }
 
                 block.className = `appointment-block ${bgColor} ${textColor} rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
-                block.dataset.id = appt.id;
+                block.dataset.id = appt.id; // Atributo para identificar agendamentos
                 block.style.top = `${topOffset}px`;
                 block.style.height = `${blockHeight}px`;
                 block.style.width = '100%';
@@ -104,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(serviceEndTime)}</p>
                         <p class="text-sm font-bold truncate">${appt.customers}</p>
                         <p class="text-xs font-medium opacity-80">${appt.verification}</p>
+                        <p class="text-xs font-medium opacity-80">Pets: ${appt.pets || 'N/A'}</p>
                         <p class="text-xs font-medium opacity-80">Travel: ${Math.round(travelTime)} min</p>
                     </div>
                 `;
@@ -132,9 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
             allAppointments = (await appointmentsResponse.json()).appointments || [];
             techCoverageData = await coverageResponse.json() || [];
             
-            // Após carregar os dados, renderiza se um técnico já estiver selecionado
-            if(currentTechnician) renderDynamicAppointments();
-
+            if (currentTechnician) renderDynamicAppointments();
         } catch (error) {
             console.error("Error loading dynamic rendering data:", error);
         }
