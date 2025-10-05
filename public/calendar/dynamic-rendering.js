@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const SLOT_HEIGHT_PX = 60;
     const MIN_HOUR = 7;
-    const SCHEDULE_DURATION_HOURS = 2; // Mantido para o cálculo do tempo final no bloco
 
     // --- Funções Auxiliares (independentes do outro script) ---
     function getStartOfWeek(date) { const d = new Date(date); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay()); return d; }
@@ -17,31 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function parseSheetDate(dateStr) { if (!dateStr) return null; const [datePart, timePart] = dateStr.split(' '); if (!datePart || !timePart) return null; const dateParts = datePart.split('/'); if (dateParts.length !== 3) return null; const [month, day, year] = dateParts.map(Number); const [hour, minute] = timePart.split(':').map(Number); if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null; return new Date(year, month - 1, day, hour, minute); }
     function getTimeHHMM(date) { if (!date) return ''; return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; }
 
-    async function getTravelTime(originZip, destinationZip) {
-        if (!originZip || !destinationZip || originZip === destinationZip) return 0;
-        try {
-            const response = await fetch('/api/optimize-route', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ originZip, waypoints: [{ zipCode: destinationZip }], isReversed: true })
-            });
-            const result = await response.json();
-            if (result.success && result.routeData.routes[0]?.legs?.length > 0) {
-                return result.routeData.routes[0].legs[0].duration.value / 60; // em minutos
-            }
-            return 0;
-        } catch (error) {
-            console.error("Error fetching travel time:", error);
-            return 0;
-        }
-    }
-
-    // --- Lógica Principal de Renderização Dinâmica ---
+    // --- Lógica Principal de Renderização Dinâmica (OTIMIZADA) ---
     async function renderDynamicAppointments() {
         const schedulerBody = document.getElementById('scheduler-body');
         if (!schedulerBody || !currentTechnician) return;
 
-        // Limpa apenas os blocos de agendamento, preservando os blocos de tempo
         schedulerBody.querySelectorAll('.appointment-block[data-id]').forEach(el => el.remove());
 
         const techInfo = techCoverageData.find(t => t.nome === currentTechnician);
@@ -67,19 +46,45 @@ document.addEventListener('DOMContentLoaded', () => {
             return acc;
         }, {});
 
+        // Processa cada dia individualmente
         for (const dateKey in appointmentsByDay) {
             const dayAppointments = appointmentsByDay[dateKey].sort((a, b) => parseSheetDate(a.appointmentDate) - parseSheetDate(b.appointmentDate));
-            
-            let previousZip = techOriginZip;
+            if (dayAppointments.length === 0) continue;
 
-            for (const appt of dayAppointments) {
+            // 1. Agrupa todos os waypoints para uma única chamada de API
+            const waypoints = dayAppointments.map(appt => ({ zipCode: appt.zipCode }));
+
+            let travelTimes = [];
+            try {
+                const response = await fetch('/api/optimize-route', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        originZip: techOriginZip,
+                        waypoints: waypoints,
+                        isReversed: true // Importante para manter a ordem cronológica
+                    })
+                });
+                const result = await response.json();
+                if (result.success && result.routeData.routes[0]?.legs) {
+                    // Extrai o tempo de viagem para cada trecho (em minutos)
+                    travelTimes = result.routeData.routes[0].legs.map(leg => leg.duration.value / 60);
+                } else {
+                    console.warn(`Não foi possível calcular os tempos de viagem para o dia ${dateKey}.`);
+                }
+            } catch (error) {
+                console.error(`Erro na API de rota para o dia ${dateKey}:`, error);
+            }
+            
+            // 2. Renderiza todos os blocos do dia com os tempos já calculados
+            dayAppointments.forEach((appt, index) => {
                 const apptDate = parseSheetDate(appt.appointmentDate);
                 const dayContainer = schedulerBody.querySelector(`[data-date-key="${dateKey}"]`);
-                if (!dayContainer) continue;
+                if (!dayContainer) return;
 
-                // A lógica de altura e posição dinâmica foi movida para cá
-                const travelTime = await getTravelTime(previousZip, appt.zipCode);
-                const serviceDuration = (parseInt(appt.pets, 10) || 1) * 60; // Usando o dado de 'pets'
+                const travelTime = travelTimes[index] || 0; // Pega o tempo de viagem pré-calculado
+                
+                const serviceDuration = (parseInt(appt.pets, 10) || 1) * 60;
                 const margin = parseInt(appt.margin, 10) || 30;
                 const totalBlockDuration = travelTime + serviceDuration + margin;
                 const blockHeight = (totalBlockDuration / 60) * SLOT_HEIGHT_PX;
@@ -88,15 +93,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const topOffset = ((blockStartMoment.getHours() - MIN_HOUR) * 60 + blockStartMoment.getMinutes()) / 60 * SLOT_HEIGHT_PX;
 
                 const block = document.createElement('div');
-                let bgColor = 'bg-custom-primary';
-                let textColor = 'text-white';
-
+                let bgColor = 'bg-custom-primary', textColor = 'text-white';
                 if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
                 else if (appt.verification === 'Showed') bgColor = 'bg-green-600';
                 else if (appt.verification === 'Confirmed') { bgColor = 'bg-yellow-confirmed'; textColor = 'text-black'; }
 
                 block.className = `appointment-block ${bgColor} ${textColor} rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
-                block.dataset.id = appt.id; // Atributo para identificar agendamentos
+                block.dataset.id = appt.id;
                 block.style.top = `${topOffset}px`;
                 block.style.height = `${blockHeight}px`;
                 block.style.width = '100%';
@@ -114,14 +117,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 
                 block.addEventListener('click', () => {
-                    if (window.openAppointmentModal) {
-                        window.openAppointmentModal(appt);
-                    }
+                    if (window.openAppointmentModal) window.openAppointmentModal(appt);
                 });
                 dayContainer.appendChild(block);
-                
-                previousZip = appt.zipCode;
-            }
+            });
         }
     }
 
@@ -144,19 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     document.addEventListener('schedulerReady', initializeAndLoadData);
-    
-    document.addEventListener('technicianChanged', (e) => {
-        currentTechnician = e.detail.technician;
-        currentWeekStart = e.detail.weekStart;
-        renderDynamicAppointments();
-    });
-
-    document.addEventListener('weekChanged', (e) => {
-        currentWeekStart = e.detail.weekStart;
-        renderDynamicAppointments();
-    });
-
-    document.addEventListener('reloadData', async () => {
-        await initializeAndLoadData();
-    });
+    document.addEventListener('technicianChanged', (e) => { currentTechnician = e.detail.technician; currentWeekStart = e.detail.weekStart; renderDynamicAppointments(); });
+    document.addEventListener('weekChanged', (e) => { currentWeekStart = e.detail.weekStart; renderDynamicAppointments(); });
+    document.addEventListener('reloadData', initializeAndLoadData);
 });
