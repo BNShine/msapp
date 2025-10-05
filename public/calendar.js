@@ -1,5 +1,28 @@
 // public/calendar.js
 
+// Define initMap globalmente para ser usada como callback pelo script do Google Maps.
+window.initMap = function() {
+    const itineraryMapContainer = document.getElementById('itinerary-map');
+    // Adiciona log de diagnóstico para verificar se o objeto Google Maps está pronto
+    if (itineraryMapContainer && typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
+        map = new google.maps.Map(itineraryMapContainer, {
+            center: { lat: 39.8283, lng: -98.5795 }, // Centro dos EUA
+            zoom: 4,
+            streetViewControl: false,
+            fullscreenControl: false,
+        });
+        directionsService = new google.maps.DirectionsService();
+        // Hiding the default markers to use custom ones
+        directionsRenderer = new google.maps.DirectionsRenderer({ 
+            map: map,
+            suppressMarkers: true // Suppress default A, B, C markers
+        });
+        console.log('[MAP LOG 4/4 SUCESSO] Google Maps services initialized and variables set.');
+    } else {
+        console.error('[MAP LOG 4/4 FALHA] Google or google.maps object not available in initMap. Check network status for script.');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
     const selectedTechDisplay = document.getElementById('selected-tech-display');
@@ -35,12 +58,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const blockSaveBtn = document.getElementById('block-save-btn');
     const blockCancelBtn = document.getElementById('block-cancel-btn');
 
-    // START NEW SELECTORS (MAPA REMOVIDO, APENAS OTIMIZAÇÃO DE ROTA MANTIDA)
+    // START NEW SELECTORS
     const dayFilter = document.getElementById('day-filter');
     const dayItineraryTableBody = document.getElementById('day-itinerary-table-body');
     const optimizeItineraryBtn = document.getElementById('optimize-itinerary-btn');
     const itineraryReverserBtn = document.getElementById('itinerary-reverser-btn');
-    // const itineraryMapContainer = document.getElementById('itinerary-map'); // REMOVIDO
+    const itineraryMapContainer = document.getElementById('itinerary-map'); // Mantido para as funções internas de mapa
     const itineraryResultsList = document.getElementById('itinerary-results-list');
     // END NEW SELECTORS
 
@@ -50,12 +73,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     let selectedTechnician = '';
     let currentWeekStart = getStartOfWeek(new Date());
     let isSaving = {};
-    
-    // VARIÁVEIS DO GOOGLE MAPS REDEFINIDAS/REMOVIDAS PARA FOCAR NA ROTA
-    let directionsService; 
-    let dayAppointments = []; 
+    let GOOGLE_MAPS_API_KEY = null;
+    let map, directionsService, directionsRenderer;
+    let dayAppointments = []; // Appointments for the selected day/tech
+    let currentMapMarkers = []; // Array to track custom markers for clearing
 
-    const SCHEDULE_DURATION_HOURS = 2; 
+    const SCHEDULE_DURATION_HOURS = 2; // CORRECT CONSTANT NAME
     const SLOT_HEIGHT_PX = 60;
 
     const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => `${(7 + i).toString().padStart(2, '0')}:00`); // 07:00 to 21:00
@@ -90,9 +113,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
     }
 
-    // --- Google Maps API Key/Script Logic REMOVED ---
-    // Apenas garante que directionsService exista antes de usar.
-    
+    // --- Google Maps API Key Fetching (FINAL IMPLEMENTATION) ---
+    async function fetchGoogleMapsApiKey() {
+        // Apenas para garantir que GOOGLE_MAPS_API_KEY tenha um valor, mesmo que nulo,
+        // mas focamos na inicialização local, removendo a necessidade de injeção.
+        // A chave API é buscada apenas para ser usada pelo DirectionsService, se o Maps estiver disponível.
+        
+        if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+             // Tenta carregar a chave, mas não injeta o script. Apenas inicializa o DirectionsService.
+            try {
+                const response = await fetch('/api/get-google-maps-api-key');
+                if (response.ok) {
+                    const data = await response.json();
+                    // A chave é obtida mas não usada para injeção, apenas para autenticação se necessário.
+                    GOOGLE_MAPS_API_KEY = data.apiKey;
+                }
+            } catch (error) {
+                console.warn('Falha ao buscar a chave API do backend. A otimização de rotas pode falhar se o Directions Service não estiver disponível globalmente.');
+            }
+        }
+    }
+    // --- End Google Maps Logic ---
+
     // --- Date/Time Helpers ---
 
     function getDayOfWeekDate(startOfWeekDate, dayOfWeek) {
@@ -546,14 +588,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         dayItineraryTableBody.innerHTML = '';
         itineraryResultsList.innerHTML = 'No route calculated.';
         
-        // Clear previous route and markers
+        // Clean up UI related to map visualization (even if map is not displayed)
         if (directionsService) directionsService.setDirections({ routes: [] });
         
-        // REMOÇÃO DO MAPA:
-        // clearCustomMarkers(); 
-        // if (map) { map.setCenter({ lat: 39.8283, lng: -98.5795 }); map.setZoom(4); }
-
-
         const selectedDayOfWeek = dayFilter.value;
         const selectedTechName = techSelectDropdown.value; 
 
@@ -615,19 +652,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- NEW: Itinerary Optimization Logic ---
-    // A lógica de otimização agora SÓ CALCULA A ORDEM E CHAMA O GOOGLE DIRECTIONS.
+
+    function clearCustomMarkers() {
+        // Marcadores customizados removidos, esta função fica vazia
+    }
 
     async function runItineraryOptimization(appointments, isReversed = false) {
-        // Inicializa o DirectionsService (Simulando o objeto do Google Maps)
         if (typeof google === 'undefined' || typeof google.maps === 'undefined' || typeof google.maps.DirectionsService === 'undefined') {
-            directionsService = new Proxy({}, { get: () => () => { /* NOP */ } }); // Proxy que não faz nada para evitar quebra total
             itineraryResultsList.innerHTML = '<p class="text-red-600">Google Maps Service is not initialized. Não é possível calcular tempo/distância. Verifique a chave API.</p>';
             return;
         } else {
              directionsService = new google.maps.DirectionsService();
+             // directionsRenderer é apenas para visualização e foi removido o uso, mas o serviço é necessário
         }
-
-
+        
         const techCoverageResponse = await fetch('/api/get-tech-coverage');
         const techCoverageData = techCoverageResponse.ok ? await techCoverageResponse.json() : [];
         const selectedTechObj = techCoverageData.find(t => t.nome === selectedTechnician);
@@ -705,12 +743,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (isReversed) {
             // Reverser: We reverse the NEAREST-FIRST path to get the FARTHEST-FIRST path.
             stopsForGoogleMaps.reverse(); 
+            // CRITICAL: We MUST set optimizeWaypoints to false to force Google to use the user-defined order.
             shouldOptimizeWaypoints = false; 
         }
         
         // Clear previous route and markers
         // directionsRenderer.setDirections({ routes: [] }); // REMOVIDO
-        // clearCustomMarkers(); // REMOVIDO
+        clearCustomMarkers(); // REMOVIDO
 
         // 5. Google Maps Directions Request
         const origin = originZip;
@@ -737,7 +776,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (status === 'OK' && response && response.routes && response.routes.length > 0) {
                 
                 const route = response.routes[0];
-                // directionsRenderer.setDirections(response); // MAPA REMOVIDO
+                // directionsRenderer.setDirections(response); // REMOVIDO MAPA
 
                 let totalDistance = 0;
                 let totalDuration = 0;
@@ -745,6 +784,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (Starting from ${isReversed ? 'Farthest' : 'Nearest'}):</p>`;
                 
                 // Determine the final ordered stops based on Google's final route (which might be the waypoints themselves if optimizeWaypoints is false)
+                // When optimizeWaypoints=false, route.waypoint_order is generally empty or sequential [0, 1, 2...].
                 const finalOrderedStops = (shouldOptimizeWaypoints && route.waypoint_order && route.waypoint_order.length > 0)
                     ? route.waypoint_order.map((i) => optimizedItinerary[i]) // If Google optimized, use its order against the NEAREST-FIRST list
                     : stopsForGoogleMaps; // If optimization was off (Reverser), use the manually ordered list
@@ -788,6 +828,209 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
             } else {
                 // Reinicia os marcadores em caso de falha para garantir que não haja sobras
-                // clearCustomMarkers(); // REMOVIDO
+                clearCustomMarkers(); // REMOVIDO
                 itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}. Motivo: O Google Maps não conseguiu traçar a rota com os Zips fornecidos, ou o Zip de Origem é inválido.</p>`;
             }
+        });
+    }
+
+
+    function handleOptimizeItinerary() {
+        runItineraryOptimization(dayAppointments, false);
+    }
+    
+    function handleItineraryReverser() {
+        runItineraryOptimization(dayAppointments, true);
+    }
+
+
+    function handleDayFilterChange() {
+        // Clear previous route data whenever day or technician changes
+        // if (directionsRenderer) directionsService.setDirections({ routes: [] }); // REMOVIDO
+        // clearCustomMarkers(); // REMOVIDO
+        
+        // if (map) { // REMOVIDO
+        //      map.setCenter({ lat: 39.8283, lng: -98.5795 });
+        //      map.setZoom(4);
+        // }
+        renderDayItineraryTable();
+    }
+
+    // --- Data Fetching and Initialization ---
+
+    async function fetchAvailabilityForSelectedTech() {
+        if (!selectedTechnician) {
+            techAvailabilityBlocks = [];
+            return;
+        }
+        try {
+            const response = await fetch(`/api/manage-technician-availability?technicianName=${encodeURIComponent(selectedTechnician)}`);
+            if (!response.ok) throw new Error('Could not fetch availability.');
+            const data = await response.json();
+            techAvailabilityBlocks = data.availability || [];
+        } catch (error) {
+            console.error('Error fetching availability:', error);
+            techAvailabilityBlocks = [];
+        }
+    }
+
+    async function loadInitialData() {
+        try {
+            const [techDataResponse, appointmentsResponse] = await Promise.all([
+                fetch('/api/get-dashboard-data'),
+                fetch('/api/get-technician-appointments')
+            ]);
+            if (!techDataResponse.ok || !appointmentsResponse.ok) throw new Error('Failed to load initial data.');
+            const techData = await techDataResponse.json();
+            const apptsData = await appointmentsResponse.json();
+            allTechnicians = techData.technicians || [];
+            allAppointments = (apptsData.appointments || []).filter(appt => appt.appointmentDate && parseSheetDate(appt.appointmentDate));
+            
+            // Popula os dropdowns de técnico (calendar.html e techConfigSelect)
+            populateTechSelects(); 
+            
+            await fetchAvailabilityForSelectedTech();
+            renderScheduler(); 
+            
+            // NEW: Inicializa DirectionsService (sem mapa)
+            if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
+                directionsService = new google.maps.DirectionsService();
+            } else {
+                 console.warn("Google Maps script not loaded, Directions Service may be unavailable.");
+            }
+            
+        } catch (error) {
+            console.error('CRITICAL ERROR during loadInitialData:', error);
+        }
+    }
+    
+    function populateTechSelects() {
+        // Populates both dropdowns with the fetched technician list
+        techSelectDropdown.innerHTML = '<option value="">Select Technician...</option>';
+        allTechnicians.forEach(tech => {
+            const option = document.createElement('option');
+            option.value = tech;
+            option.textContent = tech;
+            techSelectDropdown.appendChild(option.cloneNode(true));
+            if (techConfigSelect) techConfigSelect.appendChild(option.cloneNode(true));
+        });
+    }
+    
+    async function handleTechSelectionChange(event) {
+        selectedTechnician = event.target.value;
+        selectedTechDisplay.textContent = selectedTechnician || 'No Technician Selected';
+        
+        await fetchAvailabilityForSelectedTech();
+        renderScheduler(); 
+        handleDayFilterChange();
+    }
+    
+    // --- Event Listeners ---
+    // Remove existing listener before adding the comprehensive one
+    techSelectDropdown.removeEventListener('change', handleTechSelectionChange);
+    techSelectDropdown.addEventListener('change', handleTechSelectionChange);
+
+    prevWeekBtn.addEventListener('click', () => {
+        currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+        renderScheduler();
+        handleDayFilterChange(); // Update itinerary view when week changes
+    });
+    nextWeekBtn.addEventListener('click', () => {
+        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+        renderScheduler();
+        handleDayFilterChange(); // Update itinerary view when week changes
+    });
+    modalSaveBtn.addEventListener('click', handleSaveAppointment);
+    modalCancelBtn.addEventListener('click', closeEditModal); 
+    modalCloseXBtn.addEventListener('click', closeEditModal);
+
+    addTimeBlockBtn.addEventListener('click', openTimeBlockModal);
+    blockSaveBtn.addEventListener('click', handleSaveTimeBlock);
+    blockCancelBtn.addEventListener('click', closeTimeBlockModal);
+    
+    // NEW Event Listeners
+    if (dayFilter) dayFilter.addEventListener('change', handleDayFilterChange);
+    if (optimizeItineraryBtn) optimizeItineraryBtn.addEventListener('click', handleOptimizeItinerary);
+    if (itineraryReverserBtn) itineraryReverserBtn.addEventListener('click', handleItineraryReverser);
+    
+    if (showedAppointmentsTableBody) {
+        // ... (Existing table change listener, kept for completeness) ...
+        showedAppointmentsTableBody.addEventListener('change', async (event) => {
+            const target = event.target;
+            if (target.matches('input, select')) {
+                const row = target.closest('tr');
+                const apptId = row.dataset.rowId;
+
+                if (isSaving[apptId]) return;
+                
+                isSaving[apptId] = true;
+                row.classList.add('is-saving');
+                
+                const appointmentDateLocal = row.querySelector('[data-key="appointmentDate"]').value; // YYYY-MM-DDTHH:MM
+                const [datePart, timePart] = appointmentDateLocal.split('T');
+                const [year, month, day] = datePart.split('-');
+                const apiFormattedDate = `${month}/${day}/${year} ${timePart}`; // MM/DD/YYYY HH:MM
+
+                const dataToUpdate = {
+                    rowIndex: parseInt(apptId, 10),
+                    appointmentDate: apiFormattedDate, 
+                    technician: row.querySelector('[data-key="technician"]').value,
+                    petShowed: row.querySelector('[data-key="petShowed"]').value,
+                    serviceShowed: row.querySelector('[data-key="serviceShowed"]').value,
+                    tips: row.querySelector('[data-key="tips"]').value,
+                    percentage: row.querySelector('[data-key="percentage"]').value,
+                    paymentMethod: row.querySelector('[data-key="paymentMethod"]').value,
+                    verification: row.querySelector('[data-key="verification"]').value,
+                };
+                
+                // MODIFICATION 5: Add Hour Validation to Table Change
+                const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
+                const minute = parseInt(appointmentDateLocal.substring(14, 16), 10);
+                const MIN_HOUR = 7;
+                const MAX_HOUR = 21;
+
+                if (hour < MIN_HOUR || hour > MAX_HOUR || (hour === MAX_HOUR && minute > 0)) {
+                    alert(`Save Error: Appointments must be scheduled between ${MIN_HOUR}:00 and ${MAX_HOUR}:00.`);
+                    row.classList.remove('is-saving');
+                    row.classList.add('is-error');
+                    setTimeout(() => {
+                        row.classList.remove('is-error');
+                        isSaving[apptId] = false;
+                    }, 2000);
+                    // Re-render the row/table to show original value
+                    renderScheduler(); 
+                    return;
+                }
+                // END MODIFICATION 5
+
+                try {
+                    const response = await fetch('/api/update-appointment-showed-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataToUpdate),
+                    });
+                    const result = await response.json();
+                    if (!result.success) throw new Error(result.message);
+                    
+                    const localAppt = allAppointments.find(a => String(a.id) === String(apptId));
+                    if(localAppt) Object.assign(localAppt, dataToUpdate, {
+                        appointmentDate: apiFormattedDate
+                    });
+
+                    renderScheduler();
+                    row.classList.add('is-success');
+                } catch (error) {
+                    console.error('Error saving from table:', error);
+                    row.classList.add('is-error');
+                } finally {
+                    setTimeout(() => {
+                        row.classList.remove('is-saving', 'is-success', 'is-error');
+                        isSaving[apptId] = false;
+                    }, 2000);
+                }
+            }
+        });
+    }
+
+    loadInitialData();
+});
