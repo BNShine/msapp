@@ -10,14 +10,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const schedulingControls = document.getElementById('scheduling-controls');
     const firstScheduleSelect = document.getElementById('first-schedule-select');
     const applyRouteBtn = document.getElementById('apply-route-btn');
-    const techSelectDropdown = document.getElementById('tech-select-dropdown');
-
-    // --- Variáveis Globais ---
+    
+    // --- Variáveis Globais de Estado ---
     let allAppointments = [];
     let dayAppointments = [];
-    let techAvailabilityBlocks = []; // Armazena os blocos do técnico
+    let techAvailabilityBlocks = [];
     let orderedClientStops = [];
     let currentWeekStart = getStartOfWeek(new Date());
+    let selectedTechnician = ''; // **CORREÇÃO: Variável local para rastrear o técnico**
 
     const MIN_HOUR = 7;
     const MAX_HOUR = 21;
@@ -89,9 +89,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         applyRouteBtn.disabled = true;
         applyRouteBtn.textContent = "Applying...";
-
-        // 1. Busca os blocos de tempo do técnico para o dia selecionado
-        const selectedTechnician = techSelectDropdown.value;
+        
         await fetchAvailabilityForSelectedTech(selectedTechnician);
         const targetDate = getDayOfWeekDate(currentWeekStart, parseInt(selectedDay, 10));
         
@@ -109,7 +107,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             return { start: startDate, end: endDate };
         });
 
-        // 2. Inicia o cálculo dos horários
         const updatePromises = [];
         let nextAvailableTime = new Date(targetDate);
         const [startHour, startMinute] = selectedStartTime.split(':').map(Number);
@@ -125,32 +122,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let appointmentEnd = new Date(appointmentStart);
                     appointmentEnd.setHours(appointmentStart.getHours() + APPOINTMENT_DURATION_HOURS);
 
-                    // Verifica se o horário de término ultrapassa o limite
                     if (appointmentEnd.getHours() > MAX_HOUR || (appointmentEnd.getHours() === MAX_HOUR && appointmentEnd.getMinutes() > 0)) {
                          alert(`Could not schedule all appointments. The schedule for "${appointmentToUpdate.customers}" would exceed the 21:00 limit.`);
                          applyRouteBtn.disabled = false;
                          applyRouteBtn.textContent = "Apply Route";
-                         return; // Para a execução
+                         return;
                     }
 
-                    // Verifica conflito com os blocos
                     const conflictingBlock = dayBlocks.find(block => 
                         (appointmentStart < block.end) && (appointmentEnd > block.start)
                     );
 
                     if (conflictingBlock) {
-                        // Se houver conflito, pula para o final do bloco
                         nextAvailableTime = new Date(conflictingBlock.end);
                     } else {
-                        // Nenhum conflito, o slot é válido
                         isSlotFound = true;
-
                         const year = appointmentStart.getFullYear();
                         const month = String(appointmentStart.getMonth() + 1).padStart(2, '0');
                         const day = String(appointmentStart.getDate()).padStart(2, '0');
                         const hour = String(appointmentStart.getHours()).padStart(2, '0');
                         const minute = String(appointmentStart.getMinutes()).padStart(2, '0');
-                        
                         const apiDateTime = `${year}-${month}-${day}T${hour}:${minute}`;
 
                         const dataToUpdate = {
@@ -172,8 +163,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }).then(res => res.json());
 
                         updatePromises.push(promise);
-
-                        // Define o próximo horário disponível
                         nextAvailableTime = appointmentEnd;
                     }
                 }
@@ -200,9 +189,133 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
 
-    // --- Renderização e Lógica da Rota (sem alterações) ---
-    function renderDayItineraryTable() { /* ...código existente... */ }
-    async function runItineraryOptimization(isReversed = false) { /* ...código existente... */ }
+    // --- Renderização e Lógica da Rota ---
+    function renderDayItineraryTable() {
+        if (!dayItineraryTableBody) return;
+        
+        dayItineraryTableBody.innerHTML = '';
+        itineraryResultsList.innerHTML = 'No route calculated.';
+        schedulingControls.classList.add('hidden');
+
+        const selectedDayOfWeek = dayFilter.value;
+        
+        optimizeItineraryBtn.disabled = true;
+        itineraryReverserBtn.disabled = true;
+
+        // **CORREÇÃO: Usa a variável de estado local 'selectedTechnician'**
+        if (!selectedTechnician || selectedDayOfWeek === '') {
+            dayItineraryTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-muted-foreground">Select a day and a technician to view appointments.</td></tr>';
+            return;
+        }
+
+        const targetDate = getDayOfWeekDate(currentWeekStart, parseInt(selectedDayOfWeek, 10));
+        const dateKey = formatDateToYYYYMMDD(targetDate);
+
+        dayAppointments = allAppointments
+            .filter(appt => {
+                const apptDate = parseSheetDate(appt.appointmentDate);
+                const apptDateKey = apptDate ? formatDateToYYYYMMDD(apptDate) : null;
+                return appt.technician === selectedTechnician && apptDateKey === dateKey;
+            })
+            .sort((a, b) => (parseSheetDate(a.appointmentDate)?.getTime() || 0) - (parseSheetDate(b.appointmentDate)?.getTime() || 0));
+
+        if (dayAppointments.length === 0) {
+            dayItineraryTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-muted-foreground">No appointments found for the selected day.</td></tr>';
+            return;
+        }
+
+        dayAppointments.forEach(appt => {
+            const row = document.createElement('tr');
+            row.className = 'border-b border-border hover:bg-muted/50';
+            const apptDate = parseSheetDate(appt.appointmentDate);
+            row.innerHTML = `
+                <td class="p-4 font-bold">${getTimeHHMM(apptDate)}</td>
+                <td class="p-4">${appt.customers}</td>
+                <td class="p-4">${appt.phone || ''}</td>
+                <td class="p-4">${appt.zipCode || 'N/A'}</td>
+                <td class="p-4">${appt.code || ''}</td>
+                <td class="p-4">${appt.verification || ''}</td>
+                <td class="p-4">${appt.technician || ''}</td>
+            `;
+            dayItineraryTableBody.appendChild(row);
+        });
+
+        if (dayAppointments.some(appt => appt.zipCode)) {
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+        }
+    }
+    
+    async function runItineraryOptimization(isReversed = false) {
+        // A lógica desta função permanece a mesma, pois já estava correta
+        itineraryResultsList.innerHTML = 'Calculating route...';
+        optimizeItineraryBtn.disabled = true;
+        itineraryReverserBtn.disabled = true;
+        
+        let techCoverageData = [];
+        try {
+            const techCoverageResponse = await fetch('/api/get-tech-coverage');
+            if (techCoverageResponse.ok) {
+                techCoverageData = await techCoverageResponse.json();
+            }
+        } catch (e) { console.error("Could not fetch tech coverage:", e); }
+        
+        const selectedTechObj = techCoverageData.find(t => t.nome === selectedTechnician);
+        const originZip = selectedTechObj?.zip_code;
+
+        if (!originZip) {
+            itineraryResultsList.innerHTML = '<p class="text-red-600 font-bold">Technician origin Zip Code not found.</p>';
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+            return;
+        }
+
+        const validWaypoints = dayAppointments.filter(appt => appt.zipCode).map(appt => ({
+            id: appt.id,
+            zipCode: appt.zipCode,
+            customerName: appt.customers
+        }));
+
+        if (validWaypoints.length < 1) {
+            itineraryResultsList.innerHTML = '<p class="text-red-600">No appointments with valid Zip Codes to optimize.</p>';
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/optimize-route', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ originZip, waypoints: validWaypoints, isReversed }),
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+
+            const route = result.routeData.routes[0];
+            itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (${isReversed ? 'Farthest First' : 'Nearest First'}):</p>`;
+            let totalDuration = 0, totalDistance = 0;
+            
+            const finalOrder = route.waypoint_order ? route.waypoint_order.map(i => validWaypoints[i]) : validWaypoints;
+            orderedClientStops = finalOrder;
+            
+            route.legs.forEach((leg, i) => {
+                const clientName = (finalOrder[i] || { customerName: "Return to Origin" }).customerName;
+                itineraryResultsList.innerHTML += `<div class="border-b border-muted py-2"><p class="font-bold text-base">${i + 1}. Go to: ${leg.end_address} (${clientName})</p><p class="ml-4 text-sm">Travel: ${leg.duration.text} | ${leg.distance.text}</p></div>`;
+                totalDuration += leg.duration.value;
+                totalDistance += leg.distance.value;
+            });
+
+            itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-lg text-brand-primary">Total Travel: ${Math.round(totalDuration / 60)} min / ${(totalDistance / 1000 * 0.621371).toFixed(1)} mi</div>`;
+            schedulingControls.classList.remove('hidden');
+            applyRouteBtn.disabled = false;
+        } catch (error) {
+            itineraryResultsList.innerHTML = `<p class="text-red-600 font-bold">Error calculating route: ${error.message}</p>`;
+        } finally {
+            optimizeItineraryBtn.disabled = false;
+            itineraryReverserBtn.disabled = false;
+        }
+    }
 
 
     // --- Inicialização e Event Listeners ---
@@ -234,9 +347,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     
-    document.addEventListener('technicianChanged', async (e) => {
+    // **LISTENER CORRIGIDO**
+    document.addEventListener('technicianChanged', (e) => {
+        selectedTechnician = e.detail.technician; // Atualiza a variável de estado local
         currentWeekStart = e.detail.weekStart;
-        await fetchAvailabilityForSelectedTech(e.detail.technician);
         renderDayItineraryTable();
     });
 
