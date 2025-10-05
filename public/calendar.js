@@ -1,8 +1,7 @@
 // public/calendar.js
 
-// Define initMap globalmente para ser usada como callback pelo script do Google Maps.
+// A função initMap é necessária para o DirectionsService, mesmo sem mapa.
 window.initMap = function() {
-    const itineraryMapContainer = document.getElementById('itinerary-map');
     if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
         directionsService = new google.maps.DirectionsService();
         console.log('[MAP LOG 4/4 SUCESSO] Google Directions Service initialized.');
@@ -66,7 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let GOOGLE_MAPS_API_KEY = null;
     let directionsService; 
     let dayAppointments = []; 
-    let orderedClientStops = []; // NOVO: Armazena a ordem final (C1, C2, C3) para re-scheduling
+    let orderedClientStops = []; 
 
     const SCHEDULE_DURATION_HOURS = 2; // CORRECT CONSTANT NAME
     const SLOT_HEIGHT_PX = 60;
@@ -82,25 +81,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     const MIN_HOUR = 7;
     const MAX_HOUR = 21;
-    
-    // --- Funções Auxiliares Comuns ---
-    
-    // Função para preencher o dropdown First Schedule
-    function populateFirstScheduleDropdown() {
-        firstScheduleSelect.innerHTML = '';
-        for (let h = MIN_HOUR; h <= MAX_HOUR; h++) {
-            const time = `${String(h).padStart(2, '0')}:00`;
-            const option = document.createElement('option');
-            option.value = time;
-            option.textContent = time;
-            firstScheduleSelect.appendChild(option);
-        }
-        // Seleciona a primeira opção por padrão
-        if (firstScheduleSelect.options.length > 0) {
-            firstScheduleSelect.selectedIndex = 0;
-        }
-    }
-
 
     // --- Geocoding and Distance Helpers (FROM quick-routes.js) ---
     async function getLatLon(zipCode) {
@@ -126,10 +106,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function fetchGoogleMapsApiKey() {
         if (GOOGLE_MAPS_API_KEY) return;
         try {
+            console.log('[MAP LOG 1/4] Fetching API key from backend...');
             const response = await fetch('/api/get-google-maps-api-key');
             if (response.ok) {
                 const data = await response.json();
                 GOOGLE_MAPS_API_KEY = data.apiKey;
+                console.log('[MAP LOG 2/4] API Key received. Injecting script...');
                 
                 // Inject script only if it's not present (CRITICAL FIX FOR DIRECTIONS SERVICE)
                 if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
@@ -696,6 +678,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- NEW: Itinerary Optimization Logic (Calculation Only) ---
 
+    function clearCustomMarkers() {
+        // Marcadores customizados removidos, esta função fica vazia
+    }
+
     async function runItineraryOptimization(appointments, isReversed = false) {
         // Verifica se o DirectionsService está disponível
         if (typeof google === 'undefined' || typeof google.maps === 'undefined' || typeof google.maps.DirectionsService === 'undefined') {
@@ -786,12 +772,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             shouldOptimizeWaypoints = false; 
         }
         
-        // Armazena a ordem final dos clientes para o re-scheduling
-        orderedClientStops = stopsForGoogleMaps;
-        
+        // Clear previous route and markers
+        // directionsRenderer.setDirections({ routes: [] }); // REMOVIDO
+        // clearCustomMarkers(); // REMOVIDO
+
         // 5. Google Maps Directions Request
         const origin = originZip;
-        const destination = originZip; // Technician's zip is the final destination (round trip)
+        const destination = originZip; // Technician's zip é o destino final (ida e volta)
         const waypoints = stopsForGoogleMaps.map(c => ({
             location: c.zipCode,
             stopover: true
@@ -814,20 +801,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (status === 'OK' && response && response.routes && response.routes.length > 0) {
                 
                 const route = response.routes[0];
+                // directionsRenderer.setDirections(response); // REMOVIDO MAPA
 
                 let totalDistance = 0;
                 let totalDuration = 0;
                 
                 itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (Starting from ${isReversed ? 'Farthest' : 'Nearest'}):</p>`;
                 
-                // Determine the final ordered stops based on Google's final route
+                // Determine the final ordered stops based on Google's final route (which might be the waypoints themselves if optimizeWaypoints is false)
                 const finalOrderedStops = (shouldOptimizeWaypoints && route.waypoint_order && route.waypoint_order.length > 0)
                     ? route.waypoint_order.map((i) => optimizedItinerary[i]) // If Google optimized, use its order against the NEAREST-FIRST list
-                    : stopsForGoogleMaps; 
+                    : stopsForGoogleMaps; // If optimization was off (Reverser), use the manually ordered list
                 
                 // Add the stops in their final order to the full sequence, including origin/destination markers.
                 const fullSequence = [
-                    { name: 'HOME (Start)', zipCode: originZip, apptTime: 'N/A' },
+                    { name: 'HOME (Start)', zipCode: originZip, lat: originLat, lng: originLon, apptTime: 'N/A' },
                     ...finalOrderedStops.map(appt => ({ 
                         name: appt.customers, 
                         zipCode: appt.zipCode, 
@@ -838,7 +826,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     { name: 'HOME (End)', zipCode: originZip, lat: originLat, lng: originLon, apptTime: 'N/A' }
                 ];
                 
-                // Atualiza a ordem final para o re-scheduling (garante que a ordem usada no UI seja a que foi calculada pelo Google)
+                // Atualiza a ordem final para o re-scheduling
                 orderedClientStops = finalOrderedStops;
 
                 const legs = route.legs;
@@ -864,6 +852,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-lg text-brand-primary">Total Round Trip: ${Math.round(totalDuration / 60)} min / ${(totalDistance / 1000).toFixed(2)} km</div>`;
                 
             } else {
+                // Reinicia os marcadores em caso de falha para garantir que não haja sobras
+                clearCustomMarkers(); // REMOVIDO
                 itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}. Motivo: O Google Maps não conseguiu traçar a rota com os Zips fornecidos, ou o Zip de Origem é inválido.</p>`;
             }
         });
@@ -896,12 +886,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         for (const [index, appt] of orderedClientStops.entries()) {
             
-            // Converte a data do loop (que é um objeto Date) para o formato do input HTML YYYY-MM-DDTHH:MM
-            const newDateString = `${currentAppointmentDate.getFullYear()}-${String(currentAppointmentDate.getMonth() + 1).padStart(2, '0')}-${String(currentAppointmentDate.getDate()).padStart(2, '0')}`;
-            const newTimeString = `${String(currentAppointmentDate.getHours()).padStart(2, '0')}:${String(currentAppointmentDate.getMinutes()).padStart(2, '0')}`;
-            const appointmentDateLocal = `${newDateString}T${newTimeString}`;
-
             // Converte o formato do input HTML para o formato de API MM/DD/YYYY HH:MM
+            const newTimeString = `${String(currentAppointmentDate.getHours()).padStart(2, '0')}:${String(currentAppointmentDate.getMinutes()).padStart(2, '0')}`;
             const apiFormattedDate = `${String(currentAppointmentDate.getMonth() + 1).padStart(2, '0')}/${String(currentAppointmentDate.getDate()).padStart(2, '0')}/${currentAppointmentDate.getFullYear()} ${newTimeString}`;
 
             
@@ -995,11 +981,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderScheduler(); 
             
             // NEW: Inicializa DirectionsService (sem mapa)
-            if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
-                directionsService = new google.maps.DirectionsService();
-            } else {
-                 console.warn("Google Maps script not loaded, Directions Service may be unavailable.");
-            }
+            await fetchGoogleMapsApiKey();
             
         } catch (error) {
             console.error('CRITICAL ERROR during loadInitialData:', error);
@@ -1054,8 +1036,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (dayFilter) dayFilter.addEventListener('change', handleDayFilterChange);
     if (optimizeItineraryBtn) optimizeItineraryBtn.addEventListener('click', handleOptimizeItinerary);
     if (itineraryReverserBtn) itineraryReverserBtn.addEventListener('click', handleItineraryReverser);
-    
-    // NOVO: Listener para aplicar a rota
     if(applyRouteBtn) applyRouteBtn.addEventListener('click', handleApplyRoute);
     
     if (showedAppointmentsTableBody) {
