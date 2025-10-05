@@ -11,31 +11,87 @@
 <body class="min-h-screen bg-background flex flex-col">
 
     <header class="bg-card shadow-large border-b border-border">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <div class="flex items-center gap-4">
-            <div class="w-10 h-10 bg-gradient-subtle rounded-lg flex items-center justify-center shadow-soft">
-              <img 
-                src="https://i.imgur.com/XamnfOc.png" 
-                alt="Company Logo" 
-                class="max-w-full max-h-full object-contain rounded"
-              />
-            </div>
-            <h1 class="text-xl font-bold text-foreground hidden sm:block">
-              Sales Dashboard
-            </h1>
-          </div>
-          <nav class="hidden md:flex items-center space-x-1">
-            <a href="appointments.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 bg-gradient-primary text-white shadow-brand" aria-current="page">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar w-4 h-4"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
-                <span class="hidden lg:inline">Sales</span>
-            </a>
-            <a href="customers.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-muted hover:text-foreground">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-4 h-4"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                <span class="hidden lg:inline">Customers</span>
-            </a>
-            <a href="analytics.html" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 text-muted-foreground hover:bg-muted hover:text-foreground">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bar-chart-3 w-4 h-4"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-                <span class="hidden lg:inline">Analytics</span>
-            </a>
-            <a href="quick-routes.html" class="flex items-center gap-2 px-
+      </header>
+
+    <main class="flex-1 p-8 overflow-y-auto">
+        <div class="max-w-7xl mx-auto space-y-8">
+            <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                </section>
+
+            <section id="availability-checker-section" class="rounded-lg border bg-card text-card-foreground shadow-large">
+                <div class="flex flex-col space-y-1.5 p-6 border-b border-border">
+                    <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                        1. Smart Availability Check
+                    </h2>
+                    <p class="text-sm text-muted-foreground">Enter customer details to find the best appointment slot.</p>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
+                        <div class="space-y-2">
+                            <label for="customer-zip-code" class="block text-sm font-semibold text-foreground">Customer Zip Code</label>
+                            <input type="text" id="customer-zip-code" name="customer-zip-code" required class="input-style" placeholder="Enter 5-digit Zip">
+                        </div>
+                        <div class="space-y-2">
+                            <label for="num-pets" class="block text-sm font-semibold text-foreground">Number of Pets</label>
+                            <input type="number" id="num-pets" name="num-pets" required class="input-style" min="1" value="1">
+                        </div>
+                        <div class="space-y-2">
+                            <label for="appointment-margin" class="block text-sm font-semibold text-foreground">Scheduling Margin</label>
+                            <select id="appointment-margin" name="appointment-margin" class="input-style">
+                                <option value="10">10 minutes</option>
+                                <option value="20">20 minutes</option>
+                                <option value="30" selected>30 minutes</option>
+                                <option value="40">40 minutes</option>
+                                <option value="50">50 minutes</option>
+                                <option value="60">60 minutes</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2 lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button type="button" id="verify-availability-btn" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-base font-bold bg-gradient-secondary text-secondary-foreground hover:shadow-brand hover:-translate-y-0.5 transform transition-all duration-300 h-12 px-8">
+                                Check Availability
+                            </button>
+                            <button type="button" id="skip-to-manual-btn" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-12 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary/10">
+                                Manual Scheduling &rarr;
+                            </button>
+                        </div>
+                    </div>
+                    <div id="availability-results" class="mt-6 p-4 border-t border-border">
+                        </div>
+                </div>
+            </section>
+            
+            <section id="main-appointment-form" class="hidden rounded-lg border bg-card text-card-foreground shadow-large">
+                <div class="flex flex-col space-y-1.5 p-6 border-b border-border">
+                    <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                        2. Register New Appointment
+                    </h2>
+                    <p class="text-sm text-muted-foreground">Fill in all mandatory fields to create a new Lead in the Sales Pipeline.</p>
+                </div>
+                <form id="scheduleForm" class="p-6">
+                    <div class="mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
+                        <h3 class="text-xl font-semibold mb-6 text-foreground/80 flex items-center gap-2">Client Details</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            </div>
+                    </div>
+                    <div class="mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
+                        <h3 class="text-xl font-semibold mb-6 text-foreground/80 flex items-center gap-2">Service and Sales Details</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            </div>
+                    </div>
+                    <div class="mb-8 p-6 border border-border/50 rounded-xl bg-muted/30">
+                        <div class="space-y-2">
+                            <button type="submit" form="scheduleForm" class="w-full ...">Register Appointment</button>
+                        </div>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </main>
+
+    <style>
+      /* Suas classes de estilo */
+    </style>
+    
+    <script src="dashboard.js"></script>
+</body>
+</html>
