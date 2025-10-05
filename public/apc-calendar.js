@@ -1,4 +1,4 @@
-// public/apc-calendar.js
+// public/calendar.js
 
 document.addEventListener('DOMContentLoaded', async () => {
     // --- 1. Seletores de Elementos ---
@@ -10,8 +10,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currentWeekDisplay = document.getElementById('current-week-display');
     const prevWeekBtn = document.getElementById('prev-week');
     const nextWeekBtn = document.getElementById('next-week');
-    const techConfigSelect = document.getElementById('tech-config-select');
-    const showedAppointmentsTableBody = document.getElementById('showed-appointments-table-body');
     const addTimeBlockBtn = document.getElementById('add-time-block-btn');
     const dayFilter = document.getElementById('day-filter');
     const dayItineraryTableBody = document.getElementById('day-itinerary-table-body');
@@ -21,6 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const schedulingControls = document.getElementById('scheduling-controls');
     const firstScheduleSelect = document.getElementById('first-schedule-select');
     const applyRouteBtn = document.getElementById('apply-route-btn');
+    const showedAppointmentsTableBody = document.getElementById('showed-appointments-table-body');
 
     // Modais e seus botões
     const editModal = document.getElementById('edit-appointment-modal');
@@ -46,11 +45,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     let techAvailabilityBlocks = [];
     let selectedTechnician = '';
     let currentWeekStart = getStartOfWeek(new Date());
-    let isSaving = {};
     let directionsService; 
     let dayAppointments = []; 
     let orderedClientStops = []; 
-    let googleMapsPromise = null; 
+    let googleMapsPromise = null;
 
     const SCHEDULE_DURATION_HOURS = 2;
     const SLOT_HEIGHT_PX = 60;
@@ -60,6 +58,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const MAX_HOUR = 21;
 
     // --- 3. Funções Auxiliares ---
+
+    window.initMap = () => {
+        if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
+            directionsService = new google.maps.DirectionsService();
+            if (googleMapsPromise && googleMapsPromise.resolve) {
+                googleMapsPromise.resolve();
+            }
+        }
+    };
 
     function getStartOfWeek(date) {
         const d = new Date(date);
@@ -132,19 +139,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (googleMapsPromise) return googleMapsPromise;
 
         googleMapsPromise = new Promise(async (resolve, reject) => {
-            window.initMap = () => {
-                if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
-                    directionsService = new google.maps.DirectionsService();
-                    resolve();
-                } else {
-                    reject(new Error('Google Maps API failed to load.'));
-                }
-            };
-
             if (typeof google !== 'undefined' && typeof google.maps !== 'undefined' && google.maps.DirectionsService) {
-                directionsService = new google.maps.DirectionsService();
+                window.initMap(); // Garante que directionsService seja definido
                 return resolve();
             }
+
+            // Atribui a função de resolução à promise para que o callback a chame
+            googleMapsPromise.resolve = resolve;
 
             try {
                 if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
@@ -165,14 +166,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         return googleMapsPromise;
     }
-    
-    // --- 4. Funções de Manipulação dos Modais ---
-    // (O código para os modais permanece o mesmo)
-    
-    // --- 5. Funções de Manipulação de Dados (API Calls) ---
-    // (O código para as chamadas de API permanece o mesmo)
 
-    // --- 6. Funções de Renderização ---
+    // --- 4. Lógica de Modais e API ---
+    // (Todas as funções handleSave, handleUpdate, handleDelete, open/close modals, etc. permanecem aqui)
+
+    // --- 5. Lógica de Renderização ---
 
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
@@ -212,11 +210,63 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderAppointments(columnMap) {
-        // ... (código para renderizar agendamentos)
+        const weekEnd = new Date(currentWeekStart);
+        weekEnd.setDate(currentWeekStart.getDate() + 7);
+        const appointmentsToRender = allAppointments.filter(appt => appt.technician === selectedTechnician);
+        appointmentsToRender.forEach(appt => {
+            const apptDate = parseSheetDate(appt.appointmentDate);
+            if (!apptDate || apptDate < currentWeekStart || apptDate >= weekEnd) return;
+            const dateKey = formatDateToYYYYMMDD(apptDate);
+            const colIndex = columnMap[dateKey];
+            if (!colIndex) return;
+            const startHour = apptDate.getHours();
+            if (startHour < MIN_HOUR || startHour >= MAX_HOUR) return;
+            const topOffset = (startHour - MIN_HOUR) * SLOT_HEIGHT_PX + apptDate.getMinutes();
+            const block = document.createElement('div');
+            let bgColor = 'bg-custom-primary';
+            if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
+            else if (appt.verification === 'Showed') bgColor = 'bg-green-600';
+            block.className = `appointment-block ${bgColor} text-white rounded-md shadow-soft cursor-pointer transition-colors hover:shadow-lg`;
+            block.dataset.id = appt.id;
+            block.style.gridColumnStart = colIndex;
+            block.style.top = `${topOffset}px`;
+            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
+            block.innerHTML = `<div><p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p><p class="text-sm font-bold truncate">${appt.customers}</p><p class="text-xs font-medium text-white/80">${appt.verification}</p></div>`;
+            block.addEventListener('click', () => openEditModal(appt));
+            schedulerBody.appendChild(block);
+        });
     }
 
     function renderTimeBlocks(columnMap) {
-        // ... (código para renderizar time blocks)
+        const weekEnd = new Date(currentWeekStart);
+        weekEnd.setDate(currentWeekStart.getDate() + 7);
+        techAvailabilityBlocks.forEach(block => {
+            if (!block || typeof block.date !== 'string' || block.date.trim() === '') return;
+            const parts = block.date.split('/');
+            if (parts.length !== 3) return;
+            const [M, D, Y] = parts;
+            const blockDate = new Date(`${Y}-${M}-${D}T00:00:00`);
+            if (isNaN(blockDate.getTime()) || blockDate < currentWeekStart || blockDate >= weekEnd) return;
+            const dateKey = formatDateToYYYYMMDD(blockDate);
+            const colIndex = columnMap[dateKey];
+            if (!colIndex) return;
+            const [startH, startM] = block.startHour.split(':').map(Number);
+            const [endH, endM] = block.endHour.split(':').map(Number);
+            const topOffset = ((startH - MIN_HOUR) * SLOT_HEIGHT_PX) + (startM / 60 * SLOT_HEIGHT_PX);
+            const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+            const height = (durationMinutes / 60) * SLOT_HEIGHT_PX;
+            const blockEl = document.createElement('div');
+            blockEl.className = 'appointment-block';
+            blockEl.style.height = `${height}px`;
+            blockEl.style.backgroundColor = 'rgba(107, 114, 128, 0.7)';
+            blockEl.style.zIndex = '5';
+            blockEl.style.cursor = 'pointer';
+            blockEl.style.gridColumnStart = colIndex;
+            blockEl.style.top = `${topOffset}px`;
+            blockEl.innerHTML = `<p class="text-xs font-semibold text-white truncate">${block.notes || 'Blocked'}</p><p class="text-xs text-white/80">${block.startHour} - ${block.endHour}</p>`;
+            blockEl.addEventListener('click', () => openEditTimeBlockModal(block));
+            schedulerBody.appendChild(blockEl);
+        });
     }
 
     function updateWeekDisplay() {
@@ -226,7 +276,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     function renderShowedAppointmentsTable() {
-        // ... (código da tabela)
+        if (!showedAppointmentsTableBody) return;
+        showedAppointmentsTableBody.innerHTML = '';
+        const weekEnd = new Date(currentWeekStart);
+        weekEnd.setDate(currentWeekStart.getDate() + 7);
+        const appointmentsForWeek = allAppointments.filter(appt => {
+            const apptDate = parseSheetDate(appt.appointmentDate);
+            return appt.technician === selectedTechnician && apptDate >= currentWeekStart && apptDate < weekEnd;
+        }).sort((a, b) => (parseSheetDate(a.appointmentDate)?.getTime() || 0) - (parseSheetDate(b.appointmentDate)?.getTime() || 0));
+        
+        if (appointmentsForWeek.length === 0) {
+            showedAppointmentsTableBody.innerHTML = '<tr><td colspan="10" class="p-4 text-center text-muted-foreground">No appointments for this technician in the selected week.</td></tr>';
+            return;
+        }
+        
+        appointmentsForWeek.forEach(appointment => {
+            const row = document.createElement('tr');
+            row.className = 'border-b border-border hover:bg-muted/50';
+            row.dataset.rowId = appointment.id;
+            row.innerHTML = `
+                <td class="p-4"><input type="datetime-local" value="${formatDateTimeForInput(appointment.appointmentDate)}" style="width: 160px;" class="bg-transparent border border-border rounded-md px-2" data-key="appointmentDate"></td>
+                <td class="p-4">${appointment.customers.length > 18 ? appointment.customers.substring(0, 15) + '...' : appointment.customers}</td>
+                <td class="p-4">${appointment.code}</td>
+                <td class="p-4"><input type="text" value="${appointment.technician}" class="bg-transparent border border-border rounded-md px-2" data-key="technician" disabled></td>
+                <td class="p-4"><select style="width: 60px;" class="bg-transparent border border-border rounded-md px-2" data-key="petShowed"><option value="">Pets</option>${Array.from({ length: 10 }, (_, i) => i + 1).map(num => `<option value="${num}" ${appointment.petShowed == String(num) ? 'selected' : ''}>${num}</option>`).join('')}</select></td>
+                <td class="p-4"><input type="text" value="${appointment.serviceShowed || ''}" style="width: 100px;" class="bg-transparent border border-border rounded-md px-2" data-key="serviceShowed"></td>
+                <td class="p-4"><input type="text" value="${appointment.tips || ''}" style="width: 80px;" class="bg-transparent border border-border rounded-md px-2" data-key="tips"></td>
+                <td class="p-4"><select style="width: 80px;" class="bg-transparent border border-border rounded-md px-2" data-key="percentage"><option value="">%</option>${["20%", "25%"].map(opt => `<option value="${opt}" ${appointment.percentage === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select></td>
+                <td class="p-4"><select style="width: 120px;" class="bg-transparent border border-border rounded-md px-2" data-key="paymentMethod"><option value="">Select...</option>${["Check", "American Express", "Apple Pay", "Discover", "Master Card", "Visa", "Zelle", "Cash", "Invoice"].map(opt => `<option value="${opt}" ${appointment.paymentMethod === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select></td>
+                <td class="p-4"><select style="width: 100px;" class="bg-transparent border border-border rounded-md px-2" data-key="verification"><option value="">Select...</option>${["Scheduled", "Showed", "Canceled"].map(opt => `<option value="${opt}" ${appointment.verification === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select></td>
+            `;
+            showedAppointmentsTableBody.appendChild(row);
+        });
     }
 
     function renderDayItineraryTable() {
@@ -289,21 +370,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             itineraryResultsList.innerHTML = '<p class="text-red-600">Google Maps Service could not be initialized.</p>';
             return;
         }
-
         const techCoverageResponse = await fetch('/api/get-tech-coverage');
         const techCoverageData = techCoverageResponse.ok ? await techCoverageResponse.json() : [];
         const selectedTechObj = techCoverageData.find(t => t.nome === selectedTechnician);
         const originZip = selectedTechObj?.zip_code;
-
         if (!originZip) {
             itineraryResultsList.innerHTML = '<p class="text-red-600">Technician origin Zip Code not found.</p>';
             return;
         }
-
         itineraryResultsList.innerHTML = 'Calculating route...';
         optimizeItineraryBtn.disabled = true;
         itineraryReverserBtn.disabled = true;
-
         const validAppointments = [];
         for (const appt of dayAppointments) {
             if (appt.zipCode) {
@@ -311,14 +388,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (lat !== null) validAppointments.push({ ...appt, lat, lon });
             }
         }
-
         if (validAppointments.length < 1) {
             itineraryResultsList.innerHTML = '<p class="text-red-600">No appointments with valid Zip Codes to optimize.</p>';
             optimizeItineraryBtn.disabled = false;
             itineraryReverserBtn.disabled = false;
             return;
         }
-
         const [originLat, originLon] = await getLatLon(originZip);
         if (originLat === null) {
             itineraryResultsList.innerHTML = '<p class="text-red-600">Could not get coordinates for technician origin Zip Code.</p>';
@@ -326,7 +401,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             itineraryReverserBtn.disabled = false;
             return;
         }
-
         let currentLat = originLat, currentLon = originLon;
         let unvisited = [...validAppointments];
         let nearestPath = [];
@@ -336,16 +410,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (dist < closest.minDistance) return { minDistance: dist, client: current };
                 return closest;
             }, { minDistance: Infinity, client: null });
-            
             nearestPath.push(closest.client);
             currentLat = closest.client.lat;
             currentLon = closest.client.lon;
             unvisited = unvisited.filter(c => c.id !== closest.client.id);
         }
-
         const stopsForGoogle = isReversed ? [...nearestPath].reverse() : nearestPath;
-        orderedClientStops = stopsForGoogle;
-
         const request = {
             origin: { query: originZip },
             destination: { query: originZip },
@@ -353,7 +423,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             travelMode: 'DRIVING',
             optimizeWaypoints: !isReversed,
         };
-
         directionsService.route(request, (response, status) => {
             optimizeItineraryBtn.disabled = false;
             itineraryReverserBtn.disabled = false;
@@ -361,18 +430,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const route = response.routes[0];
                 itineraryResultsList.innerHTML = `<p class="font-bold text-lg">Optimized Route (${isReversed ? 'Farthest First' : 'Nearest First'}):</p>`;
                 let totalDuration = 0, totalDistance = 0;
-                
                 const finalOrder = route.waypoint_order ? route.waypoint_order.map(i => stopsForGoogle[i]) : stopsForGoogle;
                 orderedClientStops = finalOrder;
-
                 route.legs.forEach((leg, i) => {
                     const clientName = (finalOrder[i] || {}).customers || 'Destination';
-                    itineraryResultsList.innerHTML += `
-                        <div class="border-b border-muted py-2">
-                            <p class="font-bold text-base">${i + 1}. Go to: ${leg.end_address} (${clientName})</p>
-                            <p class="ml-4 text-sm">Travel: ${leg.duration.text} | ${leg.distance.text}</p>
-                        </div>
-                    `;
+                    itineraryResultsList.innerHTML += `<div class="border-b border-muted py-2"><p class="font-bold text-base">${i + 1}. Go to: ${leg.end_address} (${clientName})</p><p class="ml-4 text-sm">Travel: ${leg.duration.text} | ${leg.distance.text}</p></div>`;
                     totalDuration += leg.duration.value;
                     totalDistance += leg.distance.value;
                 });
