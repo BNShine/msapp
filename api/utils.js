@@ -55,7 +55,6 @@ export function excelDateToDateTime(excelSerialDate) {
         }
     }
     
-    // Retorna string vazia se nenhum formato for reconhecido
     return '';
 }
 
