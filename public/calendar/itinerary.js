@@ -8,14 +8,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const itineraryReverserBtn = document.getElementById('itinerary-reverser-btn');
     const itineraryResultsList = document.getElementById('itinerary-results-list');
     const schedulingControls = document.getElementById('scheduling-controls');
+    const firstScheduleSelect = document.getElementById('first-schedule-select');
+    const applyRouteBtn = document.getElementById('apply-route-btn');
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
 
     // --- Variáveis Globais ---
     let allAppointments = [];
     let dayAppointments = [];
+    let orderedClientStops = []; // Armazena a ordem otimizada
     let currentWeekStart = getStartOfWeek(new Date());
 
-    // --- Funções Auxiliares (reutilizadas) ---
+    const MIN_HOUR = 7;
+    const MAX_HOUR = 21;
+    const APPOINTMENT_DURATION_HOURS = 2;
+
+    // --- Funções Auxiliares ---
     function getStartOfWeek(date) {
         const d = new Date(date);
         d.setHours(0, 0, 0, 0);
@@ -52,8 +59,111 @@ document.addEventListener('DOMContentLoaded', async () => {
         date.setDate(startOfWeekDate.getDate() + dayOfWeek);
         return date;
     }
+    
+    // --- Lógica da Aplicação da Rota e Dropdown ---
 
-    // --- Renderização e Lógica da Rota (CORRIGIDO) ---
+    /**
+     * **NOVA FUNÇÃO**
+     * Preenche o dropdown com os horários disponíveis.
+     */
+    function populateTimeSlotsDropdown() {
+        if (!firstScheduleSelect) return;
+        firstScheduleSelect.innerHTML = ''; // Limpa opções anteriores
+
+        for (let hour = MIN_HOUR; hour < MAX_HOUR; hour++) {
+            for (let minute = 0; minute < 60; minute += 30) {
+                const timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                const option = document.createElement('option');
+                option.value = timeString;
+                option.textContent = timeString;
+                firstScheduleSelect.appendChild(option);
+            }
+        }
+    }
+    
+    /**
+     * **FUNCIONALIDADE IMPLEMENTADA**
+     * Aplica a rota otimizada, reagendando e salvando os compromissos.
+     */
+    async function handleApplyRoute() {
+        const selectedStartTime = firstScheduleSelect.value;
+        const selectedDay = dayFilter.value;
+        
+        if (!selectedStartTime || selectedDay === '' || orderedClientStops.length === 0) {
+            alert("Please optimize a route and select a start time first.");
+            return;
+        }
+
+        applyRouteBtn.disabled = true;
+        applyRouteBtn.textContent = "Applying...";
+
+        const targetDate = getDayOfWeekDate(currentWeekStart, parseInt(selectedDay, 10));
+        const [startHour, startMinute] = selectedStartTime.split(':').map(Number);
+
+        const updatePromises = [];
+
+        orderedClientStops.forEach((stop, index) => {
+            const appointmentToUpdate = allAppointments.find(a => a.id === stop.id);
+            if (appointmentToUpdate) {
+                const newStartDate = new Date(targetDate);
+                newStartDate.setHours(startHour, startMinute);
+                newStartDate.setHours(newStartDate.getHours() + (index * APPOINTMENT_DURATION_HOURS));
+                
+                const year = newStartDate.getFullYear();
+                const month = String(newStartDate.getMonth() + 1).padStart(2, '0');
+                const day = String(newStartDate.getDate()).padStart(2, '0');
+                const hour = String(newStartDate.getHours()).padStart(2, '0');
+                const minute = String(newStartDate.getMinutes()).padStart(2, '0');
+                
+                // Formato para a API: 'YYYY-MM-DDTHH:MM'
+                const apiDateTime = `${year}-${month}-${day}T${hour}:${minute}`;
+
+                const dataToUpdate = {
+                    rowIndex: appointmentToUpdate.id,
+                    appointmentDate: apiDateTime,
+                    // Inclui os outros campos para não serem apagados
+                    technician: appointmentToUpdate.technician,
+                    petShowed: appointmentToUpdate.petShowed,
+                    serviceShowed: appointmentToUpdate.serviceShowed,
+                    tips: appointmentToUpdate.tips,
+                    percentage: appointmentToUpdate.percentage,
+                    paymentMethod: appointmentToUpdate.paymentMethod,
+                    verification: appointmentToUpdate.verification,
+                };
+                
+                // Adiciona a promessa de atualização à lista
+                const promise = fetch('/api/update-appointment-showed-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataToUpdate),
+                }).then(res => res.json());
+
+                updatePromises.push(promise);
+            }
+        });
+
+        try {
+            const results = await Promise.all(updatePromises);
+            const allSuccess = results.every(res => res.success);
+
+            if (allSuccess) {
+                alert("Route applied and all appointments updated successfully!");
+                // Dispara um evento para que os outros módulos (schedule.js) saibam que precisam recarregar os dados
+                document.dispatchEvent(new CustomEvent('appointmentUpdated'));
+            } else {
+                throw new Error("Some appointments could not be updated. Please check the data.");
+            }
+        } catch (error) {
+            console.error("Error applying route:", error);
+            alert(`An error occurred: ${error.message}`);
+        } finally {
+            applyRouteBtn.disabled = false;
+            applyRouteBtn.textContent = "Apply Route";
+        }
+    }
+
+
+    // --- Renderização e Lógica da Rota (sem alterações) ---
     function renderDayItineraryTable() {
         if (!dayItineraryTableBody) return;
         dayItineraryTableBody.innerHTML = '';
@@ -89,7 +199,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         dayAppointments.forEach(appt => {
             const row = document.createElement('tr');
-            row.className = 'border-b border-border hover:bg-muted/50';
+            row.className = 'border-b border-border hover:bg-muted/ ৫০';
             const apptDate = parseSheetDate(appt.appointmentDate);
             row.innerHTML = `
                 <td class="p-4 font-bold">${getTimeHHMM(apptDate)}</td>
@@ -135,10 +245,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        const validWaypoints = dayAppointments.filter(appt => appt.zipCode).map(appt => ({
-            zipCode: appt.zipCode,
-            customerName: appt.customers
-        }));
+        const validWaypoints = dayAppointments
+            .filter(appt => appt.zipCode)
+            .map(appt => ({
+                id: appt.id, // Importante para o reagendamento
+                zipCode: appt.zipCode,
+                customerName: appt.customers
+            }));
 
         if (validWaypoints.length < 1) {
             itineraryResultsList.innerHTML = '<p class="text-red-600">No appointments with valid Zip Codes to optimize.</p>';
@@ -169,9 +282,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             let totalDuration = 0, totalDistance = 0;
 
             const finalOrder = route.waypoint_order ? route.waypoint_order.map(i => validWaypoints[i]) : validWaypoints;
+            orderedClientStops = finalOrder; // Salva a ordem para o "Apply Route"
             
             route.legs.forEach((leg, i) => {
-                // O último trecho da rota é a volta para a origem.
                 const clientName = (finalOrder[i] || { customerName: "Return to Origin" }).customerName;
                 itineraryResultsList.innerHTML += `
                     <div class="border-b border-muted py-2">
@@ -185,6 +298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             itineraryResultsList.innerHTML += `<div class="mt-4 font-bold text-lg text-brand-primary">Total Travel: ${Math.round(totalDuration / 60)} min / ${(totalDistance / 1000 * 0.621371).toFixed(1)} mi</div>`;
             schedulingControls.classList.remove('hidden');
+            applyRouteBtn.disabled = false;
 
         } catch (error) {
             itineraryResultsList.innerHTML = `<p class="text-red-600 font-bold">Error calculating route: ${error.message}</p>`;
@@ -225,6 +339,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (dayFilter) dayFilter.addEventListener('change', renderDayItineraryTable);
     if (optimizeItineraryBtn) optimizeItineraryBtn.addEventListener('click', () => runItineraryOptimization(false));
     if (itineraryReverserBtn) itineraryReverserBtn.addEventListener('click', () => runItineraryOptimization(true));
+    if (applyRouteBtn) applyRouteBtn.addEventListener('click', handleApplyRoute);
     
+    // Carga Inicial
     loadAppointmentData();
+    populateTimeSlotsDropdown(); // Preenche o dropdown assim que a página carrega
 });
