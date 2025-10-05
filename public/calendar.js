@@ -1,5 +1,25 @@
 // public/calendar.js
 
+// Define initMap globalmente para ser usada como callback pelo script do Google Maps.
+window.initMap = function() {
+    const itineraryMapContainer = document.getElementById('itinerary-map');
+    if (itineraryMapContainer && typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
+        map = new google.maps.Map(itineraryMapContainer, {
+            center: { lat: 39.8283, lng: -98.5795 }, // Centro dos EUA
+            zoom: 4,
+            streetViewControl: false,
+            fullscreenControl: false,
+        });
+        directionsService = new google.maps.DirectionsService();
+        // Hiding the default markers to use custom ones
+        directionsRenderer = new google.maps.DirectionsRenderer({ 
+            map: map,
+            suppressMarkers: true // Suppress default A, B, C markers
+        });
+        console.log('Google Maps services initialized.');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
     const selectedTechDisplay = document.getElementById('selected-tech-display');
@@ -99,25 +119,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await response.json();
                 GOOGLE_MAPS_API_KEY = data.apiKey;
                 
-                // CRITICAL CORRECTION: Define initMap globally before injecting the script
-                window.initMap = function() {
-                    if (itineraryMapContainer) {
-                        map = new google.maps.Map(itineraryMapContainer, {
-                            center: { lat: 39.8283, lng: -98.5795 }, // Centro dos EUA
-                            zoom: 4,
-                            streetViewControl: false,
-                            fullscreenControl: false,
-                        });
-                        directionsService = new google.maps.DirectionsService();
-                        // Hiding the default markers to use custom ones
-                        directionsRenderer = new google.maps.DirectionsRenderer({ 
-                            map: map,
-                            suppressMarkers: true // Suppress default A, B, C markers
-                        });
-                        console.log('Google Maps services initialized.');
-                    }
-                }
-                
                 // Inject script only if it's not present
                 if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
                     const script = document.createElement('script');
@@ -126,11 +127,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     script.defer = true;
                     document.head.appendChild(script);
                 } else {
-                    window.initMap(); // Call it immediately if API is already loaded (unlikely in page load scenario)
+                    window.initMap(); // Call it immediately if API is already loaded
                 }
             } else {
                 console.error('Falha ao buscar a chave da API do Google Maps.');
-                alert('Erro: Chave da Google Maps API não carregada. A otimização de rotas não funcionará.');
+                // CRITICAL ALERT: Inform user about environment variable failure
+                alert('Erro CRÍTICO: Não foi possível carregar a chave GOOGLE_MAPS_API_KEY. Verifique as variáveis de ambiente.');
             }
         } catch (error) {
             console.error('Erro ao buscar a chave da API do Google Maps:', error);
@@ -792,9 +794,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // Determine the final ordered stops based on Google's final route (which might be the waypoints themselves if optimizeWaypoints is false)
                 // When optimizeWaypoints=false, route.waypoint_order is generally empty or sequential [0, 1, 2...].
-                const finalOrderedStops = route.waypoint_order && route.waypoint_order.length > 0
+                const finalOrderedStops = (shouldOptimizeWaypoints && route.waypoint_order && route.waypoint_order.length > 0)
                     ? route.waypoint_order.map((i) => optimizedItinerary[i]) // If Google optimized, use its order against the NEAREST-FIRST list
-                    : stopsForGoogleMaps; // If optimization was off, use the manually ordered list (which is stopsForGoogleMaps: reversed or nearest-first)
+                    : stopsForGoogleMaps; // If optimization was off (Reverser), use the manually ordered list
                 
                 // Add the stops in their final order to the full sequence, including origin/destination markers.
                 const fullSequence = [
