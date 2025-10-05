@@ -553,7 +553,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             itineraryReverserBtn.disabled = false;
         }
     }
-
+    
     // --- 7. Lógica de Otimização de Rota Restaurada ---
     async function runItineraryOptimization(isReversed = false) {
         if (!directionsService) {
