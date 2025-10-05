@@ -115,7 +115,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     dayColumns.forEach((startCol, dayIdx) => {
                         const clientName = dayRow[startCol] ? String(dayRow[startCol]).trim() : '';
-                        if (!clientName || INVALID_CLIENTS.some(invalid => clientName.toUpperCase().includes(invalid.toUpperCase()))) return;
+                        
+                        // *** NOVA REGRA ADICIONADA AQUI ***
+                        const clientNameUpper = clientName.toUpperCase();
+                        if (!clientName || 
+                            INVALID_CLIENTS.some(invalid => clientNameUpper.includes(invalid.toUpperCase())) ||
+                            clientNameUpper.startsWith('PAY TO')) {
+                            return;
+                        }
 
                         const serviceValueRaw = dayRow[startCol + 2];
                         const serviceValue = (serviceValueRaw !== null && serviceValueRaw !== '') ? parseFloat(serviceValueRaw) : 0;
