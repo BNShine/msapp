@@ -7,6 +7,8 @@
     <link href="output.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body class="min-h-screen bg-background flex flex-col">
 
@@ -43,25 +45,60 @@
         <div class="max-w-[86rem] mx-auto">
             <div class="rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle p-6 mb-8">
                 <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">
-                    Upload and Process Spreadsheets
+                    1. Upload and Process Spreadsheets
                 </h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="file-upload" class="block text-sm font-medium text-foreground mb-2">Select Spreadsheet(s):</label>
                         <input type="file" id="file-upload" multiple accept=".xlsx, .xls" class="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-primary/10 file:text-brand-primary hover:file:bg-brand-primary/20"/>
                     </div>
-                    <div class="md:col-span-2 flex items-end gap-4">
+                    <div class="flex items-end gap-4">
                         <button id="process-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand transition-all duration-300">
                             Process Files
-                        </button>
-                        <button id="export-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand transition-all duration-300">
-                            Export to CSV
                         </button>
                     </div>
                 </div>
                  <div id="loading-spinner" class="hidden mt-4 flex items-center justify-center">
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary"></div>
                     <p class="ml-2 text-muted-foreground">Processing...</p>
+                </div>
+            </div>
+
+            <div id="dashboard-section" class="hidden rounded-lg border bg-card text-card-foreground shadow-large bg-gradient-subtle p-6 mb-8">
+                 <h2 class="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">
+                    2. Filter and Analyze
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label for="filter-name" class="block text-sm font-medium text-foreground mb-2">Filter by Name:</label>
+                        <select id="filter-name" multiple class="block w-full p-2 border border-border rounded-md bg-background"></select>
+                    </div>
+                    <div>
+                        <label for="filter-week" class="block text-sm font-medium text-foreground mb-2">Filter by Week:</label>
+                        <select id="filter-week" multiple class="block w-full p-2 border border-border rounded-md bg-background"></select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="p-4 rounded-lg bg-background border border-border">
+                        <h3 class="text-sm font-medium text-muted-foreground">Total Serviço</h3>
+                        <p id="total-servico" class="text-2xl font-bold text-foreground">$0.00</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-background border border-border">
+                        <h3 class="text-sm font-medium text-muted-foreground">Total Gorjeta</h3>
+                        <p id="total-gorjeta" class="text-2xl font-bold text-foreground">$0.00</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-background border border-border">
+                        <h3 class="text-sm font-medium text-muted-foreground">Total Pets</h3>
+                        <p id="total-pets" class="text-2xl font-bold text-foreground">0</p>
+                    </div>
+                </div>
+                <div class="flex items-end gap-4">
+                    <button id="export-csv-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand transition-all duration-300">
+                        Export Filtered to CSV
+                    </button>
+                    <button id="export-pdf-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary hover:text-white hover:shadow-brand transition-all duration-300">
+                        Export Filtered to PDF
+                    </button>
                 </div>
             </div>
 
@@ -72,7 +109,7 @@
                             </thead>
                         <tbody id="results-table-body" class="text-foreground text-sm">
                             <tr>
-                                <td colspan="12" class="p-4 text-center">Upload a file and click "Process" to see the data.</td>
+                                <td colspan="12" class="p-4 text-center text-muted-foreground">Upload a file and click "Process" to see the data.</td>
                             </tr>
                         </tbody>
                     </table>
