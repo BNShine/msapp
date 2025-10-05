@@ -28,7 +28,6 @@ function setTextAndColor(elementId, text, value) {
 
 // Function to populate dropdowns (FIXED DUPLICATION ISSUE)
 function populateDropdowns(selectElement, items) {
-    if (!selectElement) return; // Add guard clause
     // Clear dynamically added options (keeping the first option which is typically "Select...")
     while (selectElement.options.length > 1) {
         selectElement.remove(1);
@@ -68,7 +67,7 @@ async function getCityFromZip(zipCode) {
         const data = await response.json();
         if (data.places && data.places.length > 0) {
             // Retorna o nome da cidade E o estado (place name, state abbreviation)
-            return {
+            return { 
                 city: data.places[0]['place name'],
                 state: data.places[0]['state abbreviation'],
                 latitude: data.places[0]['latitude'],
@@ -86,13 +85,12 @@ async function getCityFromZip(zipCode) {
 
 // *** LÓGICA PARA SUGERIR TÉCNICO ***
 async function updateSuggestedTechnician(customerState, suggestedTechDisplay) {
-    if (!suggestedTechDisplay) return; // Add guard clause
     // Estilos que criam o visual de "input" - aplicados ao SELECT
     const inputStyleClassesForSelect = 'block w-full h-full rounded-xl border-2 border-foreground/80 hover:border-brand-primary transition-colors bg-muted/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground/80';
 
     // 1. Configura o DIV para o estado de LOADING: adiciona classes de caixa para o texto
     suggestedTechDisplay.className = 'h-12 w-full flex items-center bg-muted/50 px-3 py-2 text-muted-foreground font-medium rounded-xl border-2 border-foreground/80';
-    suggestedTechDisplay.innerHTML = 'Procurando...';
+    suggestedTechDisplay.innerHTML = 'Procurando...'; 
 
     if (!customerState) {
         // Reseta para o estado inicial se o CEP for inválido/incompleto
@@ -100,7 +98,7 @@ async function updateSuggestedTechnician(customerState, suggestedTechDisplay) {
         suggestedTechDisplay.textContent = '--/--/----';
         return;
     }
-
+    
     try {
         // 1. Fetch Technician Coverage Data
         const response = await fetch('/api/get-tech-coverage');
@@ -108,10 +106,10 @@ async function updateSuggestedTechnician(customerState, suggestedTechDisplay) {
         const techCoverageData = await response.json();
 
         // 2. Filter by Category "Central"
-        const centralTechs = techCoverageData.filter(tech =>
+        const centralTechs = techCoverageData.filter(tech => 
             tech.categoria && tech.categoria.toLowerCase() === 'central'
         );
-
+        
         // Prepare an array of promises to resolve the state for each central technician
         const techsWithStatePromises = centralTechs.map(async tech => {
             if (tech.zip_code && tech.zip_code.length === 5) {
@@ -120,26 +118,26 @@ async function updateSuggestedTechnician(customerState, suggestedTechDisplay) {
                     return { name: tech.nome, state: techLocation.state };
                 }
             }
-            return null;
+            return null; 
         });
 
         const techsWithState = (await Promise.all(techsWithStatePromises)).filter(t => t !== null);
 
         // 3. Filter by Same State
-        const suggestedTechs = techsWithState.filter(tech =>
+        const suggestedTechs = techsWithState.filter(tech => 
             tech.state === customerState
         ).map(tech => tech.name); // Get only the names
-
+        
         // 4. Render Dropdown or Message
         if (suggestedTechs.length > 0) {
-
+            
             // CORREÇÃO DA SOBREPOSIÇÃO: Remove *todos* os estilos de "caixa" do DIV externo 
             // e deixa apenas a altura/largura, aplicando o estilo de caixa ao SELECT interno.
             suggestedTechDisplay.className = 'h-12 w-full';
-
+            
             // Cria o SELECT com a estilização completa de input. Adicionado 'required'
             let dropdownHTML = `<select id="suggestedTechSelect" name="technician" required class="${inputStyleClassesForSelect} w-full h-full">`;
-
+            
             // Default option with empty value is critical for 'required' to work
             dropdownHTML += `<option value="">Selecione um técnico (Central)</option>`;
             suggestedTechs.forEach((name) => {
@@ -160,6 +158,7 @@ async function updateSuggestedTechnician(customerState, suggestedTechDisplay) {
         suggestedTechDisplay.textContent = 'Erro ao buscar técnicos.';
     }
 }
+// *** FIM DA LÓGICA PARA SUGERIR TÉCNICO ***
 
 
 // Main function to fetch and update all dashboard data
@@ -174,7 +173,7 @@ async function fetchAndRenderDashboardData() {
             throw new Error('Erro ao carregar dados do painel.');
         }
         if (!listsResponse.ok) {
-            throw new Error('Erro ao carregar dados das listas dinâmicas.');
+             throw new Error('Erro ao carregar dados das listas dinâmicas.');
         }
 
         const data = await dataResponse.json();
@@ -202,10 +201,10 @@ async function fetchAndRenderDashboardData() {
         populateDropdowns(yearSelect, lists.years);
 
         // Calculate and update metrics
-        const today = formatDateToMMDDYYYY(new Date());
+        const today = formatDateToYYYYMMDD(new Date());
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayFormatted = formatDateToMMDDYYYY(yesterday);
+        const yesterdayFormatted = formatDateToYYYYMMDD(yesterday);
 
         const todayAppointments = appointments.filter(appointment => appointment.date === today);
         const yesterdayAppointments = appointments.filter(appointment => appointment.date === yesterdayFormatted);
@@ -230,15 +229,15 @@ async function fetchAndRenderDashboardData() {
 
         const thisMonthAppointments = appointments.filter(appointment => {
             const parts = appointment.date.split('/');
-            const appointmentYear = parseInt(parts[2], 10);
-            const appointmentMonth = parseInt(parts[0], 10);
+            const appointmentYear = parseInt(parts[2], 10); // MODIFIED: Read year from index 2 (MM/DD/YYYY)
+            const appointmentMonth = parseInt(parts[0], 10); // MODIFIED: Read month from index 0 (MM/DD/YYYY)
             return appointmentMonth === currentMonth && appointmentYear === currentYear;
         });
 
         const lastMonthAppointments = appointments.filter(appointment => {
             const parts = appointment.date.split('/');
-            const appointmentYear = parseInt(parts[2], 10);
-            const appointmentMonth = parseInt(parts[0], 10);
+            const appointmentYear = parseInt(parts[2], 10); // MODIFIED
+            const appointmentMonth = parseInt(parts[0], 10); // MODIFIED
             return appointmentMonth === previousMonth && appointmentYear === previousYear;
         });
 
@@ -315,28 +314,21 @@ async function fetchAndRenderDashboardData() {
         document.getElementById('bestSellerName').textContent = bestSeller;
 
         // Set default form values
-        const dataField = document.getElementById('data');
-        if (dataField) {
-            const currentDate = new Date().toISOString().slice(0, 10);
-            dataField.value = currentDate;
-            document.getElementById('month').value = currentMonth;
-            document.getElementById('year').value = currentYear;
-        }
-
+        const currentDate = new Date().toISOString().slice(0, 10);
+        document.getElementById('data').value = currentDate;
+        document.getElementById('month').value = currentMonth;
+        document.getElementById('year').value = currentYear;
 
     } catch (error) {
         console.error('Erro ao buscar dados do painel:', error);
         // Fallback para exibir erros
-        const todayCount = document.getElementById('todayAppointmentsCount');
-        if (todayCount) {
-            todayCount.textContent = 'error';
-            setTextAndColor('appointmentDifference', 'Error loading data', -1);
-            document.getElementById('customersThisMonthCount').textContent = 'error';
-            setTextAndColor('customersThisMonthPercentage', 'Error loading data', -1);
-            document.getElementById('petsThisMonthCount').textContent = 'error';
-            setTextAndColor('petsThisMonthPercentage', 'Error loading data', -1);
-            document.getElementById('bestSellerName').textContent = 'error';
-        }
+        document.getElementById('todayAppointmentsCount').textContent = 'error';
+        setTextAndColor('appointmentDifference', 'Error loading data', -1);
+        document.getElementById('customersThisMonthCount').textContent = 'error';
+        setTextAndColor('customersThisMonthPercentage', 'Error loading data', -1);
+        document.getElementById('petsThisMonthCount').textContent = 'error';
+        setTextAndColor('petsThisMonthPercentage', 'Error loading data', -1);
+        document.getElementById('bestSellerName').textContent = 'error';
     }
 }
 
@@ -345,32 +337,41 @@ async function handleFormSubmission(event) {
     event.preventDefault();
 
     const form = event.target;
-    console.log("Submit Event Fired. Starting API call...");
+    console.log("Submit Event Fired. Starting API call..."); 
 
     const formData = new FormData(form);
     const data = {};
     formData.forEach((value, key) => {
         data[key] = value;
     });
-
+    
     const technician = data.technician || '';
     const appointmentDateLocal = data.appointmentDate; // YYYY-MM-DDTHH:MM
 
+    // START MODIFICATION 7: Add Hour Validation
     const MIN_HOUR = 7;
     const MAX_HOUR = 21;
 
+    // 1. Validate Hour Range
     const hour = parseInt(appointmentDateLocal.substring(11, 13), 10);
     const minute = parseInt(appointmentDateLocal.substring(14, 16), 10);
 
-    if (hour < MIN_HOUR || hour > MAX_HOUR || (hour === MAX_HOUR && minute > 0)) {
+    if (hour < MIN_HOUR || hour > MAX_HOUR) {
         alert(`Registration Error: Appointments must be scheduled between ${MIN_HOUR}:00 and ${MAX_HOUR}:00.`);
-        return;
+        return; // Prevent form submission
     }
+    // 21:00 is the last valid start time, so if hour is 21, minutes must be 00.
+    if (hour === MAX_HOUR && minute > 0) {
+        alert(`Registration Error: The last valid time slot is ${MAX_HOUR}:00.`);
+        return; // Prevent form submission
+    }
+    // END MODIFICATION 7
 
+    // MODIFICATION 2: Convert HTML input format (YYYY-MM-DDTHH:MM) to API target format (MM/DD/YYYY HH:MM)
     const [datePart, timePart] = appointmentDateLocal.split('T');
     const [year, month, day] = datePart.split('-');
     
-    const apiFormattedDate = `${month}/${day}/${year} ${timePart}`;
+    const apiFormattedDate = `${month}/${day}/${year} ${timePart}`; 
     
     const reminderDateValue = document.getElementById('reminderDate').value;
     const [rYear, rMonth, rDay] = reminderDateValue.split('-');
@@ -386,7 +387,7 @@ async function handleFormSubmission(event) {
         customers: data.customers,
         phone: data.phone,
         oldNew: data.oldNew,
-        appointmentDate: apiFormattedDate,
+        appointmentDate: apiFormattedDate, // MM/DD/YYYY HH:MM
         serviceValue: data.serviceValue,
         franchise: data.franchise,
         city: data.city,
@@ -394,28 +395,32 @@ async function handleFormSubmission(event) {
         week: data.week,
         month: data.month,
         year: data.year,
-        value: '',
+        value: '', 
         code: document.getElementById('codePass').value,
-        reminderDate: apiFormattedReminderDate,
+        reminderDate: apiFormattedReminderDate, // MM/DD/YYYY
         verification: 'Scheduled',
-        zipCode: data.zipCode,
-        technician: technician,
+        zipCode: data.zipCode, // Valor do campo Zip Code
+        technician: technician, // Inclui o técnico selecionado
     };
 
     try {
         const response = await fetch('/api/register-appointment', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify(formattedData),
         });
 
         const result = await response.json();
+        console.log("API Response:", result);
+
         if (result.success) {
-            form.reset();
-            fetchAndRenderDashboardData();
-            alert('Agendamento registrado com sucesso!');
+            form.reset(); 
+            fetchAndRenderDashboardData(); 
+            alert('Agendamento registrado com sucesso!'); 
         } else {
-            alert('Erro ao registrar agendamento: ' + result.message);
+            alert('Erro ao registrar agendamento: ' + result.message); 
         }
     } catch (error) {
         console.error('Erro ao registrar agendamento:', error);
@@ -423,180 +428,115 @@ async function handleFormSubmission(event) {
     }
 }
 
+// Event listener to handle all initial setup and actions
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initial data fetch and render
+    fetchAndRenderDashboardData();
 
-// --- INÍCIO DO NOVO CÓDIGO PARA VERIFICAÇÃO DE DISPONIBILIDADE ---
-function initializeSmartCheck() {
-    const availabilitySection = document.getElementById('availability-checker-section');
-    if (!availabilitySection) return;
+    // Selectors for new feature
+    const zipCodeInput = document.getElementById('zipCode');
+    const cityInput = document.getElementById('city');
+    const suggestedTechDisplay = document.getElementById('suggestedTechDisplay'); // NOVO SELETOR
 
-    const mainFormSection = document.getElementById('main-appointment-form');
-    const zipCodeInputCheck = document.getElementById('customer-zip-code');
-    const numPetsInput = document.getElementById('num-pets');
-    const marginSelect = document.getElementById('appointment-margin');
-    const verifyBtn = document.getElementById('verify-availability-btn');
-    const skipBtn = document.getElementById('skip-to-manual-btn');
-    const resultsDiv = document.getElementById('availability-results');
+    // Set default form values
+    const customersInput = document.getElementById('customers');
+    const codePassDisplay = document.getElementById('codePassDisplay');
+    const appointmentDateInput = document.getElementById('appointmentDate');
+    const reminderDateDisplay = document.getElementById('reminderDateDisplay');
 
-    let availabilityData = [];
-    let currentOptionIndex = 0;
+    const codePassInput = document.createElement('input');
+    codePassInput.type = 'hidden';
+    codePassInput.id = 'codePass';
+    codePassInput.name = 'codePass';
+    document.getElementById('scheduleForm').appendChild(codePassInput);
 
-    verifyBtn.addEventListener('click', handleVerifyAvailability);
-    skipBtn.addEventListener('click', () => {
-        availabilitySection.style.display = 'none';
-        mainFormSection.classList.remove('hidden');
-        mainFormSection.scrollIntoView({ behavior: 'smooth' });
+    const reminderDateInput = document.createElement('input');
+    reminderDateInput.type = 'hidden';
+    reminderDateInput.id = 'reminderDate';
+    reminderDateInput.name = 'reminderDate';
+    document.getElementById('scheduleForm').appendChild(reminderDateInput);
+
+    // *** NOVO EVENT LISTENER PARA O ZIP CODE ***
+    zipCodeInput.addEventListener('input', async () => {
+        const zipCode = zipCodeInput.value.trim();
+        cityInput.value = ''; // Limpa a cidade ao digitar
+        
+        // Reset suggested technician display to default loading style
+        suggestedTechDisplay.innerHTML = '--/--/----'; 
+        suggestedTechDisplay.classList.remove('text-green-600', 'text-red-600');
+        suggestedTechDisplay.classList.add('input-display-style', 'font-medium', 'text-muted-foreground');
+
+
+        if (zipCode.length === 5) {
+            // Desabilita temporariamente o campo City
+            cityInput.disabled = true;
+            cityInput.placeholder = 'Buscando cidade...';
+            suggestedTechDisplay.innerHTML = 'Procurando...'; // Set to loading state after zip check
+
+            const locationData = await getCityFromZip(zipCode);
+
+            cityInput.disabled = false;
+            cityInput.placeholder = 'Ex: Beverly Hills';
+            
+            if (locationData && locationData.city) {
+                cityInput.value = locationData.city;
+                
+                // *** CALL NEW LOGIC ***
+                await updateSuggestedTechnician(locationData.state, suggestedTechDisplay); 
+                // *** END NEW LOGIC ***
+
+                const addressInput = document.getElementById('address');
+                if (addressInput && !addressInput.value) {
+                    addressInput.focus();
+                }
+            } else {
+                // Fallback if city not found
+                cityInput.focus();
+                cityInput.placeholder = 'Zip Code não encontrado. Digite a cidade.';
+                suggestedTechDisplay.innerHTML = '--/--/----';
+            }
+        } else {
+             // Reset if zip code is incomplete
+             suggestedTechDisplay.innerHTML = '--/--/----';
+        }
+    });
+    // *** FIM NOVO EVENT LISTENER ***
+
+
+    // Add event listeners
+    document.getElementById('scheduleForm').addEventListener('submit', handleFormSubmission);
+
+    appointmentDateInput.addEventListener('input', (event) => {
+        const appointmentDateValue = event.target.value; // YYYY-MM-DDTHH:MM
+        if (appointmentDateValue) {
+            // New logic to handle datetime-local input
+            const appointmentDate = new Date(appointmentDateValue);
+            appointmentDate.setMonth(appointmentDate.getMonth() + 5);
+            
+            // Format only the date part to MM/DD/YYYY for display
+            const displayDate = formatDateToYYYYMMDD(appointmentDate); 
+            reminderDateDisplay.textContent = displayDate;
+            
+            // API Date format for Sheets is YYYY-MM-DD (Date Only)
+            const apiDate = appointmentDate.toISOString().split('T')[0];
+            reminderDateInput.value = apiDate; 
+        } else {
+            reminderDateDisplay.textContent = '--/--/----';
+            reminderDateInput.value = '';
+        }
     });
 
-    async function handleVerifyAvailability() {
-        const zipCode = zipCodeInputCheck.value.trim();
-        const numPets = numPetsInput.value;
-        const margin = marginSelect.value;
-
-        if (zipCode.length !== 5 || !numPets || numPets < 1) {
-            resultsDiv.innerHTML = `<p class="text-red-600 font-semibold">Please enter a valid Zip Code and Number of Pets.</p>`;
-            return;
+    customersInput.addEventListener('input', () => {
+        const value = customersInput.value.trim();
+        if (value.length > 0) {
+            // CÓDIGO ATUALIZADO (5 caracteres alfanuméricos):
+            const generatedCode = generateAlphanumericCode(5);
+            codePassDisplay.textContent = generatedCode;
+            codePassInput.value = generatedCode;
+            
+        } else {
+            codePassDisplay.textContent = '--/--/----';
+            codePassInput.value = '';
         }
-
-        resultsDiv.innerHTML = `<p class="text-muted-foreground">Calculating travel times and finding the best slots...</p>`;
-        verifyBtn.disabled = true;
-        verifyBtn.textContent = 'Calculating...';
-
-        try {
-            const response = await fetch('/api/find-availability', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ zipCode, numPets, margin }),
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.message || 'An unknown error occurred.');
-            availabilityData = result.options;
-            currentOptionIndex = 0;
-            displayCurrentOption(zipCode, numPets);
-        } catch (error) {
-            resultsDiv.innerHTML = `<p class="text-red-600 font-semibold">Error: ${error.message}</p>`;
-        } finally {
-            verifyBtn.disabled = false;
-            verifyBtn.textContent = 'Check Availability';
-        }
-    }
-
-    function displayCurrentOption(originalZip, numPets) {
-        if (availabilityData.length === 0) {
-            resultsDiv.innerHTML = `<p class="text-red-600 font-semibold">No suitable slots found with the given travel constraints.</p>`;
-            return;
-        }
-        const data = availabilityData[currentOptionIndex];
-        const { technician, restrictions, date, availableSlots } = data;
-        const friendlyDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        const slotsHtml = availableSlots.map(slot => `<button type="button" class="slot-btn bg-brand-primary/10 text-brand-primary font-semibold py-2 px-4 rounded-lg hover:bg-brand-primary hover:text-white" data-slot="${slot}" data-date="${date}" data-tech="${technician}" data-zip="${originalZip}" data-pets="${numPets}">${slot}</button>`).join('');
-        const prevButtonHtml = currentOptionIndex > 0 ? `<button id="prev-option-btn" class="text-sm font-semibold text-brand-primary hover:underline">&larr; Previous</button>` : `<div></div>`;
-        const nextButtonHtml = currentOptionIndex < availabilityData.length - 1 ? `<button id="next-option-btn" class="text-sm font-semibold text-brand-primary hover:underline">Next &rarr;</button>` : `<div></div>`;
-        resultsDiv.innerHTML = `<div class="space-y-4 p-4 border rounded-lg bg-muted/30"><div class="flex justify-between items-center"><p class="text-lg font-bold text-green-600">Option ${currentOptionIndex + 1}/${availabilityData.length}</p><div class="flex gap-4">${prevButtonHtml}${nextButtonHtml}</div></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><p class="text-sm font-semibold">Technician:</p><p>${technician}</p></div><div><p class="text-sm font-semibold">Restrictions:</p><p class="text-amber-700">${restrictions}</p></div></div><div><p class="text-sm font-semibold">Date:</p><p>${friendlyDate}</p></div><div><p class="text-sm font-semibold">Available Times:</p><div class="flex flex-wrap gap-2 mt-2">${slotsHtml}</div></div></div>`;
-        document.querySelectorAll('.slot-btn').forEach(b => b.addEventListener('click', handleSlotSelection));
-        if (document.getElementById('prev-option-btn')) document.getElementById('prev-option-btn').addEventListener('click', () => { currentOptionIndex--; displayCurrentOption(originalZip, numPets); });
-        if (document.getElementById('next-option-btn')) document.getElementById('next-option-btn').addEventListener('click', () => { currentOptionIndex++; displayCurrentOption(originalZip, numPets); });
-    }
-
-    function handleSlotSelection(event) {
-        const { slot, date, tech, zip, pets } = event.currentTarget.dataset;
-        availabilitySection.style.display = 'none';
-        mainFormSection.classList.remove('hidden');
-        document.getElementById('appointmentDate').value = `${date}T${slot}`;
-        document.getElementById('zipCode').value = zip;
-        document.getElementById('pets').value = pets;
-        document.getElementById('zipCode').dispatchEvent(new Event('input', { bubbles: true }));
-        setTimeout(() => {
-            const techSelect = document.getElementById('suggestedTechSelect');
-            if (techSelect) techSelect.value = tech;
-            else if (document.getElementById('suggestedTechDisplay')) document.getElementById('suggestedTechDisplay').textContent = tech;
-        }, 1500);
-        mainFormSection.scrollIntoView({ behavior: 'smooth' });
-        document.getElementById('appointmentDate').dispatchEvent(new Event('input', { bubbles: true }));
-    }
-}
-// --- FIM DO NOVO CÓDIGO PARA VERIFICAÇÃO DE DISPONIBILIDADE ---
-
-
-// --- INICIALIZAÇÃO DA PÁGINA ---
-document.addEventListener('DOMContentLoaded', () => {
-    
-    // Roda a lógica de inicialização para a página correta
-    if (document.getElementById('scheduleForm')) {
-        // Estamos na página appointments.html
-
-        // 1. Roda a função de popular os cards de resumo
-        fetchAndRenderDashboardData();
-        
-        // 2. Roda a função que ativa o Smart Availability Check
-        initializeSmartCheck();
-
-        // 3. Configura os listeners do formulário principal
-        const scheduleForm = document.getElementById('scheduleForm');
-        const zipCodeInput = document.getElementById('zipCode');
-        const cityInput = document.getElementById('city');
-        const suggestedTechDisplay = document.getElementById('suggestedTechDisplay');
-        const customersInput = document.getElementById('customers');
-        const codePassDisplay = document.getElementById('codePassDisplay');
-        const appointmentDateInput = document.getElementById('appointmentDate');
-        const reminderDateDisplay = document.getElementById('reminderDateDisplay');
-
-        // Adiciona campos hidden se não existirem
-        if (!document.getElementById('codePass')) {
-            const codePassInput = document.createElement('input');
-            codePassInput.type = 'hidden';
-            codePassInput.id = 'codePass';
-            codePassInput.name = 'codePass';
-            scheduleForm.appendChild(codePassInput);
-        }
-        if (!document.getElementById('reminderDate')) {
-            const reminderDateInput = document.createElement('input');
-            reminderDateInput.type = 'hidden';
-            reminderDateInput.id = 'reminderDate';
-            reminderDateInput.name = 'reminderDate';
-            scheduleForm.appendChild(reminderDateInput);
-        }
-
-        // Adiciona Listeners do formulário
-        scheduleForm.addEventListener('submit', handleFormSubmission);
-
-        zipCodeInput.addEventListener('input', async () => {
-            const zipCode = zipCodeInput.value.trim();
-            cityInput.value = '';
-            if (suggestedTechDisplay) suggestedTechDisplay.innerHTML = '--/--/----';
-            if (zipCode.length === 5) {
-                cityInput.disabled = true;
-                cityInput.placeholder = 'Buscando...';
-                const locationData = await getCityFromZip(zipCode);
-                cityInput.disabled = false;
-                cityInput.placeholder = 'Ex: Beverly Hills';
-                if (locationData && locationData.city) {
-                    cityInput.value = locationData.city;
-                    await updateSuggestedTechnician(locationData.state, suggestedTechDisplay);
-                }
-            }
-        });
-
-        appointmentDateInput.addEventListener('input', (event) => {
-            if (event.target.value) {
-                const appointmentDate = new Date(event.target.value);
-                appointmentDate.setMonth(appointmentDate.getMonth() + 5);
-                reminderDateDisplay.textContent = formatDateToMMDDYYYY(appointmentDate);
-                document.getElementById('reminderDate').value = appointmentDate.toISOString().split('T')[0];
-            } else {
-                reminderDateDisplay.textContent = '--/--/----';
-                document.getElementById('reminderDate').value = '';
-            }
-        });
-
-        customersInput.addEventListener('input', () => {
-            if (customersInput.value.trim().length > 0) {
-                const generatedCode = generateAlphanumericCode(5);
-                codePassDisplay.textContent = generatedCode;
-                document.getElementById('codePass').value = generatedCode;
-            } else {
-                codePassDisplay.textContent = '--/--/----';
-                document.getElementById('codePass').value = '';
-            }
-        });
-    }
+    });
 });
