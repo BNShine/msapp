@@ -17,17 +17,32 @@
             overflow-x: auto;
             min-width: 100%;
         }
-        .time-slot { height: 60px; position: relative; }
+        .time-slot {
+            height: 60px;
+            position: relative;
+        }
         .appointment-block {
-            width: 150px; height: 120px; position: absolute; left: 0; top: 0; padding: 8px; 
-            box-sizing: border-box; z-index: 10;
+            width: 150px;
+            height: 120px; 
+            position: absolute;
+            left: 0;
+            top: 0; 
+            padding: 8px; 
+            box-sizing: border-box;
+            z-index: 10;
         }
         .timeline-header {
-            grid-column: 1; position: sticky; left: 0; background-color: hsl(var(--card)); z-index: 20;
+            grid-column: 1;
+            position: sticky;
+            left: 0;
+            background-color: hsl(var(--card));
+            z-index: 20;
         }
-        .day-column-header { text-align: center; }
+        .day-column-header {
+            text-align: center;
+        }
 
-        /* Cores */
+        /* Cores dos Blocos */
         .bg-custom-primary { background-color: hsl(337 100% 67%); }
         .bg-green-600 { background-color: rgb(22 163 74); }
         .bg-cherry-red { background-color: hsl(0 84% 45%); }
@@ -35,51 +50,113 @@
         
         /* Estilos do Modal */
         .modal-overlay-fixed {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7);
-            display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 1000;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 1000;
         }
-        body.modal-open { overflow: hidden !important; }
-        .hidden { display: none !important; }
+        body.modal-open {
+            overflow: hidden !important; 
+        }
+        .hidden {
+            display: none !important;
+        }
 
         /* Feedback de Salvamento */
-        tr.is-saving { background-color: hsl(var(--secondary) / 0.1); }
-        tr.is-success { background-color: hsl(142.1 76.2% 36.3% / 0.15); }
-        tr.is-error { background-color: hsl(0 84.2% 60.2% / 0.15); }
+        tr.is-saving { background-color: hsl(var(--secondary) / 0.1); transition: background-color 0.3s; }
+        tr.is-success { background-color: hsl(142.1 76.2% 36.3% / 0.15); transition: background-color 0.3s; }
+        tr.is-error { background-color: hsl(0 84.2% 60.2% / 0.15); transition: background-color 0.3s; }
 
-        /* Estilos do Mini Calendário */
-        #mini-calendar .header { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
-        #mini-calendar .days-grid, #mini-calendar .dates-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
-        #mini-calendar .day-name { font-size: 0.75rem; font-weight: 600; color: hsl(var(--muted-foreground)); padding: 4px 0; }
+        /* Container principal com margens */
+        .main-content-container {
+            margin-left: 200px;
+            margin-right: 200px;
+        }
+
+        /* --- NOVOS ESTILOS PARA O MINI CALENDÁRIO --- */
+        #mini-calendar .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+        }
+        #mini-calendar .days-grid, #mini-calendar .dates-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+        }
+        #mini-calendar .day-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: hsl(var(--muted-foreground));
+            padding: 4px 0;
+        }
         #mini-calendar .date-cell {
-            font-size: 0.8rem; padding: 6px 0; cursor: pointer; border-radius: 9999px; transition: background-color 0.2s;
+            font-size: 0.8rem;
+            padding: 6px 0;
+            cursor: pointer;
+            border-radius: 9999px; /* fully rounded */
+            transition: background-color 0.2s;
         }
-        #mini-calendar .date-cell:hover { background-color: hsl(var(--muted)); }
-        #mini-calendar .date-cell.other-month { color: hsl(var(--muted-foreground) / 0.5); }
-        #mini-calendar .date-cell.today { position: relative; }
+        #mini-calendar .date-cell:hover {
+            background-color: hsl(var(--muted));
+        }
+        #mini-calendar .date-cell.other-month {
+            color: hsl(var(--muted-foreground) / 0.5);
+        }
+        #mini-calendar .date-cell.today {
+            position: relative;
+        }
+        /* Ponto azul para o dia de hoje */
         #mini-calendar .date-cell.today::after {
-            content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
-            width: 5px; height: 5px; border-radius: 50%; background-color: hsl(var(--brand-primary));
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background-color: hsl(var(--brand-primary));
         }
+        /* Círculo azul para o dia selecionado */
         #mini-calendar .date-cell.selected {
-            background-color: hsl(217.2 91.2% 59.8%); color: white; font-weight: bold;
+            background-color: hsl(217.2 91.2% 59.8%);
+            color: white;
+            font-weight: bold;
         }
-        #mini-calendar .date-cell.selected:hover { background-color: hsl(217.2 91.2% 55%); }
-        #mini-calendar .nav-btn { padding: 4px; border-radius: 6px; }
-        #mini-calendar .nav-btn:hover { background-color: hsl(var(--muted)); }
+        #mini-calendar .date-cell.selected:hover {
+            background-color: hsl(217.2 91.2% 55%);
+        }
+        #mini-calendar .nav-btn {
+            padding: 4px;
+            border-radius: 6px;
+        }
+         #mini-calendar .nav-btn:hover {
+             background-color: hsl(var(--muted));
+         }
+
     </style>
 </head>
 <body class="bg-background">
 
     <header class="bg-card shadow-large border-b border-border sticky top-0 z-40">
-        <div class="max-w-[98rem] mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="main-content-container px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
-                <div class="flex items-center gap-2 sm:gap-4">
+                <div class="flex items-center gap-4">
                     <button id="today-btn" class="px-4 py-2 text-sm font-medium border rounded-md hover:bg-muted">Today</button>
                     <div class="flex items-center gap-2">
                         <button id="prev-week" class="p-2 border rounded-md hover:bg-muted">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
                         </button>
-                        <span id="current-week-display" class="font-semibold text-sm sm:text-lg text-foreground/80 w-32 sm:w-48 text-center">Loading...</span>
+                        <span id="current-week-display" class="font-bold text-lg text-foreground/80 w-48 text-center">Loading...</span>
                         <button id="next-week" class="p-2 border rounded-md hover:bg-muted">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>
                         </button>
@@ -87,20 +164,20 @@
                 </div>
     
                 <div class="flex-1 flex justify-center items-center gap-4">
-                     <h1 class="text-xl font-bold text-foreground/80 hidden md:block">Technician Scheduler</h1>
+                     <h1 class="text-xl font-bold text-foreground/80 hidden lg:block">Technician Scheduler</h1>
                 </div>
     
-                <div class="flex items-center gap-2 sm:gap-4">
+                <div class="flex items-center gap-4">
                     <div class="flex items-center gap-2">
-                        <label for="tech-select-dropdown" class="text-sm font-medium hidden lg:inline">Technician:</label>
-                        <select id="tech-select-dropdown" class="w-32 sm:w-48 rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                             <option value="">Loading...</option>
+                        <label for="tech-select-dropdown" class="text-sm font-medium">Technician:</label>
+                        <select id="tech-select-dropdown" class="w-48 rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                             <option value="">Loading Technicians...</option>
                         </select>
                     </div>
-                    <div>
+                    <div class="w-24">
                          <a href="appointments.html" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-10 px-4 bg-brand-primary text-white hover:shadow-brand transition-shadow">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                            <span class="hidden sm:inline">New</span>
+                            New
                          </a>
                     </div>
                 </div>
@@ -108,11 +185,11 @@
         </div>
     </header>
 
-    <main class="p-4 sm:p-8">
-        <div class="max-w-[98rem] mx-auto space-y-8">
+    <main class="p-8">
+        <div class="main-content-container space-y-8">
             <section class="rounded-lg border bg-card text-card-foreground shadow-large">
-                <div class="flex flex-col lg:flex-row">
-                    <div id="tech-filter-panel" class="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-border p-4 space-y-4 flex-shrink-0">
+                <div class="flex">
+                    <div id="tech-filter-panel" class="w-64 border-r border-border p-4 space-y-4 flex-shrink-0">
                         <div id="mini-calendar-container" class="mb-4"></div>
 
                         <h3 class="text-lg font-semibold">Technician Details</h3>
@@ -127,9 +204,11 @@
                     </div>
                     
                     <div class="flex-1 overflow-x-auto">
-                        <div id="scheduler-header" class="scheduler-grid border-b border-border"></div>
+                        <div id="scheduler-header" class="scheduler-grid border-b border-border">
+                            </div>
                         <div id="scheduler-body-wrapper" class="relative">
-                            <div id="scheduler-body" class="scheduler-grid relative min-w-full"></div>
+                            <div id="scheduler-body" class="scheduler-grid relative min-w-full">
+                                </div>
                             <div id="loading-overlay" class="absolute inset-0 bg-white/70 flex items-center justify-center z-30">
                                 <p class="text-xl font-semibold text-muted-foreground">Please select a technician.</p>
                             </div>
@@ -161,7 +240,9 @@
                             </tr>
                         </thead>
                         <tbody id="showed-appointments-table-body" class="text-foreground text-sm">
-                            <tr><td colspan="10" class="p-4 text-center">Select a technician to see appointments.</td></tr>
+                            <tr>
+                                <td colspan="10" class="p-4 text-center">Select a technician to see appointments for the current week.</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -185,7 +266,7 @@
                     </div>
                 </div>
                 
-                <div class="flex flex-wrap gap-4 mt-4 mb-4">
+                <div class="flex gap-4 mt-4 mb-4">
                     <button id="optimize-itinerary-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all duration-300 h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand disabled:opacity-50" disabled>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-route w-4 h-4"><path d="M3 3v18h18"/><path d="m21 7-5 5h5"/><path d="m11 11-3 3h3"/><path d="m11 7-5 5h5"/></svg>
                         Itinerary Optimizer (Nearest)
@@ -211,7 +292,9 @@
                             </tr>
                         </thead>
                         <tbody id="day-itinerary-table-body" class="text-foreground text-sm">
-                            <tr><td colspan="7" class="p-4 text-center text-muted-foreground">Select a day and a technician to view appointments.</td></tr>
+                            <tr>
+                                <td colspan="7" class="p-4 text-center text-muted-foreground">Select a day and a technician to view appointments.</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -223,12 +306,17 @@
                     <div class="flex flex-wrap items-end gap-4">
                         <div class="space-y-2 flex-1 min-w-[200px]">
                             <label for="first-schedule-select" class="block text-sm font-semibold text-foreground">First Schedule Slot (07:00 - 21:00)</label>
-                            <select id="first-schedule-select" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"></select>
+                            <select id="first-schedule-select" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
+                                </select>
                         </div>
-                        <button id="apply-route-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-green-600 text-white hover:shadow-medium disabled:opacity-50">Apply Route</button>
+                        <button id="apply-route-btn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-green-600 text-white hover:shadow-medium disabled:opacity-50">
+                            Apply Route
+                        </button>
                     </div>
                 </div>
-                <div id="itinerary-results-list" class="mt-4 space-y-2 text-sm text-muted-foreground">No route calculated.</div>
+                <div id="itinerary-results-list" class="mt-4 space-y-2 text-sm text-muted-foreground">
+                    No route calculated.
+                </div>
             </section>
         </div>
     </main>
@@ -240,16 +328,16 @@
                 <input type="hidden" id="modal-appt-id" name="id">
                 <div class="space-y-2">
                     <label for="modal-date" class="block text-sm font-semibold text-foreground">Date and Time</label>
-                    <input type="datetime-local" id="modal-date" name="appointmentDate" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
+                    <input type="datetime-local" id="modal-date" name="appointmentDate" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
                 </div>
                 <div class="space-y-2">
                     <label for="modal-verification" class="block text-sm font-semibold text-foreground">Status</label>
-                    <select id="modal-verification" name="verification" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"></select>
+                    <select id="modal-verification" name="verification" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"></select>
                 </div>
             </form>
             <div class="mt-6 flex justify-end gap-3">
-                <button id="modal-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">Save</button>
-                <button id="modal-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border">Cancel</button>
+                <button id="modal-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">Save Changes</button>
+                <button id="modal-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">Cancel</button>
             </div>
         </div>
     </div>
@@ -258,59 +346,59 @@
             <h3 class="text-xl font-bold text-foreground mb-4">Add New Time Block</h3>
             <form id="time-block-form" class="space-y-4">
                 <div class="space-y-2">
-                    <label for="block-date" class="block text-sm font-semibold">Date</label>
+                    <label for="block-date" class="block text-sm font-semibold text-foreground">Date</label>
                     <input type="date" id="block-date" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">
-                        <label for="block-start-hour" class="block text-sm font-semibold">Start Time</label>
+                        <label for="block-start-hour" class="block text-sm font-semibold text-foreground">Start Time</label>
                         <input type="time" id="block-start-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
                     </div>
                     <div class="space-y-2">
-                        <label for="block-end-hour" class="block text-sm font-semibold">End Time</label>
+                        <label for="block-end-hour" class="block text-sm font-semibold text-foreground">End Time</label>
                         <input type="time" id="block-end-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
                     </div>
                 </div>
                 <div class="space-y-2">
-                    <label for="block-notes" class="block text-sm font-semibold">Notes</label>
-                    <textarea id="block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm" placeholder="Ex: Lunch..."></textarea>
+                    <label for="block-notes" class="block text-sm font-semibold text-foreground">Notes (Reason)</label>
+                    <textarea id="block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm" placeholder="Ex: Lunch, Personal appointment..."></textarea>
                 </div>
             </form>
             <div class="mt-6 flex justify-end gap-3">
-                <button id="block-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white">Save</button>
-                <button id="block-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border">Cancel</button>
+                <button id="block-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">Save Block</button>
+                <button id="block-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">Cancel</button>
             </div>
         </div>
     </div>
     <div id="edit-time-block-modal" class="modal-overlay-fixed hidden">
         <div class="bg-card p-6 rounded-lg shadow-2xl w-full max-w-md relative">
-            <h3 class="text-xl font-bold text-foreground mb-4">Edit Time Block</h3>
+            <h3 class="text-xl font-bold text-foreground mb-4">Edit Time Block Details</h3>
             <form id="edit-time-block-form" class="space-y-4">
                 <input type="hidden" id="edit-block-row-number">
                 <div class="space-y-2">
-                    <label for="edit-block-date" class="block text-sm font-semibold">Date</label>
+                    <label for="edit-block-date" class="block text-sm font-semibold text-foreground">Date</label>
                     <input type="date" id="edit-block-date" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">
-                        <label for="edit-block-start-hour" class="block text-sm font-semibold">Start Time</label>
+                        <label for="edit-block-start-hour" class="block text-sm font-semibold text-foreground">Start Time</label>
                         <input type="time" id="edit-block-start-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
                     </div>
                     <div class="space-y-2">
-                        <label for="edit-block-end-hour" class="block text-sm font-semibold">End Time</label>
+                        <label for="edit-block-end-hour" class="block text-sm font-semibold text-foreground">End Time</label>
                         <input type="time" id="edit-block-end-hour" required class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm">
                     </div>
                 </div>
                 <div class="space-y-2">
-                    <label for="edit-block-notes" class="block text-sm font-semibold">Notes</label>
-                    <textarea id="edit-block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"></textarea>
+                    <label for="edit-block-notes" class="block text-sm font-semibold text-foreground">Notes (Reason)</label>
+                    <textarea id="edit-block-notes" rows="3" class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm" placeholder="Ex: Lunch, Personal appointment..."></textarea>
                 </div>
             </form>
             <div class="mt-6 flex justify-between items-center">
-                <button id="edit-block-delete-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3" style="background-color: #DC2626; color: white;">Delete</button>
+                <button id="edit-block-delete-btn" type="button" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold h-11 px-6 py-3 transition-colors" style="background-color: #DC2626; color: white;" onmouseover="this.style.backgroundColor='#B91C1C'" onmouseout="this.style.backgroundColor='#DC2626'">Delete</button>
                 <div class="flex gap-3">
-                    <button id="edit-block-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white">Save</button>
-                    <button id="edit-block-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border">Cancel</button>
+                    <button id="edit-block-save-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 bg-brand-primary text-white hover:shadow-brand">Save Changes</button>
+                    <button id="edit-block-cancel-btn" type="button" class="inline-flex items-center rounded-xl text-sm font-semibold h-11 px-6 py-3 border border-border text-foreground hover:bg-muted">Cancel</button>
                 </div>
             </div>
         </div>
