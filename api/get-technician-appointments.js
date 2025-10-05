@@ -41,7 +41,6 @@ export default async function handler(req, res) {
             const getCellValue = (header) => {
                 const index = headersToIndex[header];
                 if (index !== undefined && row._rawData.length > index) {
-                    // Garante que o valor é uma string (null/undefined são tratados)
                     return String(row._rawData[index] || '');
                 }
                 return '';
@@ -50,7 +49,6 @@ export default async function handler(req, res) {
             const appointmentDateRaw = getCellValue('Date (Appointment)');
             const technician = getCellValue('Technician');
             
-            // Só retorna se tiver técnico e data preenchidos (evitando quebra de código no frontend)
             if (!technician || !appointmentDateRaw) {
                 return null;
             }
@@ -58,19 +56,19 @@ export default async function handler(req, res) {
             return {
                 id: row.rowNumber,
                 technician: technician,
-                appointmentDate: excelDateToDateTime(appointmentDateRaw), // **CORRIGIDO: Retorna MM/DD/YYYY HH:MM**
+                appointmentDate: excelDateToDateTime(appointmentDateRaw),
                 customers: getCellValue('Customers'),
                 code: getCellValue('Code'),
                 verification: getCellValue('Verification') || 'Scheduled', 
+                pets: getCellValue('Pets'), // <-- CAMPO ADICIONADO AQUI
                 petShowed: getCellValue('Pet Showed'),
-                // CAMPOS CRÍTICOS DE PAGAMENTO/EDIÇÃO (Garantidos como Strings)
                 serviceShowed: getCellValue('Service Showed'),
                 tips: getCellValue('Tips'),
                 percentage: getCellValue('Percentage'),
                 paymentMethod: getCellValue('Method'),
-                zipCode: getCellValue('Zip Code'), // Adicionado Zip Code
+                zipCode: getCellValue('Zip Code'),
             };
-        }).filter(a => a !== null); // Filtra quaisquer linhas nulas
+        }).filter(a => a !== null);
 
         return res.status(200).json({ appointments });
 
