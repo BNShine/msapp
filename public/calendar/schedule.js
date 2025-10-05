@@ -1,7 +1,7 @@
 // public/calendar/schedule.js
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // --- 1. Seletores de Elementos (bloco completo restaurado e atualizado) ---
+    // --- 1. Seletores de Elementos ---
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
     const selectedTechDisplay = document.getElementById('selected-tech-display');
     const loadingOverlay = document.getElementById('loading-overlay');
@@ -10,8 +10,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currentWeekDisplay = document.getElementById('current-week-display');
     const prevWeekBtn = document.getElementById('prev-week');
     const nextWeekBtn = document.getElementById('next-week');
-    const todayBtn = document.getElementById('today-btn'); // NOVO SELETOR
+    const todayBtn = document.getElementById('today-btn');
     const addTimeBlockBtn = document.getElementById('add-time-block-btn');
+    const miniCalendarContainer = document.getElementById('mini-calendar-container'); // NOVO SELETOR
 
     // Modais e seus botões
     const editModal = document.getElementById('edit-appointment-modal');
@@ -36,6 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let techAvailabilityBlocks = [];
     let selectedTechnician = '';
     let currentWeekStart = getStartOfWeek(new Date());
+    let miniCalDate = new Date(); // NOVO: Data para o mini calendário
 
     const SCHEDULE_DURATION_HOURS = 2;
     const SLOT_HEIGHT_PX = 60;
@@ -89,7 +91,73 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${year}-${month}-${day}T${hour}:${minute}`;
     }
 
-    // --- 4. Funções de Manipulação dos Modais ---
+    // --- 4. Lógica do Mini Calendário ---
+
+    function renderMiniCalendar() {
+        if (!miniCalendarContainer) return;
+
+        const month = miniCalDate.getMonth();
+        const year = miniCalDate.getFullYear();
+
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0);
+        const firstDayOfWeek = firstDayOfMonth.getDay();
+
+        let datesHtml = '';
+        // Preenche os dias do mês anterior
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            datesHtml += `<div class="date-cell other-month"></div>`;
+        }
+
+        // Preenche os dias do mês atual
+        for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
+            const currentDate = new Date(year, month, i);
+            const isToday = currentDate.toDateString() === new Date().toDateString();
+            const isSelected = currentDate.toDateString() === currentWeekStart.toDateString() || (currentDate > currentWeekStart && currentDate <= new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000));
+            
+            let cellClass = 'date-cell';
+            if (isToday) cellClass += ' today';
+            if (isSelected) cellClass += ' selected';
+
+            datesHtml += `<div class="${cellClass}" data-date="${currentDate.toISOString()}">${i}</div>`;
+        }
+
+        const monthName = miniCalDate.toLocaleString('default', { month: 'long' });
+        miniCalendarContainer.innerHTML = `
+            <div id="mini-calendar">
+                <div class="header">
+                    <button class="nav-btn" id="mini-cal-prev-month"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+                    <span class="font-semibold">${monthName} ${year}</span>
+                    <button class="nav-btn" id="mini-cal-next-month"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                </div>
+                <div class="days-grid">
+                    ${['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => `<div class="day-name">${d}</div>`).join('')}
+                </div>
+                <div class="dates-grid">${datesHtml}</div>
+            </div>
+        `;
+
+        // Adiciona event listeners
+        document.getElementById('mini-cal-prev-month').addEventListener('click', () => {
+            miniCalDate.setMonth(miniCalDate.getMonth() - 1);
+            renderMiniCalendar();
+        });
+        document.getElementById('mini-cal-next-month').addEventListener('click', () => {
+            miniCalDate.setMonth(miniCalDate.getMonth() + 1);
+            renderMiniCalendar();
+        });
+        miniCalendarContainer.querySelectorAll('.date-cell[data-date]').forEach(cell => {
+            cell.addEventListener('click', (e) => {
+                currentWeekStart = getStartOfWeek(new Date(e.currentTarget.dataset.date));
+                renderScheduler();
+                renderMiniCalendar();
+                document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } }));
+            });
+        });
+    }
+
+
+    // --- 5. Funções de Manipulação dos Modais ---
 
     function openEditModal(appt) {
         const { id, appointmentDate, verification } = appt;
@@ -140,7 +208,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.classList.remove('modal-open');
     }
 
-    // --- 5. Funções de Manipulação de Dados (API Calls) ---
+    // --- 6. Funções de Manipulação de Dados (API Calls) ---
     
     async function handleSaveAppointment() {
         modalSaveBtn.disabled = true;
@@ -159,7 +227,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         const newDate = document.getElementById('modal-date').value;
         const newVerification = document.getElementById('modal-verification').value;
 
-        // Formata a data para a API (MM/DD/YYYY HH:MM)
         const [datePart, timePart] = newDate.split('T');
         const [year, month, day] = datePart.split('-');
         const apiFormattedDate = `${month}/${day}/${year} ${timePart}`;
@@ -168,7 +235,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             rowIndex: parseInt(apptId),
             appointmentDate: apiFormattedDate,
             verification: newVerification,
-            // Inclui os outros campos existentes para não serem apagados na planilha
             technician: appointmentToUpdate.technician,
             petShowed: appointmentToUpdate.petShowed,
             serviceShowed: appointmentToUpdate.serviceShowed,
@@ -308,7 +374,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- 6. Funções de Renderização ---
+    // --- 7. Funções de Renderização ---
 
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
@@ -453,7 +519,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentWeekDisplay.textContent = `${currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}`;
     }
 
-    // --- 7. Inicialização e Event Listeners ---
+    // --- 8. Inicialização e Event Listeners ---
 
     async function loadInitialData() {
         try {
@@ -479,6 +545,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             populateTechSelects();
             renderScheduler();
+            renderMiniCalendar(); // Renderiza o mini calendário na carga inicial
 
         } catch (error) {
             console.error('CRITICAL ERROR during loadInitialData:', error);
@@ -520,18 +587,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
         renderScheduler();
+        renderMiniCalendar();
         document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } }));
     });
     
     nextWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
         renderScheduler();
+        renderMiniCalendar();
         document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } }));
     });
     
     todayBtn.addEventListener('click', () => {
         currentWeekStart = getStartOfWeek(new Date());
+        miniCalDate = new Date();
         renderScheduler();
+        renderMiniCalendar();
         document.dispatchEvent(new CustomEvent('weekChanged', { detail: { weekStart: currentWeekStart } }));
     });
     
