@@ -1,5 +1,12 @@
 // public/calendar.js
 
+// Define initMap globalmente para ser usada como callback pelo script do Google Maps.
+window.initMap = function() {
+    if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
+        directionsService = new google.maps.DirectionsService();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     // --- 1. Seletores de Elementos ---
     const techSelectDropdown = document.getElementById('tech-select-dropdown');
@@ -22,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const firstScheduleSelect = document.getElementById('first-schedule-select');
     const applyRouteBtn = document.getElementById('apply-route-btn');
 
-    // Modais e seus botões
+    // Modais
     const editModal = document.getElementById('edit-appointment-modal');
     const modalSaveBtn = document.getElementById('modal-save-btn');
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
@@ -40,16 +47,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const editBlockEndInput = document.getElementById('edit-block-end-hour');
     const editBlockNotesInput = document.getElementById('edit-block-notes');
 
-    // --- 2. Variáveis Globais e Constantes ---
+    // --- 2. Variáveis Globais ---
     let allAppointments = [];
     let allTechnicians = [];
     let techAvailabilityBlocks = [];
     let selectedTechnician = '';
     let currentWeekStart = getStartOfWeek(new Date());
     let isSaving = {};
-    let directionsService; 
-    let dayAppointments = []; 
-    let orderedClientStops = []; 
+    let directionsService;
+    let dayAppointments = [];
+    let orderedClientStops = [];
 
     const SCHEDULE_DURATION_HOURS = 2;
     const SLOT_HEIGHT_PX = 60;
@@ -58,9 +65,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const MIN_HOUR = 7;
     const MAX_HOUR = 21;
 
-    // --- 3. Declaração de Todas as Funções ---
+    // --- 3. Funções Auxiliares ---
 
-    // Funções Auxiliares (Datas, Geo, Formatação)
     function getStartOfWeek(date) {
         const d = new Date(date);
         d.setHours(0, 0, 0, 0);
@@ -74,48 +80,62 @@ document.addEventListener('DOMContentLoaded', async () => {
         const day = date.getDate().toString().padStart(2, '0');
         return `${year}/${month}/${day}`;
     }
-    
+
     function parseSheetDate(dateStr) {
-        if (!dateStr) return null; 
+        if (!dateStr) return null;
         const [datePart, timePart] = dateStr.split(' ');
-        if (!datePart || !timePart) return null; 
+        if (!datePart || !timePart) return null;
         const dateParts = datePart.split('/');
-        const timeParts = timePart.split(':');
-        if (dateParts.length !== 3 || timeParts.length < 2) return null;
+        if (dateParts.length !== 3) return null;
         const [month, day, year] = dateParts.map(Number);
-        const [hour, minute] = timeParts.map(Number);
-        if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
-        return new Date(year, month - 1, day, hour, minute); 
-    }
-    
-    function getTimeHHMM(date) {
-        if (!date) return '';
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        return `${hours}:${minutes}`;
-    }
-    
-    function formatDateTimeForInput(dateTimeStr) {
-        if (!dateTimeStr) return '';
-        const [datePart, timePart] = dateTimeStr.split(' ');
-        if (!datePart || !timePart) return '';
-        const [month, day, year] = datePart.split('/');
         const [hour, minute] = timePart.split(':').map(Number);
-        if (year && month && day) {
-             const paddedHour = String(hour).padStart(2, '0');
-             const paddedMinute = String(minute).padStart(2, '0');
-            return `${year}-${month.toString().padStart(2,'0')}-${day.toString().padStart(2,'0')}T${paddedHour}:${paddedMinute}`; 
-        }
-        return '';
+        if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
+        return new Date(year, month - 1, day, hour, minute);
     }
 
+    function getTimeHHMM(date) {
+        if (!date) return '';
+        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    }
+
+    function formatDateTimeForInput(dateTimeStr) {
+        if (!dateTimeStr) return '';
+        const date = parseSheetDate(dateTimeStr);
+        if (!date) return '';
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const hour = date.getHours().toString().padStart(2, '0');
+        const minute = date.getMinutes().toString().padStart(2, '0');
+        return `${year}-${month}-${day}T${hour}:${minute}`;
+    }
+    
     function getDayOfWeekDate(startOfWeekDate, dayOfWeek) {
         const date = new Date(startOfWeekDate);
         date.setDate(startOfWeekDate.getDate() + dayOfWeek);
         return date;
     }
 
-    // Funções de Manipulação dos Modais
+    async function getLatLon(zipCode) {
+        if (!zipCode) return [null, null];
+        try {
+            const response = await fetch(`https://api.zippopotam.us/us/${zipCode}`);
+            if (!response.ok) return [null, null];
+            const data = await response.json();
+            const place = data.places[0];
+            return [parseFloat(place.latitude), parseFloat(place.longitude)];
+        } catch (error) {
+            console.error('Erro ao buscar dados de zip code:', error);
+            return [null, null];
+        }
+    }
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
+    }
+
+    // --- 4. Lógica dos Modais ---
+
     function openEditModal(appt) {
         const { id, technician, petShowed, percentage, paymentMethod, appointmentDate, serviceShowed, tips, verification } = appt;
         document.getElementById('modal-appt-id').value = id;
@@ -138,7 +158,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (editModal) editModal.classList.add('hidden');
         document.body.classList.remove('modal-open');
     }
-
+    
     function openTimeBlockModal() {
         if (!selectedTechnician) {
             alert('Please select a technician first.');
@@ -168,7 +188,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.classList.remove('modal-open');
     }
 
-    // Funções de Manipulação de Dados (API Calls)
+    // --- 5. Funções de API ---
+
     async function handleSaveAppointment() {
         modalSaveBtn.textContent = 'Saving...';
         modalSaveBtn.disabled = true;
@@ -299,7 +320,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Funções de Renderização
+    async function fetchAvailabilityForSelectedTech() {
+        if (!selectedTechnician) {
+            techAvailabilityBlocks = [];
+            return;
+        }
+        try {
+            const response = await fetch(`/api/manage-technician-availability?technicianName=${encodeURIComponent(selectedTechnician)}`);
+            if (!response.ok) throw new Error('Could not fetch availability.');
+            const data = await response.json();
+            techAvailabilityBlocks = data.availability || [];
+        } catch (error) {
+            console.error('Error fetching availability:', error);
+            techAvailabilityBlocks = [];
+        }
+    }
+
+    // --- 6. Funções de Renderização ---
+
     function renderScheduler() {
         schedulerHeader.innerHTML = '<div class="timeline-header p-2 font-semibold">Time</div>';
         schedulerBody.innerHTML = '';
@@ -336,12 +374,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderDayItineraryTable();
         loadingOverlay.classList.toggle('hidden', !!selectedTechnician);
     }
-    
+
     function renderAppointments(columnMap) {
         const weekEnd = new Date(currentWeekStart);
         weekEnd.setDate(currentWeekStart.getDate() + 7);
         const appointmentsToRender = allAppointments.filter(appt => appt.technician === selectedTechnician);
-
         appointmentsToRender.forEach(appt => {
             const apptDate = parseSheetDate(appt.appointmentDate);
             if (!apptDate || apptDate < currentWeekStart || apptDate >= weekEnd) return;
@@ -350,7 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!colIndex) return;
             const startHour = apptDate.getHours();
             if (startHour < MIN_HOUR || startHour >= MAX_HOUR) return;
-            const topOffset = (startHour - MIN_HOUR) * SLOT_HEIGHT_PX + apptDate.getMinutes(); 
+            const topOffset = (startHour - MIN_HOUR) * SLOT_HEIGHT_PX + apptDate.getMinutes();
             const block = document.createElement('div');
             let bgColor = 'bg-custom-primary';
             if (appt.verification === 'Canceled') bgColor = 'bg-cherry-red';
@@ -359,7 +396,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             block.dataset.id = appt.id;
             block.style.gridColumnStart = colIndex;
             block.style.top = `${topOffset}px`;
-            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000); 
+            const endTime = new Date(apptDate.getTime() + SCHEDULE_DURATION_HOURS * 60 * 60 * 1000);
             block.innerHTML = `<div>
                 <p class="text-xs font-semibold">${getTimeHHMM(apptDate)} - ${getTimeHHMM(endTime)}</p>
                 <p class="text-sm font-bold truncate">${appt.customers}</p>
@@ -492,12 +529,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             itineraryReverserBtn.disabled = false;
         }
     }
-    
-    async function handleOptimizeItinerary() { /* Placeholder */ }
-    async function handleItineraryReverser() { /* Placeholder */ }
 
-    // --- Inicialização e Event Listeners ---
-    
+    async function runItineraryOptimization(isReversed = false) {
+        // ... (código de otimização de rota, se necessário)
+    }
+
+    // --- 7. Inicialização ---
+    async function handleOptimizeItinerary() { await runItineraryOptimization(false); }
+    async function handleItineraryReverser() { await runItineraryOptimization(true); }
+    function handleDayFilterChange() { renderDayItineraryTable(); }
+
     async function loadInitialData() {
         try {
             const [techDataResponse, appointmentsResponse] = await Promise.all([
@@ -533,27 +574,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderScheduler(); 
     }
 
-    function handleDayFilterChange() {
-        renderDayItineraryTable();
-    }
-
-    async function fetchAvailabilityForSelectedTech() {
-        if (!selectedTechnician) {
-            techAvailabilityBlocks = [];
-            return;
-        }
-        try {
-            const response = await fetch(`/api/manage-technician-availability?technicianName=${encodeURIComponent(selectedTechnician)}`);
-            if (!response.ok) throw new Error('Could not fetch availability.');
-            const data = await response.json();
-            techAvailabilityBlocks = data.availability || [];
-        } catch (error) {
-            console.error('Error fetching availability:', error);
-            techAvailabilityBlocks = [];
-        }
-    }
-    
-    // Adiciona todos os event listeners
     techSelectDropdown.addEventListener('change', handleTechSelectionChange);
     prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
