@@ -2,24 +2,14 @@
 
 // Define initMap globalmente para ser usada como callback pelo script do Google Maps.
 window.initMap = function() {
-    const itineraryMapContainer = document.getElementById('itinerary-map');
-    // Adiciona log de diagnóstico para verificar se o objeto Google Maps está pronto
-    if (itineraryMapContainer && typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
-        map = new google.maps.Map(itineraryMapContainer, {
-            center: { lat: 39.8283, lng: -98.5795 }, // Centro dos EUA
-            zoom: 4,
-            streetViewControl: false,
-            fullscreenControl: false,
-        });
+    // A visualização do mapa foi removida, mas o DirectionsService precisa ser inicializado
+    // O directionsRenderer não precisa ser inicializado se não houver mapa.
+    if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
         directionsService = new google.maps.DirectionsService();
-        // Hiding the default markers to use custom ones
-        directionsRenderer = new google.maps.DirectionsRenderer({ 
-            map: map,
-            suppressMarkers: true // Suppress default A, B, C markers
-        });
-        console.log('[MAP LOG 4/4 SUCESSO] Google Maps services initialized and variables set.');
+        // O console.log de inicialização bem-sucedida é o único feedback
+        console.log('[MAP LOG 4/4 SUCESSO] Google Directions Service initialized.');
     } else {
-        console.error('[MAP LOG 4/4 FALHA] Google or google.maps object not available in initMap. Check network status for script.');
+        console.error('[MAP LOG 4/4 FALHA] Google object not available in initMap. Check network status for script.');
     }
 }
 
@@ -63,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dayItineraryTableBody = document.getElementById('day-itinerary-table-body');
     const optimizeItineraryBtn = document.getElementById('optimize-itinerary-btn');
     const itineraryReverserBtn = document.getElementById('itinerary-reverser-btn');
-    const itineraryMapContainer = document.getElementById('itinerary-map'); // Mantido para as funções internas de mapa
+    // const itineraryMapContainer foi removido do HTML e do escopo
     const itineraryResultsList = document.getElementById('itinerary-results-list');
     // END NEW SELECTORS
 
@@ -74,9 +64,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentWeekStart = getStartOfWeek(new Date());
     let isSaving = {};
     let GOOGLE_MAPS_API_KEY = null;
-    let map, directionsService, directionsRenderer;
-    let dayAppointments = []; // Appointments for the selected day/tech
-    let currentMapMarkers = []; // Array to track custom markers for clearing
+    let directionsService; // Mantido como variável de escopo para a rota
+    let dayAppointments = []; 
 
     const SCHEDULE_DURATION_HOURS = 2; // CORRECT CONSTANT NAME
     const SLOT_HEIGHT_PX = 60;
@@ -113,24 +102,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
     }
 
-    // --- Google Maps API Key Fetching (FINAL IMPLEMENTATION) ---
+    // --- Google Maps API Key/Script Injection ---
     async function fetchGoogleMapsApiKey() {
-        // Apenas para garantir que GOOGLE_MAPS_API_KEY tenha um valor, mesmo que nulo,
-        // mas focamos na inicialização local, removendo a necessidade de injeção.
-        // A chave API é buscada apenas para ser usada pelo DirectionsService, se o Maps estiver disponível.
-        
-        if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
-             // Tenta carregar a chave, mas não injeta o script. Apenas inicializa o DirectionsService.
-            try {
-                const response = await fetch('/api/get-google-maps-api-key');
-                if (response.ok) {
-                    const data = await response.json();
-                    // A chave é obtida mas não usada para injeção, apenas para autenticação se necessário.
-                    GOOGLE_MAPS_API_KEY = data.apiKey;
+        if (GOOGLE_MAPS_API_KEY) return;
+        try {
+            console.log('[MAP LOG 1/4] Fetching API key from backend...');
+            const response = await fetch('/api/get-google-maps-api-key');
+            if (response.ok) {
+                const data = await response.json();
+                GOOGLE_MAPS_API_KEY = data.apiKey;
+                console.log('[MAP LOG 2/4] API Key received. Injecting script...');
+                
+                // Inject script only if it's not present (CRITICAL FIX FOR DIRECTIONS SERVICE)
+                if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                    const script = document.createElement('script');
+                    // Injeta APENAS a API Maps JavaScript para usar o DirectionsService
+                    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initMap`;
+                    script.async = true;
+                    script.defer = true;
+                    document.head.appendChild(script);
+                    console.log('[MAP LOG 3/4] Script injected. Waiting for callback (initMap)...');
+                } else {
+                    window.initMap(); // Call it immediately if API is already loaded
+                    console.log('[MAP LOG 3/4] Script already loaded. Calling initMap directly.');
                 }
-            } catch (error) {
-                console.warn('Falha ao buscar a chave API do backend. A otimização de rotas pode falhar se o Directions Service não estiver disponível globalmente.');
+            } else {
+                console.error('Falha ao buscar a chave da API do Google Maps.');
+                alert('Erro CRÍTICO: Não foi possível carregar a chave GOOGLE_MAPS_API_KEY. Verifique as variáveis de ambiente.');
             }
+        } catch (error) {
+            console.error('Erro ao buscar a chave da API do Google Maps:', error);
         }
     }
     // --- End Google Maps Logic ---
@@ -589,8 +590,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         itineraryResultsList.innerHTML = 'No route calculated.';
         
         // Clean up UI related to map visualization (even if map is not displayed)
-        if (directionsService) directionsService.setDirections({ routes: [] });
-        
+        // if (directionsService) directionsService.setDirections({ routes: [] }); // Removido
+        // clearCustomMarkers(); // Removido
+
+
         const selectedDayOfWeek = dayFilter.value;
         const selectedTechName = techSelectDropdown.value; 
 
@@ -658,12 +661,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function runItineraryOptimization(appointments, isReversed = false) {
+        // Verifica se o DirectionsService está disponível
         if (typeof google === 'undefined' || typeof google.maps === 'undefined' || typeof google.maps.DirectionsService === 'undefined') {
             itineraryResultsList.innerHTML = '<p class="text-red-600">Google Maps Service is not initialized. Não é possível calcular tempo/distância. Verifique a chave API.</p>';
             return;
         } else {
              directionsService = new google.maps.DirectionsService();
-             // directionsRenderer é apenas para visualização e foi removido o uso, mas o serviço é necessário
         }
         
         const techCoverageResponse = await fetch('/api/get-tech-coverage');
