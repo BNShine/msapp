@@ -591,8 +591,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         itineraryResultsList.innerHTML = 'No route calculated.';
         
         // Clean up UI related to map visualization (even if map is not displayed)
-        // if (directionsService) directionsService.setDirections({ routes: [] }); // REMOVIDO
-        // clearCustomMarkers(); // REMOVIDO
+        // if (directionsService) directionsService.setDirections({ routes: [] }); // REMOVED
+        // clearCustomMarkers(); // REMOVED
 
 
         const selectedDayOfWeek = dayFilter.value;
@@ -774,7 +774,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         // Clear previous route and markers
-        clearCustomMarkers(); // REMOVIDO
+        clearCustomMarkers(); // REMOVED
 
         // 5. Google Maps Directions Request
         const origin = originZip;
@@ -853,7 +853,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
             } else {
                 // Reinicia os marcadores em caso de falha para garantir que não haja sobras
-                clearCustomMarkers(); // REMOVIDO
+                clearCustomMarkers(); // REMOVED
                 itineraryResultsList.innerHTML = `<p class="text-red-600">Google Maps Route Request Failed. Status: ${status}. Motivo: O Google Maps não conseguiu traçar a rota com os Zips fornecidos, ou o Zip de Origem é inválido.</p>`;
             }
         });
@@ -1032,6 +1032,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     blockSaveBtn.addEventListener('click', handleSaveTimeBlock);
     blockCancelBtn.addEventListener('click', closeTimeBlockModal);
     
+    // =================================================================
+    // START: CORREÇÃO DO ERRO
+    // As funções que os botões de otimização chamam não estavam definidas.
+    // Elas devem apenas chamar a função principal 'runItineraryOptimization'.
+    async function handleOptimizeItinerary() {
+        await runItineraryOptimization(dayAppointments, false);
+    }
+
+    async function handleItineraryReverser() {
+        await runItineraryOptimization(dayAppointments, true);
+    }
+    // END: CORREÇÃO DO ERRO
+    // =================================================================
+
     // NEW Event Listeners
     if (dayFilter) dayFilter.addEventListener('change', handleDayFilterChange);
     if (optimizeItineraryBtn) optimizeItineraryBtn.addEventListener('click', handleOptimizeItinerary);
